@@ -20,7 +20,7 @@
 *******************************************************************************/
 
 #pragma once
-
+#include <iomanip>
 #include <limits>
 /*******************************************************************************
  * Functions to map from ProblemDims to the best available solution
@@ -127,7 +127,9 @@ private:
   std::vector <SolutionMapperBase<ProblemDimsType>*> _mapper;
   SolutionMapperBase<ProblemDimsType>* _fallbackMapper;
 };
-
+#define SIZE_A_LIMIT (384 * 44928)
+#define SIZE_B_LIMIT (384 * 4096)
+#define SIZE_C_LIMIT (4096 * 44928)
 // SolutionMapper:
 // Efficiently map problems to exact or best solution
 // Supports efficient searching and various algorithms to find
@@ -139,6 +141,21 @@ class SolutionMapper : public SolutionMapperBase<ProblemDimsType> {
   typedef std::pair<const ProblemKeyType, int>  PtoS;
 
 public:
+  int overlimit(ProblemKeyType p){
+    if( (p.sizes(0) * p.sizes(3)) > SIZE_A_LIMIT) return 1;
+    if( (p.sizes(1) * p.sizes(3)) > SIZE_B_LIMIT) return 1;
+    if( (p.sizes(0) * p.sizes(1)) > SIZE_C_LIMIT) return 1;
+    return 0;
+  }
+  int compare(ProblemKeyType A,ProblemKeyType B){
+    int A_size = A.sizes(0) * A.sizes(1) + A.sizes(1) * A.sizes(3) + A.sizes(0) * A.sizes(3);
+    int B_size = B.sizes(0) * B.sizes(1) + B.sizes(1) * B.sizes(3) + B.sizes(0) * B.sizes(3);
+
+    if(A_size > B_size)
+       return 1;
+    else
+       return 0;
+  }
   SolutionMapper(const std::string &name, 
                  const SolutionInfo *solutionTable, size_t numSolutions,
                  const PtoS *embeddedExactTable, size_t numExacts,
@@ -152,7 +169,9 @@ public:
     for (size_t i=0; i<numSolutions; i++) {
       _solutionTable[i]._info = &solutionTable[i];
     }
-
+    std::map <int, const ProblemKeyType> solutionPrint;
+    //if(_name.compare("vega20_Cijk_Ailk_Bjlk_DB") == 0)
+    std::cout << _name <<std::endl;
     for (size_t i=0; i<numExacts; i++) {
       auto &pkey = embeddedExactTable[i].first;
       auto solutionIdx = embeddedExactTable[i].second;
@@ -160,7 +179,36 @@ public:
 
       _exactVector.push_back(embeddedExactTable[i]);
       _exactMap.insert({pkey, solutionIdx});
+      //if(_name.compare("vega20_Cijk_Ailk_Bjlk_DB") == 0){
+         auto iter = solutionPrint.find(solutionIdx);
+         if(  iter != solutionPrint.end()){
+            if(compare(iter->second,pkey)){
+               solutionPrint.erase(iter);
+               solutionPrint.insert({solutionIdx,pkey});
+            }
+         }
+         else solutionPrint.insert({solutionIdx,pkey});
+      //}
     }
+
+    int size_a = 0;
+    int size_b = 0;
+    int size_c = 0;
+
+    for (auto iter = solutionPrint.begin(); iter != solutionPrint.end(); iter++){
+       if(overlimit(iter->second))
+         continue;
+       std::cout << "solution idex " ;
+       std::cout << std::setw(3) << iter->first << ": " ;
+       std::cout << iter->second.sizes(0) << " " << iter->second.sizes(1) << " " << iter->second.sizes(3) << " " ;
+       std::cout << iter->second.sizes(0) << " " << iter->second.sizes(1) << " " << iter->second.sizes(0) << " " ;
+       std::cout << std::endl;
+
+       if(size_a < iter->second.sizes(0) * iter->second.sizes(3)) size_a = iter->second.sizes(0) * iter->second.sizes(3);
+       if(size_b < iter->second.sizes(1) * iter->second.sizes(3)) size_b = iter->second.sizes(1) * iter->second.sizes(3);
+       if(size_c < iter->second.sizes(0) * iter->second.sizes(1)) size_c = iter->second.sizes(0) * iter->second.sizes(1);
+    }
+    std::cout << "minimum matrix  sizeA " << size_a << " sizeB " << size_b << " sizeC " << size_c << std::endl;
 
     const char *db = std::getenv("TENSILE_DB");
     if (db) {
