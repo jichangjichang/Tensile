@@ -198,10 +198,21 @@ public:
     for (auto iter = solutionPrint.begin(); iter != solutionPrint.end(); iter++){
        if(overlimit(iter->second))
          continue;
-       std::cout << "solution idex " ;
+       if(_name.find("Cijk_Ailk_Bjlk") != std::string::npos) //NT
+          std::cout << "NT solution idex " ;
+       else if(_name.find("Cijk_Ailk_Bljk") != std::string::npos) //NN
+          std::cout << "NN solution idex " ;
+       else
+          std::cout << "solution idex " ;
+
        std::cout << std::setw(3) << iter->first << ": " ;
+       //print m n k
        std::cout << iter->second.sizes(0) << " " << iter->second.sizes(1) << " " << iter->second.sizes(3) << " " ;
-       std::cout << iter->second.sizes(0) << " " << iter->second.sizes(1) << " " << iter->second.sizes(0) << " " ;
+       //print lda ldb ldc
+       if(_name.find("Cijk_Ailk_Bjlk") != std::string::npos) //NT
+          std::cout << iter->second.sizes(0) << " " << iter->second.sizes(1) << " " << iter->second.sizes(0) << " " ;
+       else if(_name.find("Cijk_Ailk_Bljk") != std::string::npos) //NN
+          std::cout << iter->second.sizes(0) << " " << iter->second.sizes(3) << " " << iter->second.sizes(0) << " " ;
        std::cout << std::endl;
 
        if(size_a < iter->second.sizes(0) * iter->second.sizes(3)) size_a = iter->second.sizes(0) * iter->second.sizes(3);
@@ -355,7 +366,7 @@ public:
     auto fiter = _cachedLookups.find(pkey);
     if (fiter != _cachedLookups.end()) {
       if (_db & 0x1)
-        std::cerr << "findAlgorithmStatic hit in cache solutionIdx=" << fiter->second << "\n";
+        std::cerr << _name << " findAlgorithmStatic hit in cache solutionIdx=" << fiter->second << "\n";
       return fiter->second;
 
     } else {
@@ -364,10 +375,10 @@ public:
       if (solutionIdx == -1) {
         solutionIdx = findNearestMatchWithAlg (pa, pkey);
         if (_db & 0x1)
-          std::cerr << "findAlgorithmStatic picked nearest-match solutionIdx=" << solutionIdx << "\n";
+          std::cerr << _name << " findAlgorithmStatic picked nearest-match solutionIdx=" << solutionIdx << "\n";
       } else {
         if (_db & 0x1)
-          std::cerr << "findAlgorithmStatic picked exact solutionIdx=" << solutionIdx << "\n";
+          std::cerr << _name << " findAlgorithmStatic picked exact solutionIdx=" << solutionIdx << "\n";
       }
 
       // Save problem->solutionIdx mapping so future lookups are fast:
