@@ -344,6 +344,18 @@ void specializeData(
  * return true if errors/invalids
  ******************************************************************************/
 #if Tensile_CLIENT_LIBRARY
+template <typename T>
+void dump_matrix(const T& data, size_t row, size_t col, size_t ld)
+{
+    for(int r=0; r<row; r++)
+    {
+        for(int c=0; c<col; c++)
+        {
+            std::cout << data[c * ld + r] << ", ";
+        }
+        std::cout << std::endl;
+    }
+} 
 template<typename DataType, typename DestDataType, typename ComputeDataType>
 bool callLibrary(
     DestDataType *initialD,
@@ -581,6 +593,13 @@ bool callLibrary(
         }
       }
     } // compare loop
+    std::cout << "printIdx = "  << printIdx << std::endl;
+    if(printIdx > 0){
+
+     dump_matrix(referenceC, lda, lda, lda);
+     dump_matrix(deviceOnHostC, lda, lda, lda);
+
+    }
 
   } // if validate
   if (numInvalids) {
@@ -813,6 +832,18 @@ bool callLibrary(
  * - writes one index in solutionPerf[problemIdx]
  ******************************************************************************/
 #if Tensile_CLIENT_BENCHMARK
+template <typename T>
+void dump_matrix(const T& data, size_t row, size_t col, size_t ld)
+{
+    for(int r=0; r<row; r++)
+    {
+        for(int c=0; c<col; c++)
+        {
+            std::cout << data[c * ld + r] << ", ";
+        }
+        std::cout << std::endl;
+    }
+}
 template<typename DataType, typename DestDataType, typename ComputeDataType>
 bool benchmarkAllSolutionsForSize(
     unsigned int problemIdx,
@@ -1083,6 +1114,20 @@ bool benchmarkAllSolutionsForSize(
             }
           }
         } // compare loop
+    std::cout << "printIdx = "  << printIdx << std::endl;
+    if(printIdx > 0){
+
+    std::cout << "[A Matrix] "  << printIdx << std::endl;
+     dump_matrix(initialA, lda, 16, lda);
+    std::cout << "[B Matrix] "  << printIdx << std::endl;
+     dump_matrix(initialB, lda, 16, lda);
+    std::cout << "[CPU Matrix] "  << printIdx << std::endl;
+     dump_matrix(referenceC, lda, lda, lda);
+    std::cout << "[GPU Matrix] "  << printIdx << std::endl;
+     dump_matrix(deviceOnHostC, lda, lda, lda);
+
+    }
+
         if (numInvalids) {
           returnInvalids = true;
           solutionIsValid = false;
@@ -1428,6 +1473,9 @@ void initInput(
     std::cout << ".";
   } else if (dataInitType == 1) {
     for (size_t i = 0; i < maxSize; i++) {
+   if(initOp == Abs && i >= (maxSize/2+1))
+      (*initial)[i] = tensileGetZero<DataType>(); 
+   else
       (*initial)[i] = tensileGetOne<DataType>(); }
     std::cout << ".";
   } else if (dataInitType == 2) {
@@ -1482,7 +1530,11 @@ void initInput(
       (*initial)[i] = tensileGetZero<DataType>(); }
     std::cout << ".";
   } else if (dataInitType == 1) {
-    for (size_t i = 0; i < maxSize; i++) {
+    for (size_t i = 0; i < maxSize; i++) { 
+
+   if(initOp == Abs && i >= (maxSize/2+1))
+      (*initial)[i] = tensileGetZero<DataType>(); 
+   else
       (*initial)[i] = tensileGetOne<DataType>(); }
     std::cout << ".";
   } else if (dataInitType == 2) {
@@ -1531,7 +1583,7 @@ void initData(
   //int seed = time(NULL);
   int seed = 0x1000;
   srand(seed);
-
+  initAlpha = 1 ;
   // initialize alpha
   if (initAlpha == 0) {
     *alpha = tensileGetZero<ComputeDataType>();
@@ -1545,6 +1597,7 @@ void initData(
     *alpha = tensileGetNaN<ComputeDataType>();
   }
 
+  initBeta = 0 ;
   // initialize beta
   if (useBeta[problemTypeIdx]) {
     if (initBeta == 0) {
@@ -1598,11 +1651,11 @@ void initData(
   std::cout << ".";
 
   // initialize buffers
-  initInput("DataInitTypeA", initA, initialA, maxSizeA, Abs);
-  initInput("DataInitTypeB", initB, initialB, maxSizeB, AltSign);
-  initInput("DataInitTypeC", initC, initialC, maxSizeC, None);
+  initInput("DataInitTypeA", 1, initialA, maxSizeA, Abs);
+  initInput("DataInitTypeB", 1, initialB, maxSizeB, AltSign);
+  initInput("DataInitTypeC", 0, initialC, maxSizeC, None);
   if(!cEqualD)
-    initInput("DataInitTypeD", initD, initialD, maxSizeD, None);
+    initInput("DataInitTypeD", 0, initialD, maxSizeD, None);
 
   // create device buffers and copy data
 #if Tensile_RUNTIME_LANGUAGE_OCL

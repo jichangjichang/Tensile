@@ -80,13 +80,16 @@ struct tensile_complex
 template <typename T>
 inline std::ostream& operator<<(std::ostream& os, const tensile_complex<T>& data)
 {
-    if(data.y >= 0)
+    if(data.y > 0)
     {
-        os << data.x << "+" << data.y << "i" << std::endl;
+        os << data.x << "+" << data.y << "i" ;
+    }
+    else if(data.y == 0){
+        os << data.x << " ";
     }
     else
     {
-        os << data.x << data.y << "i" << std::endl;
+        os << data.x << data.y << "i" ;
     }
 
     return os;
