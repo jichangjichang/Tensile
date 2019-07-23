@@ -967,7 +967,7 @@ __global__ void Cijk_Ailk_Bjlk_ZB_MT32x48x8_SE_K1(
   if(wg1J > 0) return;
   if(wgK > 0) return;
 */
-  //size0I = 1 ;
+  size0I = 1 ;
   //size1J = 1 ;
   /* not-LocalSplitU: global write indices */
 
