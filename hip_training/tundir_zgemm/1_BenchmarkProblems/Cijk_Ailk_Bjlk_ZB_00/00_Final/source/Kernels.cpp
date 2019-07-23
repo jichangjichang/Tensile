@@ -961,14 +961,12 @@ __global__ void Cijk_Ailk_Bjlk_ZB_MT32x48x8_SE_K1(
 
 
   double type_mac_tmp;
-/*
+
   if(serial > 0) return;
   if(wg0I > 0) return;
   if(wg1J > 0) return;
   if(wgK > 0) return;
-*/
-  size0I = 1 ;
-  //size1J = 1 ;
+
   /* not-LocalSplitU: global write indices */
 
   unsigned int globalC0I = (wg0I)*MT0I + (serial % SG0I)*VECTOR_WIDTH;
@@ -986,6 +984,10 @@ __global__ void Cijk_Ailk_Bjlk_ZB_MT32x48x8_SE_K1(
   /* new vw1 offset - inc and extract tensor dims */
   globalC1J = flattenedGlobalC1 + 0 + 0*SG1J*VECTOR_WIDTH;
   if (flattenedGlobalC0 + 0*SG0I*VECTOR_WIDTH < size0I) {  if (flattenedGlobalC1 + 0*SG1J*VECTOR_WIDTH < size1J) {  TYPE_MAC_WRITE( D[ GLOBAL_D( (uint64_t) globalC0I, (uint64_t) globalC1J, (uint64_t) globalCK) ], C[ GLOBAL_C( (uint64_t) globalC0I, (uint64_t) globalC1J, (uint64_t) globalCK) ], alpha, rC[0*VECTOR_WIDTH+0 + (0*VECTOR_WIDTH+0)*TT0I], beta) } }
+
+  //set get pass, comment get fail
+  size0I = 1 ; 
+  size1J = 1 ; 
 
   /* new vw0 offset - inc and extract tensor dims */
   globalC0I = flattenedGlobalC0 +  1*SG0I*VECTOR_WIDTH;
