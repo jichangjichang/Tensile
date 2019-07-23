@@ -1,0 +1,143 @@
+
+################################################################################
+#
+#  Tensile v4.9.11
+# Restoring default globalParameters
+#  Config: /workspace/rocBLAS_cgemm/Tensile/hip_training/zgemm_hip_source_nt_16_1_multiply_16_1.yaml
+#
+################################################################################
+
+# Restoring default globalParameters
+# Detected local GPU with ISA: gfx803
+# Detected local GPU with ISA: gfx900
+# Detected local GPU with ISA: gfx906
+# Asm caps for gfx803: SupportedISA=1 HasExplicitCO=0 HasDirectToLds=1 HasAddLshl=0 HasSMulHi=0 HasCodeObjectV3=1 MaxVmcnt=15
+# Arch caps for gfx803:{'HasEccHalf': False}
+# Asm caps for gfx900: SupportedISA=1 HasExplicitCO=1 HasDirectToLds=1 HasAddLshl=1 HasSMulHi=1 HasCodeObjectV3=1 MaxVmcnt=63
+# Arch caps for gfx900:{'HasEccHalf': False}
+# Asm caps for gfx906: SupportedISA=1 HasExplicitCO=1 HasDirectToLds=1 HasAddLshl=1 HasSMulHi=1 HasCodeObjectV3=1 MaxVmcnt=63
+# Arch caps for gfx906:{'HasEccHalf': True}
+# Asm caps for gfx000: SupportedISA=0 HasExplicitCO=0 HasDirectToLds=0 HasAddLshl=0 HasSMulHi=0 HasCodeObjectV3=0 MaxVmcnt=0
+# Arch caps for gfx000:{'HasEccHalf': False}
+
+
+################################################################################
+# Converting Config to BenchmarkProcess Object
+################################################################################
+
+# Filling in Parameters With Defaults
+# Convert Parameters to Steps
+# Benchmark Common Parameters
+# Fork Parameters
+# Benchmark Fork Parameters
+# Join Parameters
+# Benchmark Join Parameters
+# Benchmark Final
+# NumBenchmarkSteps: 1
+
+################################################################################
+# Done Creating BenchmarkProcess Object
+################################################################################
+# Empty winners - use fast initialization of hardcodedParameters
+
+
+################################################################################
+# BenchmarkStep: Cijk_Ailk_Bjlk_ZB_00 - 00_Final 1.369s
+# NumProblems: 1
+# BenchmarkParameters:
+# MaxPossibleSolutions: 1 = 1 (hardcoded) * 1 (benchmark)
+# Enumerating Solutions
+[|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||] 100% (0.0 secs elapsed)
+# Populating initial winners (1 solutions)
+
+# Actual Solutions: 1 / 1
+
+# Writing Kernels...
+Generating kernels: Launching 64 threads...
+Generating kernels: Done.
+1
+# Kernel Building elapsed time = 0.1 secs
+# Writing Solutions
+[|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||] 100% (0.0 secs elapsed)
+# Writing Custom CMake
+# Copying files that differ from sourceTmp -> source
+
+################################################################################
+# Configuring CMake for Client
+################################################################################
+-- The C compiler identification is GNU 7.3.1
+-- The CXX compiler identification is GNU 7.3.1
+-- Check for working C compiler: /opt/rh/devtoolset-7/root/usr/bin/cc
+-- Check for working C compiler: /opt/rh/devtoolset-7/root/usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working CXX compiler: /opt/rh/devtoolset-7/root/usr/bin/c++
+-- Check for working CXX compiler: /opt/rh/devtoolset-7/root/usr/bin/c++ -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Tensile_CODE_OBJECT_VERSION from Tensile/Source/CMakeLists.txt: V2
+-- Making BenchmarkClient
+-- ENV HIP_PATH = /opt/rocm/include
+-- HIPCC = /opt/rocm/hip/bin/hipcc
+-- Found HIP: /opt/rocm/include  
+-- Found HCC: /opt/rocm/lib/libhsa-runtime64.so  
+-- HCC_FOUND = TRUE
+-- HCC = /opt/rocm/hcc/bin/hcc
+-- HCC_INCLUDE_DIRS = /opt/rocm/hcc/include
+-- HSA_LIBRARIES = /opt/rocm/lib/libhsa-runtime64.so
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /workspace/rocBLAS_cgemm/Tensile/hip_training/tundir_zgemm/1_BenchmarkProblems/Cijk_Ailk_Bjlk_ZB_00/00_Final/build
+
+################################################################################
+# Building Client
+################################################################################
+Scanning dependencies of target client
+[ 16%] [ 33%] [ 66%] [ 66%] [ 83%] [100%] Building CXX object CMakeFiles/client.dir/SolutionHelper.cpp.o
+Building CXX object CMakeFiles/client.dir/Solutions.cpp.o
+Building CXX object CMakeFiles/client.dir/Client.cpp.o
+Building CXX object CMakeFiles/client.dir/MathTemplates.cpp.o
+Building CXX object CMakeFiles/client.dir/Kernels.cpp.o
+Building CXX object CMakeFiles/client.dir/Tools.cpp.o
+Linking CXX executable client
+[100%] Built target client
+################################################################################
+# Device[0]: Vega 20 (gfx906)
+# Compute:   13934 GFlop/s (64 CUs @ 1701 MHz)
+# Bandwidth: 820 GB/s (4096-bit @ 801 MHz)
+################################################################################
+Tensile Client Columns: GFlops (clock-normalized), GFlops (raw), SolName, KernelMs, Valid/Total, CoreMhz, MemMhz, TempC, FanSpeed, Idx/Total, TimeStamp
+Initializing 0 MBytes................
+
+Solutions: 
+(0) Cijk_Ailk_Bjlk_ZB_MT32x48x8_SE_
+
+Problem[0/1]: 1, 1, 1, 16, 1, 1, 1, 1
+Index:  Device | Reference
+[0]  e=0 serialIdxD=0: 8,0!=9,0 , serialIdxC=0: 8,0!=9,0
+printIdx = 1
+[A Matrix] 1
+1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 
+[B Matrix] 1
+1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 
+[CPU Matrix] 1
+9 , 
+[GPU Matrix] 1
+8 , 
+     0.000,      0.000, Cijk_Ailk_Bjlk_ZB_MT32x48x8_SE_ ,    30.942, FAILED: 0/1, 1701, 601, 42.320, 0, 0/1, 2019-07-23 03:05:05.032526, 
+
+Run kernels elapsed gpu_time:0.031 secs  total_time:0.226 secs 13.66% gpu utilization
+
+Fastest: 0.00 GFlop/s 0.00 us by (0) Cijk_Ailk_Bjlk_ZB_MT32x48x8_SE_
+
+Invalid Solutions: 1/1
+[ 0] Cijk_Ailk_Bjlk_ZB_MT32x48x8_SE_
+Tensile::WARNING: BenchmarkProblems: Benchmark Process exited with code 1
+# Adding Results to Solution Database
+[|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||] 100% (0.0 secs elapsed)
+################################################################################
+# Cijk_Ailk_Bjlk_ZB_00
+# 00_Final: End - 24.598s
+################################################################################
+
+clientExit=1 (ERROR) for /workspace/rocBLAS_cgemm/Tensile/hip_training/zgemm_hip_source_nt_16_1_multiply_16_1.yaml
