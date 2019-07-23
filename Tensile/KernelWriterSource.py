@@ -829,7 +829,7 @@ class KernelWriterSource(KernelWriter):
 
     # sizes
     for i in range(0, kernel["ProblemType"]["TotalIndices"]):
-      s += "," + self.endLine + "  unsigned int const size" + self.indexChars[i]
+      s += "," + self.endLine + "  volatile unsigned int const size" + self.indexChars[i]
 
     for idxChar in kernel["PackedC0Indices"][:-1]:
       s += ",%s  unsigned magicNumberSize%s" % (self.endLine, idxChar)
@@ -2770,7 +2770,7 @@ class KernelWriterSource(KernelWriter):
 
     # sizes
     for i in range(0, kernel["ProblemType"]["NumIndicesC"]):
-      kStr += "  unsigned int const size%s" % self.indexChars[i]
+      kStr += "  volatile unsigned int const size%s" % self.indexChars[i]
       if i < kernel["ProblemType"]["NumIndicesC"]-1 \
           or kernel["ProblemType"]["UseBeta"]:
         kStr += ","
