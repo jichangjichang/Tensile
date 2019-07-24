@@ -6,7 +6,7 @@ GlobalParameters:
 
 BenchmarkProblems:
 
-  - # cgemm CN
+  - # zgemm CN
     - # ProblemType
       OperationType: GEMM
       DataType: z

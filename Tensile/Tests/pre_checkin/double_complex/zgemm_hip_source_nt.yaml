@@ -5,7 +5,7 @@ GlobalParameters:
   KernelTime: True
 
 BenchmarkProblems:
-  - # cgemm NT
+  - # zgemm NT
     - # ProblemType
       OperationType: GEMM
       DataType: z

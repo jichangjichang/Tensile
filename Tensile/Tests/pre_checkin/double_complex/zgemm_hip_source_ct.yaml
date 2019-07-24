@@ -4,7 +4,7 @@ GlobalParameters:
   KernelTime: True
 
 BenchmarkProblems:
-  - # cgemm CT
+  - # zgemm CT
     - # ProblemType
       OperationType: GEMM
       DataType: z
@@ -29,7 +29,7 @@ BenchmarkProblems:
           - [ 16, 4 ]
         - WorkGroup:
           - [  8,  8,  1 ]
-        - DepthU: [32]
+        - DepthU: [16]
         - VectorWidth: [-1]
         - AssertSummationElementMultiple: [1,2]
         - AssertFree0ElementMultiple: [1,2]
