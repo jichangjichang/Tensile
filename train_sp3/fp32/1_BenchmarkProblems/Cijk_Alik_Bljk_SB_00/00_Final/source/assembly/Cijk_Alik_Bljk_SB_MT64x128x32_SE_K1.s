@@ -22,16 +22,16 @@ Cijk_Alik_Bljk_SB_MT64x128x32_SE_K1:
 .amd_kernel_code_t
   is_ptr64 = 1
   enable_sgpr_kernarg_segment_ptr = 1
-  kernarg_segment_byte_size = 80 // bytes of kern args
-  workitem_vgpr_count = 87 // vgprs
+  kernarg_segment_byte_size = 148 // bytes of kern args
+  workitem_vgpr_count = 108 // vgprs
   wavefront_sgpr_count = 98 // sgprs
-  compute_pgm_rsrc1_vgprs = 21 // floor((87-1)/4)
-  compute_pgm_rsrc1_sgprs = 13 // floor((98-1)/8)
+  compute_pgm_rsrc1_vgprs = 26 // floor((108-1)/4)
+  compute_pgm_rsrc1_sgprs = 12 // floor((98-1)/8)
   compute_pgm_rsrc2_tidig_comp_cnt = 0 // 1D wg
   compute_pgm_rsrc2_tgid_x_en = 1 // wg.x
   compute_pgm_rsrc2_tgid_y_en = 1 // wg.y
   compute_pgm_rsrc2_tgid_z_en = 1 // wg.z
-  workgroup_group_segment_byte_size = 57344 // lds bytes
+  workgroup_group_segment_byte_size = 60000// lds bytes
   compute_pgm_rsrc2_user_sgpr = 2 // vcc
   kernarg_segment_alignment = 4
   group_segment_alignment = 4
@@ -217,7 +217,7 @@ Kernels:
       KernargSegmentAlign:  8
       WavefrontSize:        64
       NumSGPRs:             98
-      NumVGPRs:             87
+      NumVGPRs:             108
       MaxFlatWorkGroupSize: 256
 .end_amd_amdgpu_hsa_metadata
 
