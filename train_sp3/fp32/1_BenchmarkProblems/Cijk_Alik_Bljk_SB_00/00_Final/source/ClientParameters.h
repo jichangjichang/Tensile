@@ -79,15 +79,21 @@ const bool complexConjugateB[numProblemTypes] = { false };
 
 const unsigned int maxNumIndices = 4;
 const unsigned int totalIndices[numProblemTypes] = { 4 };
-const unsigned int numProblems = 1;
+const unsigned int numProblems = 5;
 const unsigned int problemSizes[numProblems][8] = {
-  {  960, 1024,    1, 1024,  960,  960, 1024, 1024 }};
+  {  1024,  1024,    1, 1024,   1024,   1024,  1024, 1024},
+  {  4096,  4096,    1, 4096,  4096,  4096,  4096, 4096 },
+  {  960,  1024,    1, 1024,   960,   960,  1024, 1024},
+  {  960,  1024,    1, 1024,  4128,  4128,  992, 4128 },
+  {  960,  1024,    1, 1024,  1056,  1056,  992, 1056 },
+};
 const unsigned int minStrides[4] = {0, 0, 0, 0};
 /* problem sizes */
-size_t maxSizeD = 10616832;
-size_t maxSizeC = 10616832;
-size_t maxSizeA = 37306368;
-size_t maxSizeB = 74612736;
+size_t maxSizeD = 4128*4128;
+size_t maxSizeC = 4128*4128;
+size_t maxSizeA = 4128*4128;
+size_t maxSizeB = 4128*4128;
+
 
 /* current problem size */
 
