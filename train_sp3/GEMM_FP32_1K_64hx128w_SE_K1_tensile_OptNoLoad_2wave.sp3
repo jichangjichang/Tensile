@@ -805,8 +805,6 @@ wave0_entry_start:
   var k =1
   s_waitcnt lgkmcnt(3)
   // here ok
-  //v_mov_b32 v[vgprTmp], 0x00
-  //flat_load_dword v[vgprTmp],v[vgprTmp]
  
   v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+0], v_regs(vgprValuB_X0_I0, 0+p*8),  v[vgprAcc+0] 
   ds_read_b32       v_regs(vgprValuB_X0_I0,4+0*8),  v_regs(vgprLocalReadAddrB,0)  offset:32
@@ -824,8 +822,6 @@ wave0_entry_start:
   ds_read_b32       v_regs(vgprValuB_X0_I0,15+0*8),  v_regs(vgprLocalReadAddrB,0)  offset:120
   s_barrier
   // correct
-  //v_mov_b32 v[vgprTmp], 0x00
-  //flat_load_dword v[vgprTmp],v[vgprTmp]
 
   s_waitcnt lgkmcnt(6)
   v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+2], v_regs(vgprValuB_X0_I0, 1+p*8),  v[vgprAcc+0] 
@@ -848,8 +844,6 @@ wave0_entry_start:
 
   s_waitcnt lgkmcnt(0)
   // with s_nop ok
-  //v_mov_b32 v[vgprTmp], 0x00
-  //flat_load_dword v[vgprTmp],v[vgprTmp]
 
   //****************************************
   // End of  32x32 (block 0 of 64x32)
@@ -899,6 +893,10 @@ wave0_entry_start:
   ds_read_b32       v_regs(vgprValuA_X0_I0, 32*k+25),  v_regs(vgprLocalReadAddrA,k)  offset:varlds_Asize_per_wr * 16 + 96
   ds_read_b32       v_regs(vgprValuA_X0_I0, 32*k+26),  v_regs(vgprLocalReadAddrA,k)  offset:104
   ds_read_b32       v_regs(vgprValuA_X0_I0, 32*k+27),  v_regs(vgprLocalReadAddrA,k)  offset:varlds_Asize_per_wr * 16 + 104
+  ds_read_b32       v_regs(vgprValuA_X0_I0, 32*k+28),  v_regs(vgprLocalReadAddrA,k)  offset:112
+  ds_read_b32       v_regs(vgprValuA_X0_I0, 32*k+29),  v_regs(vgprLocalReadAddrA,k)  offset:varlds_Asize_per_wr * 16 + 112
+  ds_read_b32       v_regs(vgprValuA_X0_I0, 32*k+30),  v_regs(vgprLocalReadAddrA,k)  offset:120
+  ds_read_b32       v_regs(vgprValuA_X0_I0, 32*k+31),  v_regs(vgprLocalReadAddrA,k)  offset:varlds_Asize_per_wr * 16 + 120
   v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+26], v_regs(vgprValuB_X0_I0, 13+p*8),  v[vgprAcc+0] 
   v_mfma_f32_32x32x2f32   v[vgprAcc+16]  ,   v[vgprValuA_X0_I0+27], v_regs(vgprValuB_X0_I0, 13+p*8),  v[vgprAcc+16] 
   s_barrier
@@ -955,6 +953,7 @@ wave0_entry_start:
   // End of  32x32 (block 0 of 64x32)
   //****************************************
 
+  //data is correct
   //****************************************
   // Begin of  32x32 (block 1 of 64x32)
   //****************************************
