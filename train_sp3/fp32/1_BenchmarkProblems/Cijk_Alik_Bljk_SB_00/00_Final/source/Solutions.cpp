@@ -105,7 +105,7 @@ TensileStatus Cijk_Alik_Bljk_SB_MT64x128x32_SE_(
   const unsigned int workDim = 3;
   const unsigned int threadTile[2] = { 4, 8 };
   const unsigned int groupSize[2] = { 16, 16 };
-  size_t localWorkSize[3] = { 256, 1, 1 };
+  size_t localWorkSize[3] = { 512, 1, 1 };
   size_t globalWorkSize[numKernels][3];
   globalWorkSize[0][2] = 1;
   globalWorkSize[0][2] *= sizeK;
