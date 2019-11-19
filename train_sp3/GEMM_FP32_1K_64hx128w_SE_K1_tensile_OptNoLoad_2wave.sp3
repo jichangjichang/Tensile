@@ -1040,7 +1040,7 @@ label_0001:
   for  p =0; p < 2; p++
       k = 1-p
 
-     s_waitcnt lgkmcnt(5)
+     s_waitcnt lgkmcnt(10)
 
      v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+32*p+0], v_regs(vgprValuB_X0_I0, 0+p*16),  v[vgprAcc+0] 
      ds_read_b32       v_regs(vgprValuB_X0_I0,12+p*16),  v_regs(vgprLocalReadAddrB,p)  offset:96
@@ -1051,17 +1051,15 @@ label_0001:
      v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+32*p+2], v_regs(vgprValuB_X0_I0, 1+p*16),  v[vgprAcc+0] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+16]  ,   v[vgprValuA_X0_I0+32*p+3],   v_regs(vgprValuB_X0_I0, 1+p*16), v[vgprAcc+16] 
      s_barrier
-     s_waitcnt lgkmcnt(6)
+     s_waitcnt lgkmcnt(8)
      v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+32*p+4], v_regs(vgprValuB_X0_I0, 2+p*16),  v[vgprAcc+0] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+16]  ,   v[vgprValuA_X0_I0+32*p+5],   v_regs(vgprValuB_X0_I0, 2+p*16), v[vgprAcc+16] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+32*p+6], v_regs(vgprValuB_X0_I0, 3+p*16),  v[vgprAcc+0] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+16]  ,   v[vgprValuA_X0_I0+32*p+7],   v_regs(vgprValuB_X0_I0, 3+p*16), v[vgprAcc+16] 
-     s_waitcnt lgkmcnt(5)
      v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+32*p+8], v_regs(vgprValuB_X0_I0, 4+p*16),  v[vgprAcc+0] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+16]  ,   v[vgprValuA_X0_I0+32*p+9],   v_regs(vgprValuB_X0_I0, 4+p*16), v[vgprAcc+16] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+32*p+10], v_regs(vgprValuB_X0_I0, 5+p*16),  v[vgprAcc+0] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+16]  ,   v[vgprValuA_X0_I0+32*p+11],   v_regs(vgprValuB_X0_I0, 5+p*16), v[vgprAcc+16] 
-     s_waitcnt lgkmcnt(4)
      v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+32*p+12], v_regs(vgprValuB_X0_I0, 6+p*16),  v[vgprAcc+0] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+16]  ,   v[vgprValuA_X0_I0+32*p+13],   v_regs(vgprValuB_X0_I0, 6+p*16), v[vgprAcc+16] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+32*p+14], v_regs(vgprValuB_X0_I0, 7+p*16),  v[vgprAcc+0] 
