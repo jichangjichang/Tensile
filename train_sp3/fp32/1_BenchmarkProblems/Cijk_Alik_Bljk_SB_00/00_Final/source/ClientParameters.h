@@ -79,20 +79,22 @@ const bool complexConjugateB[numProblemTypes] = { false };
 
 const unsigned int maxNumIndices = 4;
 const unsigned int totalIndices[numProblemTypes] = { 4 };
-const unsigned int numProblems = 5;
+const unsigned int numProblems = 7;
 const unsigned int problemSizes[numProblems][8] = {
-  {  1024,  1024,    1, 1024,   1024,   1024,  1024, 1024},
-  {  4096,  4096,    1, 4096,  4096,  4096,  4096, 4096 },
-  {  960,  1024,    1, 1024,   960,   960,  1024, 1024},
-  {  960,  1024,    1, 1024,  4128,  4128,  992, 4128 },
-  {  960,  1024,    1, 1024,  1056,  1056,  992, 1056 },
+  {  512,  512,    1, 512,   544,   544,  544, 544},
+  {  960,  1024,    1, 1024,   992,   992,  1056, 1056},
+  {  1024,  1024,    1, 1024,   1056,   1056,  1056, 1056},
+  {  3840,  4096,    1, 4096,  3872,  3872,  4128, 4128 },
+  {  4096,  4096,    1, 4096,  4128,  4128,  4128, 4128 },
+  {  7680,  8192,    1, 8192,   7712,  7712,  8224, 8224},
+  {  8192,  8192,    1, 8192,   8224,  8224,  8224, 8224},
 };
 const unsigned int minStrides[4] = {0, 0, 0, 0};
 /* problem sizes */
-size_t maxSizeD = 4128*4128;
-size_t maxSizeC = 4128*4128;
-size_t maxSizeA = 4128*4128;
-size_t maxSizeB = 4128*4128;
+size_t maxSizeD = 8224*8224;
+size_t maxSizeC = 8224*8224;
+size_t maxSizeA = 8224*8224;
+size_t maxSizeB = 8224*8224;
 
 
 /* current problem size */
