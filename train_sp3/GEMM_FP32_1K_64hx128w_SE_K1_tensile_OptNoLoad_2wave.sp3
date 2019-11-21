@@ -1291,10 +1291,6 @@ label_0002:
      v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+32+28], v_regs(vgprValuB_X0_I0, 14+1*16),  v[vgprAcc+0] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+0]   ,   v[vgprValuA_X0_I0+32+30], v_regs(vgprValuB_X0_I0, 15+1*16),  v[vgprAcc+0] 
 
-      s_mov_b32		s84, roundMaskVal 
-      v_xor_b32		v[vgprTmp+1], v[vgprTmp],v[vgprTmp]
-      v_or_b32		v[vgprTmp+1], s84, v[vgprTmp+1]
-
      v_mfma_f32_32x32x2f32   v[vgprAcc+16]   ,   v[vgprValuA_X0_I0+32+17], v_regs(vgprValuB_X0_I0, 8+1*16),  v[vgprAcc+16] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+16]   ,   v[vgprValuA_X0_I0+32+19], v_regs(vgprValuB_X0_I0, 9+1*16),  v[vgprAcc+16] 
      v_mfma_f32_32x32x2f32   v[vgprAcc+16]   ,   v[vgprValuA_X0_I0+32+21], v_regs(vgprValuB_X0_I0, 10+1*16),  v[vgprAcc+16] 
@@ -1307,14 +1303,15 @@ label_0002:
       for var j = 0; j < 16; j++
           v_accvgpr_read v_regs(vgprValuC, j),v_regs(j,0*16), 0
       end
+
+      s_cmp_eq_u32  s[sgprBeta], 0x3f800000
+      s_cbranch_scc1  store_c_beta
+
       buffer_store_dwordx4 v[vgprValuC+0:vgprValuC+3],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+0 offen:1 // store C
       buffer_store_dwordx4 v[vgprValuC+4:vgprValuC+7],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offset:64*0+32 offen:1 // store C
       buffer_store_dwordx4 v[vgprValuC+8:vgprValuC+11],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offset:64*0+64 offen:1 // store C
       buffer_store_dwordx4 v[vgprValuC+12:vgprValuC+15],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offset:64*0+96 offen:1 // store C
 
-
-store_c:
-  
  for var i = 1; i < 2; i++
       for var j = 0; j < 16; j++
           v_accvgpr_read v_regs(vgprValuC, j),v_regs(j,i*16), 0
@@ -1323,6 +1320,57 @@ store_c:
       buffer_store_dwordx4 v[vgprValuC+4:vgprValuC+7],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offset:128*i+32 offen:1 // store C
       buffer_store_dwordx4 v[vgprValuC+8:vgprValuC+11],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offset:128*i+64 offen:1 // store C
       buffer_store_dwordx4 v[vgprValuC+12:vgprValuC+15],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offset:128*i+96 offen:1 // store C
+ end
+      s_waitcnt        0
+      s_endpgm
+
+
+store_c_beta:
+
+      buffer_atomic_add_f32 v[vgprValuC+0],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+0 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+1],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+4 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+2],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+8 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+3],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+12 offen:1 // store C
+
+      buffer_atomic_add_f32 v[vgprValuC+4],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+32 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+5],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+36 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+6],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+40 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+7],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+44 offen:1 // store C
+
+      buffer_atomic_add_f32 v[vgprValuC+8],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+64 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+9],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+68 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+10],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+72 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+11],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+76 offen:1 // store C
+
+      buffer_atomic_add_f32 v[vgprValuC+12],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+96 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+13],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+100 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+14],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+104 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+15],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:64*0+108 offen:1 // store C
+
+ for var i = 1; i < 2; i++
+      for var j = 0; j < 16; j++
+          v_accvgpr_read v_regs(vgprValuC, j),v_regs(j,i*16), 0
+      end
+
+      buffer_atomic_add_f32 v[vgprValuC+0],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+0 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+1],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+4 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+2],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+8 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+3],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+12 offen:1 // store C
+
+      buffer_atomic_add_f32 v[vgprValuC+4],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+32 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+5],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+36 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+6],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+40 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+7],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+44 offen:1 // store C
+
+      buffer_atomic_add_f32 v[vgprValuC+8],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+64 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+9],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+68 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+10],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+72 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+11],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+76 offen:1 // store C
+
+      buffer_atomic_add_f32 v[vgprValuC+12],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+96 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+13],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+100 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+14],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+104 offen:1 // store C
+      buffer_atomic_add_f32 v[vgprValuC+15],v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0  offset:128+108 offen:1 // store C
 
  end
 
