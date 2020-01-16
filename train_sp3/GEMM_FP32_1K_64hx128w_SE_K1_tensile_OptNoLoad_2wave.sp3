@@ -1190,10 +1190,10 @@ label_0002:
 
      s_cmp_eq_u32  s[sgprBeta], 0   // beta == 0
      s_cbranch_scc1  label_0007              // skip if beta is zero
-     buffer_load_dwordx4 v[vgprValuSrcC+0:vgprValuSrcC+3],  v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offen:1 lds:0 offset:0
-     buffer_load_dwordx4 v[vgprValuSrcC+4:vgprValuSrcC+7],  v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offen:1 lds:0 offset:32
-     buffer_load_dwordx4 v[vgprValuSrcC+8:vgprValuSrcC+11],  v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offen:1 lds:0 offset:64
-     buffer_load_dwordx4 v[vgprValuSrcC+12:vgprValuSrcC+15],  v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offen:1 lds:0 offset:96
+     buffer_load_dwordx4 v[vgprValuSrcC+0:vgprValuSrcC+3],  v[vgprGlobalWriteOfvarC],  s[sgprSrdC:sgprSrdC+3], 0 offen:1 lds:0 offset:0
+     buffer_load_dwordx4 v[vgprValuSrcC+4:vgprValuSrcC+7],  v[vgprGlobalWriteOfvarC],  s[sgprSrdC:sgprSrdC+3], 0 offen:1 lds:0 offset:32
+     buffer_load_dwordx4 v[vgprValuSrcC+8:vgprValuSrcC+11],  v[vgprGlobalWriteOfvarC],  s[sgprSrdC:sgprSrdC+3], 0 offen:1 lds:0 offset:64
+     buffer_load_dwordx4 v[vgprValuSrcC+12:vgprValuSrcC+15],  v[vgprGlobalWriteOfvarC],  s[sgprSrdC:sgprSrdC+3], 0 offen:1 lds:0 offset:96
 
 label_0007:
      v_mfma_f32_32x32x2f32   v[vgprAcc+16],  v[vgprValuA_X0_I0+17], v_regs(vgprValuB_X0_I0, 8+0*16), v[vgprAcc+16] 
@@ -1265,10 +1265,10 @@ label_0007:
 
      s_cmp_eq_u32  s[sgprBeta], 0   // beta == 0
      s_cbranch_scc1  label_0008              // skip if beta is zero
-     buffer_load_dwordx4 v[vgprValuSrcC+0+16:vgprValuSrcC+3+16],  v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offen:1 lds:0 offset:128
-     buffer_load_dwordx4 v[vgprValuSrcC+4+16:vgprValuSrcC+7+16],  v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offen:1 lds:0 offset:160
-     buffer_load_dwordx4 v[vgprValuSrcC+8+16:vgprValuSrcC+11+16],  v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offen:1 lds:0 offset:192
-     buffer_load_dwordx4 v[vgprValuSrcC+12+16:vgprValuSrcC+15+16],  v[vgprGlobalWriteOfvarC],  s[sgprSrdD:sgprSrdD+3], 0 offen:1 lds:0 offset:224
+     buffer_load_dwordx4 v[vgprValuSrcC+0+16:vgprValuSrcC+3+16],  v[vgprGlobalWriteOfvarC],  s[sgprSrdC:sgprSrdC+3], 0 offen:1 lds:0 offset:128
+     buffer_load_dwordx4 v[vgprValuSrcC+4+16:vgprValuSrcC+7+16],  v[vgprGlobalWriteOfvarC],  s[sgprSrdC:sgprSrdC+3], 0 offen:1 lds:0 offset:160
+     buffer_load_dwordx4 v[vgprValuSrcC+8+16:vgprValuSrcC+11+16],  v[vgprGlobalWriteOfvarC],  s[sgprSrdC:sgprSrdC+3], 0 offen:1 lds:0 offset:192
+     buffer_load_dwordx4 v[vgprValuSrcC+12+16:vgprValuSrcC+15+16],  v[vgprGlobalWriteOfvarC],  s[sgprSrdC:sgprSrdC+3], 0 offen:1 lds:0 offset:224
 
 label_0008:
      v_mfma_f32_32x32x2f32   v[vgprAcc+16]   ,   v[vgprValuA_X0_I0+32+1], v_regs(vgprValuB_X0_I0, 0+1*16),  v[vgprAcc+16] 
