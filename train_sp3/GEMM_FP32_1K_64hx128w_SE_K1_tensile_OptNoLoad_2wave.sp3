@@ -226,7 +226,9 @@ shader main
   s_mul_i32        s84,       s[sgprWorkGroup0], s84	        //workGroup[0]*MT
   s_lshl_b32       s85,       s[sgprFetchSubGrpId], 4				// s85 = fetchId * x16 rows per wave
   s_mul_i32        s83,       s85, s[sgprStridesA+0] 		//wave start offset
+  s_mul_i32        s85,       s[sgprWorkGroup2], s[sgprStridesA+1]	        //Stride*WG
   s_add_i32        s84,       s84, s83
+  s_add_u32        s84,       s84, s85
 
 
           
@@ -279,6 +281,8 @@ shader main
   s_mul_i32        s85,       32, s[sgprStridesB+0]
   s_mul_i32        s85,       s[sgprFetchSubGrpId], s85
   s_add_i32        s84,       s84, s85
+  s_mul_i32        s85,       s[sgprWorkGroup2], s[sgprStridesB+1]	        //Stride*WG
+  s_add_u32        s84,       s84, s85
 
   //tile offset assignment b : global read address
   /* LVCA= 16 */
