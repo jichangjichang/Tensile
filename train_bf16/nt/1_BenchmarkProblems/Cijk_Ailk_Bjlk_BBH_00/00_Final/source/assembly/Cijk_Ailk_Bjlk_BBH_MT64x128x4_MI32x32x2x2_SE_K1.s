@@ -23,9 +23,9 @@ Cijk_Ailk_Bjlk_BBH_MT64x128x4_MI32x32x2x2_SE_K1:
   is_ptr64 = 1
   enable_sgpr_kernarg_segment_ptr = 1
   kernarg_segment_byte_size = 80 // bytes of kern args
-  workitem_vgpr_count = 49 // vgprs
+  workitem_vgpr_count = 53 // vgprs
   wavefront_sgpr_count = 76 // sgprs
-  compute_pgm_rsrc1_vgprs = 12 // floor((49-1)/4)
+  compute_pgm_rsrc1_vgprs = 13 // floor((49-1)/4)
   compute_pgm_rsrc1_sgprs = 10 // floor((76-1)/8)
   compute_pgm_rsrc2_tidig_comp_cnt = 0 // 1D wg
   compute_pgm_rsrc2_tgid_x_en = 1 // wg.x
@@ -217,7 +217,7 @@ Kernels:
       KernargSegmentAlign:  8
       WavefrontSize:        64
       NumSGPRs:             76
-      NumVGPRs:             49
+      NumVGPRs:             53
       MaxFlatWorkGroupSize: 256
 .end_amd_amdgpu_hsa_metadata
 
@@ -469,7 +469,11 @@ Kernels:
 .set vgprLocalReadAddrA, 38
 .set vgprLocalReadAddrB, 39
 .set vgprSerial, 48
-/* Num VGPR=49 */
+.set vtmp1, 49
+.set vtmp2, 50
+.set vtmp3, 51
+.set vtmp4, 52
+/* Num VGPR=53 */
 
 /******************************************/
 /* SGPR Assignments                       */
@@ -1388,11 +1392,36 @@ v_mul_f32 v[vgprValuC+31], s[sgprAlpha], v[vgprValuC+31] // *= alpha
 
 /* apply mask, calc new C and issue write */
 v_mov_b32 v42, 0xffff0000                          // mask for pack two bfloat16 element to 32bit
+v_mov_b32 v51, 0x10000                        // mask for lsb of bf16
+v_mov_b32 v52, 0x7fff                         // for rounding base
+
+
+// if(nan)  uint32 | 0x10000
+v_cmp_u_f32 s[56:57], v[vgprValuC+0], v[vgprValuC+0]
+v_or_b32 v[vtmp1], v[vgprValuC+0], v51   // tmp1 = uint32 | 0x10000
+
+// if(!nan) 
+//    tmp = (unit32 >> 16) & 0x1
+//    unit32 = unit32 + tmp + 0x7fff
+v_bfe_u32 v[vtmp2], v[vgprValuC+0], 16 , 1 //tmp2 = (unit32 >> 16) & 0x1
+v_add3_u32 v[vtmp2], v[vgprValuC+0], v[vtmp2] , v52 // tmp2 = unit32 + tmp2 + 0x7fff
+v_cndmask_b32 v[vgprValuC+0], v[vtmp2], v[vtmp1], s[56:57]              // nan? v[tmp1], v[tmp2]
+
+
+v_cmp_u_f32 s[56:57], v[vgprValuC+1], v[vgprValuC+1]
+v_or_b32 v[vtmp1], v[vgprValuC+1], v51   // tmpNan = uint32 | 0x10000  
+v_bfe_u32 v[vtmp2], v[vgprValuC+1], 16 , 1 //tmpNotNan = (unit32 >> 16) & 0x1
+v_add3_u32 v[vtmp2], v[vgprValuC+1], v[vtmp2] , v52 // tmpNotNan = unit32 + tmpNotNan + 0x7fff
+v_cndmask_b32 v[vgprValuC+1], v[vtmp2], v[vtmp1], s[56:57]              // nan? v[tmpNan], v[tmpNotNan]
+
 v_lshrrev_b32 v[vgprValuC+0], 16, v[vgprValuC+0]   // convert C to bf16
 v_and_or_b32 v0, v[vgprValuC+1], v42, v[vgprValuC+0] // pack two bf16 to dword
+
 v_lshrrev_b32 v[vgprValuC+2], 16, v[vgprValuC+2]   // convert C to bf16
 v_and_or_b32 v1, v[vgprValuC+3], v42, v[vgprValuC+2] // pack two bf16 to dword
+
 buffer_store_dwordx2 v[0:1], v37, s[sgprSrdD:sgprSrdD+3], 0, offen, offset:0,  // store D
+
 v_lshrrev_b32 v[vgprValuC+4], 16, v[vgprValuC+4]   // convert C to bf16
 v_and_or_b32 v4, v[vgprValuC+5], v42, v[vgprValuC+4] // pack two bf16 to dword
 v_lshrrev_b32 v[vgprValuC+6], 16, v[vgprValuC+6]   // convert C to bf16
