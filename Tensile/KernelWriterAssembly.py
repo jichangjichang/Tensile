@@ -6722,12 +6722,15 @@ class KernelWriterAssembly(KernelWriter):
 
     # mfma: for AB tile in NT layout
     if kernel["MatrixInstruction"] and numReadsAlongK > 1:
-      tmpVgpr = self.vgprPool.checkOut(2)
+      pack = Code.Module("pack%s"%tc)
       for vIdx in range(0, numVectorsPerTile):
         for rIdx in range(0, numReadsPerVector):
           # emit an instruction for each half-dword load along k due to strided access
           # checkout 2 vregs for each half-dword loads
           if kernel["ProblemType"]["DataType"].isHalf() or kernel["ProblemType"]["DataType"].isBFloat16():
+            tmpVgpr = self.vgprPool.checkOut(numReadsAlongK)
+            packCode = pack.addCode (Code.Module("packCode"))
+            packCode.addTempVgpr(tmpVgpr)
             for kIdx in range(0, numReadsAlongK):
               localReadCode = imod.addCode (Code.Module("LocalRead%s Valu%u"%(tc,valuIdx)))
               paramList = []
@@ -6757,12 +6760,10 @@ class KernelWriterAssembly(KernelWriter):
               if kIdx % 2 == 1 and kIdx > 0:
                 # pack 2 half-dword into one
                 destVgpr = vgpr("Valu%s_X%u_I%u+%u" % (tc, bufferIdx, iui, rIdx))
-                imod.addInst("s_waitcnt lgkmcnt(0)", "")
-                imod.addInst("v_or_b32", destVgpr, vgpr(tmpVgpr), vgpr(tmpVgpr+1), "pack")
+                packCode.addInst("v_or_b32", destVgpr, vgpr(tmpVgpr), vgpr(tmpVgpr+1), "pack")
 
           else:
             assert 0, "No support fp32 multi-k LDS load yet" # TODO
-      self.vgprPool.checkIn(tmpVgpr)
     else: 
       for vIdx in range(0, numVectorsPerTile):
         for rIdx in range(0, numReadsPerVector):
@@ -6818,7 +6819,11 @@ class KernelWriterAssembly(KernelWriter):
       tmpVgpr = self.vgprPool.checkOut(3)
       localReadCode.append(self.bomb(self.localReadDoCnt + 10, tmpVgpr+1))
       self.vgprPool.checkIn(tmpVgpr)
-    return imod
+    
+    if kernel["MatrixInstruction"] and kernel["ProblemType"]["DataType"].isBFloat16():
+      return imod, pack
+    else:
+      return imod
 
   ##############################################################################
   # Save the local read pointers, for example when creating a duplicated
