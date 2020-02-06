@@ -320,10 +320,10 @@ class KernelWriter(metaclass=abc.ABCMeta):
     
       iterCode.addCode(globalReadCode)
       iterCode.addCode(localReadCode)
-      iterCode.addCode(localWriteCode)
-      iterCode.addCode(pointerCode)
       iterCode.addCode(waitCode)
       iterCode.addCode(macIterCode)
+      iterCode.addCode(localWriteCode)
+      iterCode.addCode(pointerCode)
       
       pass
     else:
@@ -831,18 +831,18 @@ class KernelWriter(metaclass=abc.ABCMeta):
             for iui in range(0,kernel["InnerUnroll"]):
               if kernel["MatrixInstruction"] and kernel["ProblemType"]["DataType"].isBFloat16() and not kernel["TransposeLDS"] :
                 kl.append(self.comment("prefetch local a"))
-                localReadCode, packCodeA = self.localReadDo(kernel, plrIdx, iui, 0, tensorParametersA)
+                localReadCodeA, packCodeA = self.localReadDo(kernel, plrIdx, iui, 0, 0, tensorParametersA)
                 kl.append(localReadCodeA)
                 kl.append(self.comment("prefetch local b"))
-                localReadCode, packCodeB = self.localReadDo(kernel, plrIdx, iui, 0, tensorParametersB)
+                localReadCodeB, packCodeB = self.localReadDo(kernel, plrIdx, iui, 0, 0, tensorParametersB)
                 kl.append(localReadCodeB)
                 pack[plrIdx].addCode(packCodeA)
                 pack[plrIdx].addCode(packCodeB)
               else:
                 kl.append(self.comment("prefetch local a"))
-                kl.append(self.localReadDo(kernel, plrIdx, iui, 0, tensorParametersA))
+                kl.append(self.localReadDo(kernel, plrIdx, iui, 0, 0, tensorParametersA))
                 kl.append(self.comment("prefetch local b"))
-                kl.append(self.localReadDo(kernel, plrIdx, iui, 0, tensorParametersB))
+                kl.append(self.localReadDo(kernel, plrIdx, iui, 0, 0, tensorParametersB))
               kl.append(self.comment1("local read increment a"))
               kl.append(self.localReadInc(kernel, iui, tensorParametersA))
               kl.append(self.comment1("local read increment b"))
@@ -1327,6 +1327,14 @@ class KernelWriter(metaclass=abc.ABCMeta):
         kl.append(self.comment("local read init pointers b"))
         kl.append(self.localReadInitPointers(kernel, tensorParametersB))
 
+        # tail loop reload data and store in lds[0]
+        # if we have prefetchLocalRead, lds[0] will have prefetch data during main loop without release tempVgpr before tail loop localRead
+        # will have Tensile::WARNING: RegisterPool::checkIn(XXX) but it was never checked out
+        if kernel["MatrixInstruction"] and kernel["ProblemType"]["DataType"].isBFloat16() and kernel["PrefetchLocalRead"]:
+          for item in list(pack[0].items()):
+            for packCode in list(item.items()):
+              self.vgprPool.checkIn(packCode.tempVgpr)
+
       # tail: macs
       kl.append(self.comment("tail loop: macs"))
       kl.append(self.openLoop(kernel, -1))
@@ -1334,6 +1342,7 @@ class KernelWriter(metaclass=abc.ABCMeta):
       tailLoopInnerUnroll = \
         kernel["InnerUnroll"] if (kernel["AssertSummationElementMultiple"] % kernel["InnerUnroll"]==0) else 1
 
+      pack[0] = Code.Module()
       for iui in range(0,tailLoopInnerUnroll):
         if self.enable["LocalRead"]:
           if kernel["MatrixInstruction"] and kernel["ProblemType"]["DataType"].isBFloat16() and not kernel["TransposeLDS"] :
@@ -1343,7 +1352,6 @@ class KernelWriter(metaclass=abc.ABCMeta):
             kl.append(self.comment("local read b"))
             localReadCodeB, packCodeB = self.localReadDo(kernel, 0, iui, 0, 0, tensorParametersB)
             kl.append(localReadCodeB)
-            pack[0] = Code.Module()
             pack[0].addCode(packCodeA)
             pack[0].addCode(packCodeB)
           else:
