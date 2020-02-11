@@ -738,6 +738,7 @@ _v_add_co_u32 v[vgprLocalReadAddrB+0], vcc, 0x1100, v[vgprLocalReadAddrB+0] //  
 v_lshrrev_b32 v0, 3, v[vgprSerial]                 // vectorStaticDiv: v0 = v[vgprSerial] / 8
 v_and_b32 v1, 7, v[vgprSerial]                     // vectorStaticDiv: v1 = v[vgprSerial] % 8
 /* gro-unroll *= glvw */
+v_lshlrev_b32 v0, 1, v0                            // staticMultiply: v0 = v0 * 2
 v_lshlrev_b32 v1, 2, v1                            // staticMultiply: v1 = v1 * 4
 
 
@@ -748,6 +749,7 @@ v_lshlrev_b32 v1, 2, v1                            // staticMultiply: v1 = v1 * 
 /* v3 = groB-unroll = serial%LVCB */
 v_lshrrev_b32 v2, 3, v[vgprSerial]                 // vectorStaticDiv: v2 = v[vgprSerial] / 8
 v_and_b32 v3, 7, v[vgprSerial]                     // vectorStaticDiv: v3 = v[vgprSerial] % 8
+v_lshlrev_b32 v2, 1, v2                            // staticMultiply: v2 = v2 * 2
 /* gro-unroll *= glvw */
 v_lshlrev_b32 v3, 2, v3                            // staticMultiply: v3 = v3 * 4
 
@@ -786,18 +788,18 @@ v_lshlrev_b32 v3, 2, v3                            // staticMultiply: v3 = v3 * 
 /* global read addresses: final offsets a */
 
 GLOBAL_OFFSET_A vgprGlobalReadOffsetA+0,  1,  0, 4 // gROA_0_0_0_0
-s_mul_i32 s[sgprScalarGlobalReadOffsetA+0], s[sgprStrideA0I], 32 // compute offset diff (scaled tileDim)
+s_mul_i32 s[sgprScalarGlobalReadOffsetA+0], s[sgprStrideA0I], 1 // compute offset diff (scaled tileDim)
 s_lshl_b32 s[sgprScalarGlobalReadOffsetA+0], s[sgprScalarGlobalReadOffsetA+0], 0x1 // scalar offset *= bytes/element
 
 
 /* global read addresses: final offsets b */
 
 GLOBAL_OFFSET_B vgprGlobalReadOffsetB+0,  3,  2, 4 // gROB_0_0_0_0
-s_mul_i32 s[sgprScalarGlobalReadOffsetB+0], s[sgprStrideB1J], 32 // compute offset diff (scaled tileDim)
+s_mul_i32 s[sgprScalarGlobalReadOffsetB+0], s[sgprStrideB1J], 1 // compute offset diff (scaled tileDim)
 s_lshl_b32 s[sgprScalarGlobalReadOffsetB+0], s[sgprScalarGlobalReadOffsetB+0], 0x1 // scalar offset *= bytes/element
 s_mul_i32 s[sgprScalarGlobalReadOffsetB+1], s[sgprStrideB1J], 64 // compute offset diff (scaled tileDim)
 s_lshl_b32 s[sgprScalarGlobalReadOffsetB+1], s[sgprScalarGlobalReadOffsetB+1], 0x1 // scalar offset *= bytes/element
-s_mul_i32 s[sgprScalarGlobalReadOffsetB+2], s[sgprStrideB1J], 96 // compute offset diff (scaled tileDim)
+s_mul_i32 s[sgprScalarGlobalReadOffsetB+2], s[sgprStrideB1J], 65 // compute offset diff (scaled tileDim)
 s_lshl_b32 s[sgprScalarGlobalReadOffsetB+2], s[sgprScalarGlobalReadOffsetB+2], 0x1 // scalar offset *= bytes/element
 
 
@@ -1060,10 +1062,10 @@ ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+0:vgprG2LA+0+0] offset:0 // lwoA
 ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+0:vgprG2LA+0+0] offset:132 // lwoA_0_1_0_0 = (1 + 0*LSCA)*(MT0I+PAD) + (0*LSPA) = 132
 ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+1:vgprG2LA+1+0] offset:264 // lwoA_0_2_0_0 = (2 + 0*LSCA)*(MT0I+PAD) + (0*LSPA) = 264
 ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+1:vgprG2LA+1+0] offset:396 // lwoA_0_3_0_0 = (3 + 0*LSCA)*(MT0I+PAD) + (0*LSPA) = 396
-ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:64 // lwoA_0_0_1_0 = (0 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 64
-ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:196 // lwoA_0_1_1_0 = (1 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 196
-ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:328 // lwoA_0_2_1_0 = (2 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 328
-ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:460 // lwoA_0_3_1_0 = (3 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 460
+ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:2 // lwoA_0_0_1_0 = (0 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 64
+ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:134 // lwoA_0_1_1_0 = (1 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 196
+ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:266 // lwoA_0_2_1_0 = (2 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 328
+ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:398 // lwoA_0_3_1_0 = (3 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 460
 
 
 /* local write b */
@@ -1072,18 +1074,18 @@ ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+0:vgprG2LB+0+0] offset:0 // lwoB
 ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+0:vgprG2LB+0+0] offset:260 // lwoB_0_1_0_0 = (1 + 0*LSCB)*(MT1J+PAD) + (0*LSPB) = 260
 ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+1:vgprG2LB+1+0] offset:520 // lwoB_0_2_0_0 = (2 + 0*LSCB)*(MT1J+PAD) + (0*LSPB) = 520
 ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+1:vgprG2LB+1+0] offset:780 // lwoB_0_3_0_0 = (3 + 0*LSCB)*(MT1J+PAD) + (0*LSPB) = 780
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:64 // lwoB_0_0_1_0 = (0 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 64
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:324 // lwoB_0_1_1_0 = (1 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 324
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:584 // lwoB_0_2_1_0 = (2 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 584
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:844 // lwoB_0_3_1_0 = (3 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 844
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:2 // lwoB_0_0_1_0 = (0 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 64
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:262 // lwoB_0_1_1_0 = (1 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 324
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:522 // lwoB_0_2_1_0 = (2 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 584
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:782 // lwoB_0_3_1_0 = (3 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 844
 ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+4:vgprG2LB+4+0] offset:128 // lwoB_0_0_2_0 = (0 + 0*LSCB)*(MT1J+PAD) + (2*LSPB) = 128
 ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+4:vgprG2LB+4+0] offset:388 // lwoB_0_1_2_0 = (1 + 0*LSCB)*(MT1J+PAD) + (2*LSPB) = 388
 ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+5:vgprG2LB+5+0] offset:648 // lwoB_0_2_2_0 = (2 + 0*LSCB)*(MT1J+PAD) + (2*LSPB) = 648
 ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+5:vgprG2LB+5+0] offset:908 // lwoB_0_3_2_0 = (3 + 0*LSCB)*(MT1J+PAD) + (2*LSPB) = 908
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:192 // lwoB_0_0_3_0 = (0 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 192
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:452 // lwoB_0_1_3_0 = (1 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 452
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:712 // lwoB_0_2_3_0 = (2 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 712
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:972 // lwoB_0_3_3_0 = (3 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 972
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:130 // lwoB_0_0_3_0 = (0 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 192
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:390 // lwoB_0_1_3_0 = (1 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 452
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:650 // lwoB_0_2_3_0 = (2 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 712
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:910 // lwoB_0_3_3_0 = (3 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 972
 
 
 /* local write swap a */
@@ -1425,10 +1427,10 @@ ds_read_u16_d16_hi v61, v[vgprLocalReadAddrB] offset:5980 // L -> Reg lro=2860 s
 /* N/A, lro->3120 */
 /* sched write - iter 10 writesPerItem=4 */
 s_waitcnt vmcnt(4)                                 // wait for global read before writing to local
-ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:16448 // lwoA_0_0_1_0 = (0 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 16448
-ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:16580 // lwoA_0_1_1_0 = (1 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 16580
-ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:16712 // lwoA_0_2_1_0 = (2 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 16712
-ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:16844 // lwoA_0_3_1_0 = (3 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 16844
+ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:16386 // lwoA_0_0_1_0 = (0 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 16448
+ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:16518 // lwoA_0_1_1_0 = (1 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 16580
+ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:16650 // lwoA_0_2_1_0 = (2 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 16712
+ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:16782 // lwoA_0_3_1_0 = (3 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 16844
 s_waitcnt lgkmcnt(8)                               // wait for prior local read old=0 new=8
 v_or_b32 v[vgprValuA_X0_I0+0], v54, v55            // pack
 v_or_b32 v[vgprValuB_X0_I0+0], v56, v57            // pack
@@ -1483,10 +1485,10 @@ ds_read_u16_d16_hi v61, v[vgprLocalReadAddrB] offset:7020 // L -> Reg lro=3380 s
 /* N/A, lro->3640 */
 /* sched write - iter 12 writesPerItem=4 */
 s_waitcnt vmcnt(2)                                 // wait for global read before writing to local
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:16448 // lwoB_0_0_1_0 = (0 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 16448
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:16708 // lwoB_0_1_1_0 = (1 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 16708
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:16968 // lwoB_0_2_1_0 = (2 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 16968
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:17228 // lwoB_0_3_1_0 = (3 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 17228
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:16386 // lwoB_0_0_1_0 = (0 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 16448
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:16646 // lwoB_0_1_1_0 = (1 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 16708
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:16906 // lwoB_0_2_1_0 = (2 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 16968
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:17166 // lwoB_0_3_1_0 = (3 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 17228
 s_waitcnt lgkmcnt(8)                               // wait for prior local read old=0 new=8
 v_or_b32 v[vgprValuA_X0_I0+0], v54, v55            // pack
 v_or_b32 v[vgprValuB_X0_I0+0], v56, v57            // pack
@@ -1535,10 +1537,10 @@ ds_read_u16 v60, v[vgprLocalReadAddrB] offset:7800 // L -> Reg lro=3900 swapByte
 ds_read_u16_d16_hi v61, v[vgprLocalReadAddrB] offset:8060 // L -> Reg lro=3900 swapByteOffset=0 ti=4 vIdx=0 rIdx=0 oIdx=0 buffer=1 iui=0
 /* sched write - iter 14 writesPerItem=4 */
 s_waitcnt vmcnt(0)                                 // wait for global read before writing to local
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:16576 // lwoB_0_0_3_0 = (0 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 16576
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:16836 // lwoB_0_1_3_0 = (1 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 16836
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:17096 // lwoB_0_2_3_0 = (2 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 17096
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:17356 // lwoB_0_3_3_0 = (3 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 17356
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:16514 // lwoB_0_0_3_0 = (0 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 16576
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:16774 // lwoB_0_1_3_0 = (1 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 16836
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:17034 // lwoB_0_2_3_0 = (2 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 17096
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:17294 // lwoB_0_3_3_0 = (3 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 17356
 
 /* local write swap offsets a */
 
@@ -1897,10 +1899,10 @@ ds_read_u16_d16_hi v61, v[vgprLocalReadAddrB] offset:22364 // L -> Reg lro=2860 
 /* N/A, lro->3120 */
 /* sched write - iter 10 writesPerItem=4 */
 s_waitcnt vmcnt(4)                                 // wait for global read before writing to local
-ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:64 // lwoA_0_0_1_0 = (0 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 64
-ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:196 // lwoA_0_1_1_0 = (1 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 196
-ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:328 // lwoA_0_2_1_0 = (2 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 328
-ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:460 // lwoA_0_3_1_0 = (3 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 460
+ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:2 // lwoA_0_0_1_0 = (0 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 64
+ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:134 // lwoA_0_1_1_0 = (1 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 196
+ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:266 // lwoA_0_2_1_0 = (2 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 328
+ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:398 // lwoA_0_3_1_0 = (3 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 460
 s_waitcnt lgkmcnt(8)                               // wait for prior local read old=0 new=8
 v_or_b32 v[vgprValuA_X0_I0+0], v54, v55            // pack
 v_or_b32 v[vgprValuB_X0_I0+0], v56, v57            // pack
@@ -1955,10 +1957,10 @@ ds_read_u16_d16_hi v61, v[vgprLocalReadAddrB] offset:23404 // L -> Reg lro=3380 
 /* N/A, lro->3640 */
 /* sched write - iter 12 writesPerItem=4 */
 s_waitcnt vmcnt(2)                                 // wait for global read before writing to local
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:64 // lwoB_0_0_1_0 = (0 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 64
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:324 // lwoB_0_1_1_0 = (1 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 324
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:584 // lwoB_0_2_1_0 = (2 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 584
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:844 // lwoB_0_3_1_0 = (3 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 844
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:2 // lwoB_0_0_1_0 = (0 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 64
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:262 // lwoB_0_1_1_0 = (1 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 324
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:522 // lwoB_0_2_1_0 = (2 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 584
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:782 // lwoB_0_3_1_0 = (3 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 844
 s_waitcnt lgkmcnt(8)                               // wait for prior local read old=0 new=8
 v_or_b32 v[vgprValuA_X0_I0+0], v54, v55            // pack
 v_or_b32 v[vgprValuB_X0_I0+0], v56, v57            // pack
@@ -2007,10 +2009,10 @@ ds_read_u16 v60, v[vgprLocalReadAddrB] offset:24184 // L -> Reg lro=3900 swapByt
 ds_read_u16_d16_hi v61, v[vgprLocalReadAddrB] offset:24444 // L -> Reg lro=3900 swapByteOffset=16384 ti=4 vIdx=0 rIdx=0 oIdx=0 buffer=1 iui=0
 /* sched write - iter 14 writesPerItem=4 */
 s_waitcnt vmcnt(0)                                 // wait for global read before writing to local
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:192 // lwoB_0_0_3_0 = (0 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 192
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:452 // lwoB_0_1_3_0 = (1 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 452
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:712 // lwoB_0_2_3_0 = (2 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 712
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:972 // lwoB_0_3_3_0 = (3 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 972
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:130 // lwoB_0_0_3_0 = (0 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 192
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:390 // lwoB_0_1_3_0 = (1 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 452
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:650 // lwoB_0_2_3_0 = (2 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 712
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:910 // lwoB_0_3_3_0 = (3 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 972
 
 /* local write swap offsets a */
 
@@ -2684,10 +2686,10 @@ ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+0:vgprG2LA+0+0] offset:0 // lwoA
 ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+0:vgprG2LA+0+0] offset:132 // lwoA_0_1_0_0 = (1 + 0*LSCA)*(MT0I+PAD) + (0*LSPA) = 132
 ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+1:vgprG2LA+1+0] offset:264 // lwoA_0_2_0_0 = (2 + 0*LSCA)*(MT0I+PAD) + (0*LSPA) = 264
 ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+1:vgprG2LA+1+0] offset:396 // lwoA_0_3_0_0 = (3 + 0*LSCA)*(MT0I+PAD) + (0*LSPA) = 396
-ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:64 // lwoA_0_0_1_0 = (0 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 64
-ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:196 // lwoA_0_1_1_0 = (1 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 196
-ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:328 // lwoA_0_2_1_0 = (2 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 328
-ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:460 // lwoA_0_3_1_0 = (3 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 460
+ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:2 // lwoA_0_0_1_0 = (0 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 64
+ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+2:vgprG2LA+2+0] offset:134 // lwoA_0_1_1_0 = (1 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 196
+ds_write_b16 v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:266 // lwoA_0_2_1_0 = (2 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 328
+ds_write_b16_d16_hi v[vgprLocalWriteAddrA], v[vgprG2LA+3:vgprG2LA+3+0] offset:398 // lwoA_0_3_1_0 = (3 + 0*LSCA)*(MT0I+PAD) + (1*LSPA) = 460
 
 
 /* local write b */
@@ -2696,18 +2698,18 @@ ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+0:vgprG2LB+0+0] offset:0 // lwoB
 ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+0:vgprG2LB+0+0] offset:260 // lwoB_0_1_0_0 = (1 + 0*LSCB)*(MT1J+PAD) + (0*LSPB) = 260
 ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+1:vgprG2LB+1+0] offset:520 // lwoB_0_2_0_0 = (2 + 0*LSCB)*(MT1J+PAD) + (0*LSPB) = 520
 ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+1:vgprG2LB+1+0] offset:780 // lwoB_0_3_0_0 = (3 + 0*LSCB)*(MT1J+PAD) + (0*LSPB) = 780
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:64 // lwoB_0_0_1_0 = (0 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 64
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:324 // lwoB_0_1_1_0 = (1 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 324
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:584 // lwoB_0_2_1_0 = (2 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 584
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:844 // lwoB_0_3_1_0 = (3 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 844
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:2 // lwoB_0_0_1_0 = (0 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 64
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+2:vgprG2LB+2+0] offset:262 // lwoB_0_1_1_0 = (1 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 324
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:522 // lwoB_0_2_1_0 = (2 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 584
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+3:vgprG2LB+3+0] offset:782 // lwoB_0_3_1_0 = (3 + 0*LSCB)*(MT1J+PAD) + (1*LSPB) = 844
 ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+4:vgprG2LB+4+0] offset:128 // lwoB_0_0_2_0 = (0 + 0*LSCB)*(MT1J+PAD) + (2*LSPB) = 128
 ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+4:vgprG2LB+4+0] offset:388 // lwoB_0_1_2_0 = (1 + 0*LSCB)*(MT1J+PAD) + (2*LSPB) = 388
 ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+5:vgprG2LB+5+0] offset:648 // lwoB_0_2_2_0 = (2 + 0*LSCB)*(MT1J+PAD) + (2*LSPB) = 648
 ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+5:vgprG2LB+5+0] offset:908 // lwoB_0_3_2_0 = (3 + 0*LSCB)*(MT1J+PAD) + (2*LSPB) = 908
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:192 // lwoB_0_0_3_0 = (0 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 192
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:452 // lwoB_0_1_3_0 = (1 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 452
-ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:712 // lwoB_0_2_3_0 = (2 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 712
-ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:972 // lwoB_0_3_3_0 = (3 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 972
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:130 // lwoB_0_0_3_0 = (0 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 192
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+6:vgprG2LB+6+0] offset:390 // lwoB_0_1_3_0 = (1 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 452
+ds_write_b16 v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:650 // lwoB_0_2_3_0 = (2 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 712
+ds_write_b16_d16_hi v[vgprLocalWriteAddrB], v[vgprG2LB+7:vgprG2LB+7+0] offset:910 // lwoB_0_3_3_0 = (3 + 0*LSCB)*(MT1J+PAD) + (3*LSPB) = 972
 
 s_waitcnt lgkmcnt(0)                               // 5wait for local write
 
