@@ -8,7 +8,7 @@ GlobalParameters:
   EnqueuesPerSync: 1
   SyncsPerBenchmark: 1
   LibraryPrintDebug: False
-  NumElementsToValidate: 0
+  NumElementsToValidate: 4096
   ValidationMaxToPrint: 4
   ValidationPrintValids: False
   ShortNames: False
@@ -73,8 +73,8 @@ BenchmarkProblems:
         #- NumLoadsCoalescedA: [1,2]
         #- NumLoadsCoalescedB: [-1,1,2,4]
         #- InnerUnroll: [1]
-        - LdsPadA: [1]
-        - LdsPadB: [1]
+        - LdsPadA: [2]
+        - LdsPadB: [2]
         #- DisableKernelPieces: [0,1,2,3,4,5,6,7,9]
         - SuppressNoLoadLoop: [False]
         - OptNoLoadLoop: [0]
