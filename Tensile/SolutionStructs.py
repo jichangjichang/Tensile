@@ -2115,7 +2115,7 @@ class Solution:
 
     # lds size is the greater of the two
     ldsNumElements = max(ldsNumElementsAB, ldsNumElementsReduction, ldsNumElementsOccupancy)
-    state["LdsNumElements"] = ldsNumElements
+    state["LdsNumElements"] = ldsNumElements 
     ldsSize = ldsNumElements * state["ProblemType"]["DataType"].numBytes()
     if ldsSize > globalParameters["MaxLDS"]:
       reject(state, "Kernel Uses %u > %u bytes of LDS" % ( ldsSize, globalParameters["MaxLDS"]))
