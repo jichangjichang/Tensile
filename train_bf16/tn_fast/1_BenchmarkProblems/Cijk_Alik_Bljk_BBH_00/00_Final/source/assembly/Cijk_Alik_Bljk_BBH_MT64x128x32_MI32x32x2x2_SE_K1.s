@@ -23,9 +23,9 @@ Cijk_Alik_Bljk_BBH_MT64x128x32_MI32x32x2x2_SE_K1:
   is_ptr64 = 1
   enable_sgpr_kernarg_segment_ptr = 1
   kernarg_segment_byte_size = 80 // bytes of kern args
-  workitem_vgpr_count = 75 // vgprs
+  workitem_vgpr_count = 67 // vgprs
   wavefront_sgpr_count = 98 // sgprs
-  compute_pgm_rsrc1_vgprs = 18 // floor((67-1)/4)
+  compute_pgm_rsrc1_vgprs = 16 // floor((67-1)/4)
   compute_pgm_rsrc1_sgprs = 13 // floor((98-1)/8)
   compute_pgm_rsrc2_tidig_comp_cnt = 0 // 1D wg
   compute_pgm_rsrc2_tgid_x_en = 1 // wg.x
@@ -217,7 +217,7 @@ Kernels:
       KernargSegmentAlign:  8
       WavefrontSize:        64
       NumSGPRs:             98
-      NumVGPRs:             75
+      NumVGPRs:             67
       MaxFlatWorkGroupSize: 256
 .end_amd_amdgpu_hsa_metadata
 
@@ -471,14 +471,6 @@ Kernels:
 .set vgprLocalReadAddrA, 52
 .set vgprLocalReadAddrB, 53
 .set vgprSerial, 66
-.set vWriteA0, 67
-.set vWriteB0, 68
-.set vReadA1, 69
-.set vReadB1, 70
-.set vTmp0, 71
-.set vTmp1, 72
-.set vTmp2, 73
-.set vTmp3, 74
 /* Num VGPR=67 */
 
 /******************************************/
@@ -700,11 +692,6 @@ v_and_b32 v3, 31, v[vgprSerial]                    // vectorStaticDiv: v3 = v[vg
 
 
 /* local read addresses: final offsets a */
-v_lshrrev_b32 v[vTmp0], 5, v1                 // vectorStaticDiv: vTmp0 = v1 / 32
-v_and_b32 v[vTmp1], 31, v1                     // vectorStaticDiv: vTmp1 = v1 % 32
-v_lshlrev_b32 v[vTmp1], 1, v[vTmp1]                            // staticMultiply: v0 = v0 * 2
-v_add_u32 v1, v[vTmp1], v[vTmp0]
-
 
 v_lshrrev_b32 v0, 8, v[vgprSerial]                 // vectorStaticDiv: v0 = v[vgprSerial] / 256
 v_and_b32 v2, 255, v[vgprSerial]                   // vectorStaticDiv: v2 = v[vgprSerial] % 256
@@ -714,17 +701,11 @@ _v_add_lshl_u32 v[vgprLocalReadAddrA], v0, v1, 0x1 // o = (lroA*VW+sgid*MT0)*bpe
 
 
 /* local read addresses: final offsets b */
-v_lshrrev_b32 v[vTmp0], 7, v[vgprSerial]                 // vectorStaticDiv: vTmp0 = v[vgprSerial] / 128
 
 v_lshrrev_b32 v0, 6, v[vgprSerial]                 // vectorStaticDiv: v0 = v[vgprSerial] / 64
 v_and_b32 v1, 63, v[vgprSerial]                    // vectorStaticDiv: v1 = v[vgprSerial] % 64
-s_mov_b32 s75, 0x40                                // MT1+PAD
+s_mov_b32 s75, 0x20                                // MT1+PAD
 v_mul_lo_u32 v0, s75, v0                           // sgid=sgid*(MT1+PAD)
-
-v_lshrrev_b32 v[vTmp0], 6, v3                 // vectorStaticDiv: vTmp0 = v1 / 64
-v_lshlrev_b32 v[vTmp1], 1, v3                            // staticMultiply: v3 = v0 * 2
-v_add_u32 v3, v[vTmp1], v[vTmp0]
-
 _v_add_lshl_u32 v[vgprLocalReadAddrB], v0, v3, 0x1 // o = (lroB*VW+sgid*MT1)*bpe
 
 
@@ -754,21 +735,11 @@ _v_add_co_u32 v[vgprLocalReadAddrB+0], vcc, 0x1100, v[vgprLocalReadAddrB+0] //  
 /* LVCA = 8 */
 /* v0 = (local)groA-tile = serial/LVCA (note (wgA*MTA) will be added to SRD) */
 /* v1 = groA-unroll = serial%LVCA */
-
-
 v_lshrrev_b32 v0, 3, v[vgprSerial]                 // vectorStaticDiv: v0 = v[vgprSerial] / 8
 v_and_b32 v1, 7, v[vgprSerial]                     // vectorStaticDiv: v1 = v[vgprSerial] % 8
 /* gro-unroll *= glvw */
 v_lshlrev_b32 v1, 2, v1                            // staticMultiply: v1 = v1 * 4
 
-v_lshrrev_b32 v[vTmp0], 7, v[vgprSerial]                 // vectorStaticDiv: vTmp0 = v[vgprSerial] / 128
-v_and_b32 v[vTmp1], 127, v[vgprSerial]                     // vectorStaticDiv: vTmp1 = v[vgprSerial] % 128
-
-v_lshrrev_b32 v[vWriteA0], 3, v[vTmp1]                 // vectorStaticDiv: v0 = v[vgprSerial] / 8
-v_lshlrev_b32 v[vWriteA0], 1, v[vWriteA0]                            // staticMultiply: v0 = v0 * 2
-v_add_u32 v[vWriteA0], v[vWriteA0], v[vTmp0]              // if tid = 128~255 vWrite0 shift 1 element
-
-
 
 /* global read addresses: tile offset assignment b */
 
@@ -780,39 +751,6 @@ v_and_b32 v3, 7, v[vgprSerial]                     // vectorStaticDiv: v3 = v[vg
 /* gro-unroll *= glvw */
 v_lshlrev_b32 v3, 2, v3                            // staticMultiply: v3 = v3 * 4
 
-v_lshrrev_b32 v[vWriteB0], 3, v[vTmp1]                 // vectorStaticDiv: v0 = v[vgprSerial] / 8
-v_lshlrev_b32 v[vWriteB0], 1, v[vWriteB0]                            // staticMultiply: v0 = v0 * 2
-v_add_u32 v[vWriteB0], v[vWriteB0], v[vTmp0]              // if tid = 128~255 vWrite0 shift 1 element
-
-
-
-/* global read addresses: tile offset assignment b */
-
-/* LVCB = 8 */
-/* v2 = (local)groB-tile = serial/LVCB (note (wgB*MTB) will be added to SRD) */
-/* v3 = groB-unroll = serial%LVCB */
-v_lshrrev_b32 v2, 3, v[vgprSerial]                 // vectorStaticDiv: v2 = v[vgprSerial] / 8
-v_and_b32 v3, 7, v[vgprSerial]                     // vectorStaticDiv: v3 = v[vgprSerial] % 8
-/* gro-unroll *= glvw */
-v_lshlrev_b32 v3, 2, v3                            // staticMultiply: v3 = v3 * 4
-
-
-/* global read addresses: unroll assignment a */
-
-/* v1 */
-
-
-/* global read addresses: unroll assignment b */
-
-/* v3 */
-
-
-/* global read addresses: other free assignments */
-
-/* s[sgprWorkGroup2] */
-
-
-/* global read addresses: tile offsets a */
 
 /* global read addresses: unroll assignment a */
 
@@ -941,13 +879,13 @@ s_mov_b32 s[sgprGlobalReadIncsB+0], 0x40           // incr = 32*bpe
 /* local write addresses: first offset a */
 
 v_mul_u32_u24 v[vgprLocalWriteAddrA], 0x42, v1     // lwAL**(MTA + PAD)
-_v_add_lshl_u32 v[vgprLocalWriteAddrA], v[vWriteA0], v[vgprLocalWriteAddrA], 0x1 // lwFOA = (lwAA + lwAL*(MT0I+PAD))*bpe
+_v_add_lshl_u32 v[vgprLocalWriteAddrA], v0, v[vgprLocalWriteAddrA], 0x1 // lwFOA = (lwAA + lwAL*(MT0I+PAD))*bpe
 
 
 /* local write addresses: first offset b */
 
 v_mul_u32_u24 v[vgprLocalWriteAddrB], 0x82, v3     // lwBL**(MTB + PAD)
-_v_add_lshl_u32 v[vgprLocalWriteAddrB], v[vWriteB0], v[vgprLocalWriteAddrB], 0x1 // lwFOB = (lwBB + lwBL*(MT1J+PAD))*bpe
+_v_add_lshl_u32 v[vgprLocalWriteAddrB], v2, v[vgprLocalWriteAddrB], 0x1 // lwFOB = (lwBB + lwBL*(MT1J+PAD))*bpe
 _v_add_co_u32 v[vgprLocalWriteAddrB], vcc, 0x1100, v[vgprLocalWriteAddrB] // lwFOB = lwB1J + lwBL*MT1J + LDS_OFFSET_B=2176*2
 
 
