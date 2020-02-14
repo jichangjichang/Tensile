@@ -289,9 +289,7 @@ class KernelWriter(metaclass=abc.ABCMeta):
       for item in list(packCode.items()):
         for pack in list(item.items()):
           self.vgprPool.checkIn(pack.tempVgpr)
-      iterCode.addInst("s_setprio ","1","Raise priority while processing macs")
       iterCode.addCode(macIterCode)
-      iterCode.addInst("s_setprio ","0","Raise priority while processing macs")
     elif self.scheduleIterAlg == 1:
       #import pdb
       #pdb.set_trace()
@@ -323,7 +321,6 @@ class KernelWriter(metaclass=abc.ABCMeta):
       iterCode.addCode(waitCode)
       iterCode.addCode(macIterCode)
     elif self.scheduleIterAlg == 2:
-    
       iterCode.addCode(globalReadCode)
       iterCode.addCode(localReadCode)
       iterCode.addCode(waitCode)
@@ -336,7 +333,6 @@ class KernelWriter(metaclass=abc.ABCMeta):
       iterCode.addInst("s_setprio ","0","Raise priority while processing macs")
       iterCode.addCode(localWriteCode)
       iterCode.addCode(pointerCode)
-      
       pass
     else:
       assert 0, "Unsupported scheduleIterAlg=%u"%self.scheduleIterAlg
