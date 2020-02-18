@@ -4020,8 +4020,10 @@ class KernelWriterAssembly(KernelWriter):
             divisorName = tP["lsp"]
           else:
             divisorName = tP["lvp"]
+        wavefronts = kernel["NumThreads"] // globalParameters["WavefrontWidth"]
         numPerpElementsPerLoad = kernel[divisorName]
-        numPerpElementsPerWave = tP["nrp"]*numPerpElementsPerLoad
+        #numPerpElementsPerWave = tP["nrp"]*numPerpElementsPerLoad
+        numPerpElementsPerWave = kernel["MacroTile%s"%tP["tensorChar"]] //wavefronts
         assert(numPerpElementsPerWave>0)
         #calculate numberofLoads
         kStr += inst("s_lshl_b32", sgpr(waveStartSgpr), sgpr("WaveId"), log2(numPerpElementsPerWave),"")
@@ -5011,18 +5013,19 @@ class KernelWriterAssembly(KernelWriter):
               divisorName = tP["lsp"]
             else:
               divisorName = tP["lvp"]
+          wavefronts = kernel["NumThreads"] // globalParameters["WavefrontWidth"]
           numPerpElementsPerLoad = kernel[divisorName]
-          numPerpElementsPerWave = tP["nrp"]*numPerpElementsPerLoad
+          #numPerpElementsPerWave = tP["nrp"]*numPerpElementsPerLoad
+          numPerpElementsPerWave = kernel["MacroTile%s"%tc] // wavefronts
           assert(numPerpElementsPerWave>0)
           #calculate numberofLoads
-          wavefronts = kernel["NumThreads"] // globalParameters["WavefrontWidth"]
           #LdsPadCnt = (((kernel["MacroTile%s"%tc] * kernel["DepthU"])*tP["bpe"])//wavefronts)//kernel["LdsBlockSizePerPad"]
-          LdsPadCnt = (numPerpElementsPerWave * kernel["DepthU"] * tP["bpe"])//kernel["LdsBlockSizePerPad"]
-          LdsPad_val = LdsPadCnt * (kernel["LdsPad%s"%tc]* tP["bpe"])
+          #LdsPadCnt = (numPerpElementsPerWave * kernel["DepthU"] * tP["bpe"])//kernel["LdsBlockSizePerPad"]
+          #LdsPad_val = LdsPadCnt * (kernel["LdsPad%s"%tc]* tP["bpe"])
           kStr += inst("s_mul_i32", \
               sgpr(tmpSgpr), \
               sgpr("WaveId"), \
-              hex((((numPerpElementsPerWave * kernel["DepthU"])*tP["bpe"])) + LdsPad_val), \
+              hex(((numPerpElementsPerWave * (kernel["DepthU"] + kernel["LdsPad%s"%tc]) )*tP["bpe"]) ), \
               "")
           kStr += inst("v_add_u32", \
               vgpr("LocalReadAddr%s"%tc), \
