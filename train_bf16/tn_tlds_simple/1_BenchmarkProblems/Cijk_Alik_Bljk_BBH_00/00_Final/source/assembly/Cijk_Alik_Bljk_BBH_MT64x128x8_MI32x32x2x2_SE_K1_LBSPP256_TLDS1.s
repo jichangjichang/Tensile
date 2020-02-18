@@ -685,26 +685,26 @@ v_and_b32 v3, 31, v[vgprSerial]                    // vectorStaticDiv: v3 = v[vg
 /* local read addresses: final offsets a */
 
 v_and_b32 v1, 0x3f, v[vgprSerial]                  // vectorStaticDiv: v1 = v[vgprSerial] % 63
-v_mul_lo_u32 v6, 8, v1                             // 
-v_lshrrev_b32 v7, 4, v1                            // 
-v_mul_lo_u32 v7, 0, v7                             // 
-v_and_b32 v4, 0x3f, v[vgprSerial]                  // 
-v_lshrrev_b32 v4, 6, v4                            // 
-_v_add_lshl_u32 v[vgprLocalReadAddrA], v6, v4, 0x1 // 
+v_mul_lo_u32 v6, 8, v1                             //  v6 = 0~63 * 8 = 0 ~504
+v_lshrrev_b32 v7, 4, v1                            //  v7 = 0~63 / 16 = 0 ~ 3
+v_mul_lo_u32 v7, 0, v7                             //  v7 = v7 * 0  (????)
+v_and_b32 v4, 0x3f, v[vgprSerial]                  //  v4 = v[vgprSerial] % 64
+v_lshrrev_b32 v4, 6, v4                            //  v4 = v4 / 64 
+_v_add_lshl_u32 v[vgprLocalReadAddrA], v6, v4, 0x1 //  read = ( v6 +v4) *2
 v_add_u32 v[vgprLocalReadAddrA], v7, v[vgprLocalReadAddrA] // 
 
 
 /* local read addresses: final offsets b */
 
-v_and_b32 v3, 0x1f, v[vgprSerial]                  // 
-v_mul_lo_u32 v2, 8, v3                             // 
+v_and_b32 v3, 0x1f, v[vgprSerial]                  //   v3 = 256 % 32 
+v_mul_lo_u32 v2, 8, v3                             //  v2 =  0~32 * 8
 v_lshrrev_b32 v6, 4, v3                            // 
-v_mul_lo_u32 v6, 0, v6                             // 
-v_and_b32 v4, 0x3f, v[vgprSerial]                  // 
-v_lshrrev_b32 v4, 6, v4                            // 
+v_mul_lo_u32 v6, 0, v6                             //   v6 = 0
+v_and_b32 v4, 0x3f, v[vgprSerial]                  //  v4 = v[vgprSerial] % 64
+v_lshrrev_b32 v4, 6, v4                            //   v4 = v4 /64
 _v_add_lshl_u32 v[vgprLocalReadAddrB], v2, v4, 0x1 // 
 v_add_u32 v[vgprLocalReadAddrB], v6, v[vgprLocalReadAddrB] // 
-s_mul_i32 s69, s[sgprWaveId], 0x80                 // 
+s_mul_i32 s69, s[sgprWaveId], 0x200                 // 
 v_add_u32 v[vgprLocalReadAddrB], s69, v[vgprLocalReadAddrB] // 
 
 
@@ -786,14 +786,14 @@ v_lshlrev_b32 v3, 1, v3                            // staticMultiply: v3 = v3 * 
 
 /* global read addresses: final offsets a */
 
-s_lshl_b32 s69, s[sgprWaveId], 2                   // 
+s_lshl_b32 s69, s[sgprWaveId], 4                   //  wave id *= 16
 v_add_u32 v0, s69, v0                              // wave_start_offset = MT/4*(waveId)
 GLOBAL_OFFSET_A vgprGlobalReadOffsetA+0,  1,  0, 4 // gROA_0_0_0_0
 
 
 /* global read addresses: final offsets b */
 
-s_lshl_b32 s69, s[sgprWaveId], 3                   // 
+s_lshl_b32 s69, s[sgprWaveId], 5                   // wave id *= 32
 v_add_u32 v2, s69, v2                              // wave_start_offset = MT/4*(waveId)
 GLOBAL_OFFSET_B vgprGlobalReadOffsetB+0,  3,  2, 4 // gROB_0_0_0_0
 s_mul_i32 s[sgprScalarGlobalReadOffsetB+0], s[sgprStrideB1J], 16 // compute offset diff (scaled tileDim)
