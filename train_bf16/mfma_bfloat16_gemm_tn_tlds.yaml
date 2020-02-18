@@ -1,0 +1,97 @@
+GlobalParameters:
+  MinimumRequiredVersion: 4.14.0
+  PrintLevel: 1
+  ForceRedoBenchmarkProblems: True
+  ForceRedoLibraryLogic: True
+  ForceRedoLibraryClient: True
+  CMakeBuildType: Release
+  EnqueuesPerSync: 1
+  SyncsPerBenchmark: 1
+  LibraryPrintDebug: False
+  NumElementsToValidate: 16384
+  ValidationMaxToPrint: 40
+  ValidationPrintValids: False
+  ShortNames: False
+  MergeFiles: True
+  Platform: 0
+  Device: 0
+  KernelTime: True
+  PinClocks: False
+  SleepPercent: 200
+  PrintSolutionRejectionReason: True
+  DataInitTypeA: 3
+  DataInitTypeB: 3
+  #DataInitTypeC: 0
+  #DataInitTypeD: 0
+  DataInitTypeBeta: 0
+  DataInitTypeAlpha: 1
+  PrintTensorA: 0
+  PrintTensorB: 0
+  PrintTensorD: 0
+  NewClient: 0
+
+BenchmarkProblems:
+  ########################################
+  # NT - standard
+  ########################################
+  -
+    - # ProblemType
+      OperationType: GEMM
+      DataType: B
+      DestDataType: B
+      ComputeDataType: s
+      HighPrecisionAccumulate: True
+      TransposeA: True
+      TransposeB: False
+      UseBeta: True
+      Batched: True
+
+    - # BenchmarkProblemSizeGroup - Standard
+      InitialSolutionParameters:
+      BenchmarkCommonParameters:
+        - KernelLanguage: ["Assembly"]
+        - EdgeType: ["ShiftPtr"]
+        #- LoopTail: [True]
+        - PrefetchLocalRead: [False]
+        - AssertSummationElementMultiple: [2]
+        - AssertFree0ElementMultiple: [2]
+      ForkParameters:
+        - MatrixInstruction:
+          - [32, 32, 2, 2]
+        - PrefetchGlobalRead: [False]
+        - ThreadTile:
+          - [ 1, 32 ]
+        - WorkGroup:
+          - [ 64, 4, 1 ]
+        - WorkGroupMapping: [1]
+        - GlobalSplitU: [1]
+        - DepthU: [8]
+        - VectorWidth: [2]
+        - GlobalReadVectorWidth: [2]
+        #- GlobalReadCoalesceGroupA: [True,False]
+        #- GlobalReadCoalesceGroupB: [True,False]
+        #- NumLoadsCoalescedA: [1,2]
+        #- NumLoadsCoalescedB: [-1,1,2,4]
+        #- InnerUnroll: [1,4]
+        - TransposeLDS: [1,0]
+        - LdsPadA: [0]
+        - LdsPadB: [0]
+        #- DisableKernelPieces: [0,1,2,3,4,5,6,7,9]
+        - SuppressNoLoadLoop: [False]
+        - OptNoLoadLoop: [0]
+        #- ScheduleLocalWrite: [0]
+        #- ScheduleGlobalRead: [0]
+        #- ScheduleIterAlg: [0]
+      BenchmarkForkParameters:
+      JoinParameters:
+      BenchmarkJoinParameters:
+      BenchmarkFinalParameters:
+        - ProblemSizes:
+          #- Exact: [ 7680, 8192, 1, 8192, 8224, 8224, 8224, 8224 ]
+          - Exact: [ 64, 128, 1, 8 ]
+          - Exact: [ 7680, 8192, 1, 8192, 7712, 7712, 8224, 8224 ]
+########################################
+LibraryLogic:
+    ScheduleName: "arcturus"
+    DeviceNames: ["Device 7380", "Device 7388", "Device 738c", "Device 7390"]
+    ArchitectureName: "gfx908"
