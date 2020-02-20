@@ -7364,7 +7364,10 @@ class KernelWriterAssembly(KernelWriter):
     else:
       if tP["localReadInstruction"].numOffsets == 1:
         if kernel["MatrixInstruction"]:
-          tP["localReadOffset"] += kernel["LocalSplitU"]*(kernel["MacroTile%u"%tP["tensorIdx"]] + kernel["LdsPad%s"%tc])*kernel["MatrixInstK"]
+          if not kernel["TransposeLDS"]:
+            tP["localReadOffset"] += kernel["LocalSplitU"]*(kernel["MacroTile%u"%tP["tensorIdx"]] + kernel["LdsPad%s"%tc])*kernel["MatrixInstK"]
+          else:
+            tP["localReadOffset"] += kernel["LocalSplitU"]*kernel["MatrixInstK"]
         else:
           tP["localReadOffset"] += kernel["LocalSplitU"]*(kernel["MacroTile%u"%tP["tensorIdx"]] + kernel["LdsPad%s"%tc])
         kStr += self.comment1("N/A, lro->%d"%tP["localReadOffset"])
@@ -7480,7 +7483,7 @@ class KernelWriterAssembly(KernelWriter):
                 #blockOffset = (InstructionTileOuput) * kernel["DepthU"] * tP["bpe"]
                 blockOffset = (InstructionTileOuput) * (kernel["DepthU"] + kernel["LdsPad%s"%tc])* tP["bpe"]
                 #ldsPadOffset = (blockOffset//kernel["LdsBlockSizePerPad"])*kernel["LdsPad%s"%tc]*tP["bpe"]
-                offset = (blockOffset )*rIdx + uIdx*kernel["MatrixInstK"]*tP["bpe"] + tP["localReadSwapByteOffset"]
+                offset = ((blockOffset )*rIdx  + tP["localReadOffset"])*tP["bpe"] + tP["localReadSwapByteOffset"]
                 paramList.append(offset)
             else:
               paramList.append(((rIdx*blockWidth + kernel["SubGroup%u"%tP["tensorIdx"]]*(vIdx*numOffsets+oIdx)*kernel["VectorWidth"] \
