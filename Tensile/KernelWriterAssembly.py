@@ -7408,76 +7408,44 @@ class KernelWriterAssembly(KernelWriter):
 
     # mfma: for AB tile in NT layout
     if kernel["MatrixInstruction"] and (kernel["ProblemType"]["DataType"].isHalf() or kernel["ProblemType"]["DataType"].isBFloat16()) and numReadsAlongK > 1:
-      if not kernel["TransposeLDS"]:
-        pack = Code.Module("pack%s"%tc)
-        for vIdx in range(0, numVectorsPerTile):
-          for rIdx in range(0, numReadsPerVector):
-            tmpVgpr = self.vgprPool.checkOut(numReadsAlongK)
-            packCode = pack.addCode (Code.Module("packCode"))
-            packCode.addTempVgpr(tmpVgpr)
-            # emit an instruction for each half-dword load along k due to strided access
-            # checkout 2 vregs for each half-dword loads
-            for kIdx in range(0, numReadsAlongK):
-              localReadCode = imod.addCode (Code.Module("LocalRead%s Valu%u"%(tc,valuIdx)))
-              paramList = []
-              paramList.append(vgpr(tmpVgpr + kIdx%2))
-              paramList.append(vgpr("LocalReadAddr%s"%tc))
-              offset = ((rIdx * kernel["MatrixInstN"] + (kIdx%2)*(kernel["MacroTile%s"%tc]+kernel["LdsPad%s"%tc]) + tP["localReadOffset"]) \
-                 *tP["bpe"]+tP["localReadSwapByteOffset"])//offsetMultiplier
-              paramList.append(int(offset))
-              oIdx = 0
-              # print("Debug: Matrix{}, rIdx offset {}, vIdx offset {}, local read offset {}, bpe {}, net offset {}".format( \
-              #   tP["tensorChar"], \
-              #   rIdx, \
-              #   kernel["SubGroup%u" % tP["tensorIdx"]] * (vIdx * numOffsets + oIdx) * kernel["VectorWidth"], \
-              #   tP["localReadOffset"], \
-              #   tP["bpe"], \
-              #   offset))
-  
-              paramTuple = tuple(paramList)
-              comment = "L -> Reg lro=%d swapByteOffset=%u ti=%u vIdx=%u rIdx=%u oIdx=%u buffer=%u iui=%u"\
-                  % (tP["localReadOffset"], tP["localReadSwapByteOffset"], kernel["SubGroup%u" % tP["tensorIdx"]], vIdx, rIdx, oIdx, bufferIdx, iui)
-              
-              isHighBits = 0 if kIdx % 2 == 0 else 1
-              localReadCode.addCode(Code.LocalReadInst(instruction.toCodeInst(paramTuple, 0, isHighBits), comment))
-  
-              valuIdx += blockWidth
-  
-              if kIdx % 2 == 1 and kIdx > 0:
-                # pack 2 half-dword into one
-                destVgpr = vgpr("Valu%s_X%u_I%u+%u" % (tc, bufferIdx, iui, rIdx))
-                packCode.addInst("v_or_b32", destVgpr, vgpr(tmpVgpr), vgpr(tmpVgpr+1), "pack")
-      else: 
-        #transposeLDS case
-        for vIdx in range(0, numVectorsPerTile):
-          for rIdx in range(0, numReadsPerVector):
+      pack = Code.Module("pack%s"%tc)
+      for vIdx in range(0, numVectorsPerTile):
+        for rIdx in range(0, numReadsPerVector):
+          tmpVgpr = self.vgprPool.checkOut(numReadsAlongK)
+          packCode = pack.addCode (Code.Module("packCode"))
+          packCode.addTempVgpr(tmpVgpr)
+          # emit an instruction for each half-dword load along k due to strided access
+          # checkout 2 vregs for each half-dword loads
+          for kIdx in range(0, numReadsAlongK):
             localReadCode = imod.addCode (Code.Module("LocalRead%s Valu%u"%(tc,valuIdx)))
             paramList = []
-            destVgpr = vgpr("Valu%s_X%u_I%u+%u"%(tc, bufferIdx, iui, valuIdx), blockWidth)
-            paramList.append(destVgpr)
+            paramList.append(vgpr(tmpVgpr + kIdx%2))
             paramList.append(vgpr("LocalReadAddr%s"%tc))
-            for oIdx in range(0, numOffsets):
-              # offset = K iteration offset + 'block-offset' for each row / column block + ldsPadOffset
-              # per-load-write = DepthU*LSPA/4*BPE + LdsPadOffset
-              # block-offset = (per-load-write) * InstructionTileOuput
-              # ldsPadOffset = (per-load-write)/LDsBoundaryPerPAd)*LdsPad*BPE
-              #perWavePerP = (kernel["LSP%s"%tc] // ((tP["glvw"] * globalParameters["WavefrontWidth"]) // kernel["DepthU"]))
-              #perLdsWrSize =  perWavePerP * kernel["DepthU"] * tP["bpe"]
-              #TransposeLDS do not support ds_read2 opcodes
-              assert(numOffsets<2)
-              if tc == "A":
-                InstructionTileOuput = kernel["MIWG0"]
-              else:
-                InstructionTileOuput = (globalParameters["WavefrontWidth"] // kernel["MIWG0"]) * (kernel["MatrixInstN"] // kernel["InstSplit"])
-              blockOffset = (InstructionTileOuput) * (kernel["DepthU"] + kernel["LdsPad%s"%tc])* tP["bpe"]
-              # ldsPadOffset = (blockOffset//kernel["LdsBlockSizePerPad"])*kernel["LdsPad%s"%tc]*tP["bpe"]
-              offset = (blockOffset )*rIdx + uIdx*kernel["MatrixInstK"]*tP["bpe"] + tP["localReadSwapByteOffset"]
-              paramList.append(offset)
+            offset = ((rIdx * kernel["MatrixInstN"] + (kIdx%2)*(kernel["MacroTile%s"%tc]+kernel["LdsPad%s"%tc]) + tP["localReadOffset"]) \
+               *tP["bpe"]+tP["localReadSwapByteOffset"])//offsetMultiplier
+            paramList.append(int(offset))
+            oIdx = 0
+            # print("Debug: Matrix{}, rIdx offset {}, vIdx offset {}, local read offset {}, bpe {}, net offset {}".format( \
+            #   tP["tensorChar"], \
+            #   rIdx, \
+            #   kernel["SubGroup%u" % tP["tensorIdx"]] * (vIdx * numOffsets + oIdx) * kernel["VectorWidth"], \
+            #   tP["localReadOffset"], \
+            #   tP["bpe"], \
+            #   offset))
+
             paramTuple = tuple(paramList)
             comment = "L -> Reg lro=%d swapByteOffset=%u ti=%u vIdx=%u rIdx=%u oIdx=%u buffer=%u iui=%u"\
-                %(tP["localReadOffset"],tP["localReadSwapByteOffset"],kernel["SubGroup%u"%tP["tensorIdx"]], vIdx, rIdx, oIdx, bufferIdx, iui)
-            localReadCode.addCode(Code.LocalReadInst(instruction.toCodeInst(paramTuple), comment))
+                % (tP["localReadOffset"], tP["localReadSwapByteOffset"], kernel["SubGroup%u" % tP["tensorIdx"]], vIdx, rIdx, oIdx, bufferIdx, iui)
+            
+            isHighBits = 0 if kIdx % 2 == 0 else 1
+            localReadCode.addCode(Code.LocalReadInst(instruction.toCodeInst(paramTuple, 0, isHighBits), comment))
+
             valuIdx += blockWidth
+
+            if kIdx % 2 == 1 and kIdx > 0:
+              # pack 2 half-dword into one
+              destVgpr = vgpr("Valu%s_X%u_I%u+%u" % (tc, bufferIdx, iui, rIdx))
+              packCode.addInst("v_or_b32", destVgpr, vgpr(tmpVgpr), vgpr(tmpVgpr+1), "pack")
     else: 
       for vIdx in range(0, numVectorsPerTile):
         for rIdx in range(0, numReadsPerVector):
@@ -7505,9 +7473,10 @@ class KernelWriterAssembly(KernelWriter):
                   InstructionTileOuput = kernel["MIWG0"]
                 else:
                   InstructionTileOuput = (globalParameters["WavefrontWidth"] // kernel["MIWG0"] ) * (kernel["MatrixInstN"] // kernel["InstSplit"])
-                blockOffset = (InstructionTileOuput) * kernel["DepthU"] * tP["bpe"]
-                ldsPadOffset = (blockOffset//kernel["LdsBlockSizePerPad"])*kernel["LdsPad%s"%tc]*tP["bpe"]
-                offset = (blockOffset + ldsPadOffset)*rIdx + uIdx*kernel["MatrixInstK"]*tP["bpe"] + tP["localReadSwapByteOffset"]
+                #blockOffset = (InstructionTileOuput) * kernel["DepthU"] * tP["bpe"]
+                blockOffset = (InstructionTileOuput) * (kernel["DepthU"] + kernel["LdsPad%s"%tc])* tP["bpe"]
+                #ldsPadOffset = (blockOffset//kernel["LdsBlockSizePerPad"])*kernel["LdsPad%s"%tc]*tP["bpe"]
+                offset = (blockOffset )*rIdx + uIdx*kernel["MatrixInstK"]*tP["bpe"] + tP["localReadSwapByteOffset"]
                 paramList.append(offset)
             else:
               paramList.append(((rIdx*blockWidth + kernel["SubGroup%u"%tP["tensorIdx"]]*(vIdx*numOffsets+oIdx)*kernel["VectorWidth"] \
