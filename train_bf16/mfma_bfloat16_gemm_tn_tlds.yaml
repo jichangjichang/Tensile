@@ -63,9 +63,9 @@ BenchmarkProblems:
           - [ 1, 32 ]
         - WorkGroup:
           - [ 64, 4, 1 ]
-        - WorkGroupMapping: [8]
+        - WorkGroupMapping: [1,8]
         - GlobalSplitU: [1]
-        - DepthU: [32]
+        - DepthU: [32,64]
         - VectorWidth: [2]
         - GlobalReadVectorWidth: [4]
         - TransposeLDS: [1]
@@ -81,7 +81,16 @@ BenchmarkProblems:
       BenchmarkJoinParameters:
       BenchmarkFinalParameters:
         - ProblemSizes:
+          - Exact: [ 8192, 8192, 1, 8192, 8224, 8224, 8224, 8224 ]
           - Exact: [ 7680, 8192, 1, 8192, 8224, 8224, 8224, 8224 ]
+          - Exact: [ 4096, 4096, 1, 4096, 4128, 4128, 4128, 4128 ]
+          - Exact: [ 3840, 4096, 1, 4096, 4128, 4128, 4128, 4128 ]
+          - Exact: [ 2048, 2048, 1, 2048, 2080, 2080, 2080, 2080 ]
+          - Exact: [ 1920, 2048, 1, 2048, 2080, 2080, 2080, 2080 ]
+          - Exact: [ 1024, 1024, 1, 1024, 1056, 1056, 1056, 1056 ]
+          - Exact: [  960, 1024, 1, 1024, 1056, 1056, 1056, 1056 ]
+          - Exact: [  512,  512, 1,  512,  544,  544,  544,  544 ]
+          - Exact: [  480,  512, 1,  512,  544,  544,  544,  544 ]
  
     - # BenchmarkProblemSizeGroup - group
       InitialSolutionParameters:
@@ -100,13 +109,13 @@ BenchmarkProblems:
           - [ 1, 32 ]
         - WorkGroup:
           - [ 64, 4, 1 ]
-        - WorkGroupMapping: [8]
+        - WorkGroupMapping: [1,8]
         - StaggerU : [0]
         - GlobalSplitU: [1]
-        - DepthU: [32]
+        - DepthU: [32,64]
         - VectorWidth: [2]
         - GlobalReadVectorWidth: [4]
-        - InnerUnroll: [16]
+        - InnerUnroll: [16,32]
         - TransposeLDS: [1]
         - LdsPadA: [4]
         - LdsPadB: [4]
@@ -120,7 +129,16 @@ BenchmarkProblems:
       BenchmarkJoinParameters:
       BenchmarkFinalParameters:
         - ProblemSizes:
+          - Exact: [ 8192, 8192, 1, 8192, 8224, 8224, 8224, 8224 ]
           - Exact: [ 7680, 8192, 1, 8192, 8224, 8224, 8224, 8224 ]
+          - Exact: [ 4096, 4096, 1, 4096, 4128, 4128, 4128, 4128 ]
+          - Exact: [ 3840, 4096, 1, 4096, 4128, 4128, 4128, 4128 ]
+          - Exact: [ 2048, 2048, 1, 2048, 2080, 2080, 2080, 2080 ]
+          - Exact: [ 1920, 2048, 1, 2048, 2080, 2080, 2080, 2080 ]
+          - Exact: [ 1024, 1024, 1, 1024, 1056, 1056, 1056, 1056 ]
+          - Exact: [  960, 1024, 1, 1024, 1056, 1056, 1056, 1056 ]
+          - Exact: [  512,  512, 1,  512,  544,  544,  544,  544 ]
+          - Exact: [  480,  512, 1,  512,  544,  544,  544,  544 ]
 
 
 ########################################
