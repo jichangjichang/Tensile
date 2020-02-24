@@ -3684,15 +3684,15 @@ class KernelWriterAssembly(KernelWriter):
 
     kStr += self.comment1("%s = gro%s-unroll = serial%s%s" \
         % (vgpr(uReg), tP["tensorChar"], uOpStr, divisorName) )
-    #if not kernel["TransposeLDS"]:
-    dividendReg = "Serial" # local serial
-    #else:
-    #  dividendReg = self.vgprPool.checkOut(1, self.preventVgprOverflowDuringNewTile)
-    #  kStr += inst("v_and_b32", \
-    #      vgpr(dividendReg), \
-    #      hex((globalParameters["WavefrontWidth"]-1)), \
-    #      vgpr("Serial"), \
-    #      "Wavefront Serial")
+    if not kernel["TransposeLDS"]:
+      dividendReg = "Serial" # local serial
+    else:
+      dividendReg = self.vgprPool.checkOut(1, self.preventVgprOverflowDuringNewTile)
+      kStr += inst("v_and_b32", \
+          vgpr(dividendReg), \
+          hex((globalParameters["WavefrontWidth"]-1)), \
+          vgpr("Serial"), \
+          "Wavefront Serial")
     tmpVgpr = self.vgprPool.checkOut(2, self.preventVgprOverflowDuringNewTile)
     tmpSgpr = self.getTmpSgpr(1)
     kStr += vectorStaticDivideAndRemainder(qReg, rReg, dividendReg, divisor, \
@@ -3721,8 +3721,8 @@ class KernelWriterAssembly(KernelWriter):
     tP["gpr"]["tReg"] = tReg2
     tP["gpr"]["uReg"] = uReg
     self.vgprPool.checkIn(tmpVgpr)
-    #if kernel["TransposeLDS"]:
-    #  self.vgprPool.checkIn(dividendReg)
+    if kernel["TransposeLDS"]:
+      self.vgprPool.checkIn(dividendReg)
     #kStr += dump(vgpr(tReg2))
     #kStr += dump(vgpr(uReg))
     #kStr += "s_endpgm\n"
@@ -4026,7 +4026,7 @@ class KernelWriterAssembly(KernelWriter):
         numPerpElementsPerWave = kernel["MacroTile%s"%tP["tensorChar"]] //wavefronts
         assert(numPerpElementsPerWave>0)
         #calculate numberofLoads
-        #kStr += inst("s_lshl_b32", sgpr(waveStartSgpr), sgpr("WaveId"), log2(numPerpElementsPerWave),"")
+        kStr += inst("s_lshl_b32", sgpr(waveStartSgpr), sgpr("WaveId"), log2(numPerpElementsPerWave),"")
         #strideF = "Stride%s%s"%(tc,self.indexChars[tP['idx']])
         #kStr += inst("s_mul_i32", sgpr(waveStartSgpr), sgpr(tmpSgpr), sgpr(strideF), "wave_start_offset = MT//4*(waveId)")
 
@@ -4047,8 +4047,8 @@ class KernelWriterAssembly(KernelWriter):
               # emit global offset macro
               # TODO -refactor this and macro def to pass all indices, use the ones we need
               if kernel["BufferLoad"]:
-                #if (kernel["TransposeLDS"]):
-                #  kStr += inst("v_add_u32", vgpr(tP["gpr"]["lwoT"]), sgpr(waveStartSgpr), vgpr(tP["gpr"]["lwoT"]), "wave_start_offset = MT/4*(waveId)")
+                if (kernel["TransposeLDS"]):
+                  kStr += inst("v_add_u32", vgpr(tP["gpr"]["lwoT"]), sgpr(waveStartSgpr), vgpr(tP["gpr"]["lwoT"]), "wave_start_offset = MT/4*(waveId)")
                 kStr += "GLOBAL_OFFSET_%s vgprGlobalReadOffset%s+%u"%(tP["tensorChar"], tP["tensorChar"], graIdx)
               else:
                 kStr += "GLOBAL_OFFSET_%s vgprGlobalReadAddr%s+%u"%(tP["tensorChar"], tP["tensorChar"], graIdx)
@@ -4122,8 +4122,8 @@ class KernelWriterAssembly(KernelWriter):
               else:
                 tileStride   = kernel[tP["lsp"]] * (perp*tVW + sPara*tVS)
                 #FIXME remove wave_offset start for global fetching  TransposeLDS
-                #if kernel["TransposeLDS"]:
-                #  tileStride = tileStride//4
+                if kernel["TransposeLDS"]:
+                  tileStride = tileStride//4
                 unrollStride = kernel[tP["lsc"]] * (para*uVW + sPerp*uVS)
                 strideF = "Stride%s%s"%(tc,self.indexChars[tP['tileIdx']])
                 kStr += inst("s_mul_i32", sgpr(scalarGro), sgpr(strideF), tileStride, \
@@ -4605,7 +4605,6 @@ class KernelWriterAssembly(KernelWriter):
           # calculate number of block chunks  and add ldsPAd
           # LdsPadCnt = (((kernel["MacroTile%s"%tP["tensorChar"]] * kernel["DepthU"])*tP["bpe"])//wavefronts)//kernel["LdsBlockSizePerPad"]
           # LdsPad_val = LdsPadCnt * (kernel["LdsPad%s"%tc]* tP["bpe"])
-          '''
           kStr += inst("s_mov_b32", \
               sgpr(sgprLocalWriteoffSet), \
               hex(((kernel["MacroTile%s"%tP["tensorChar"]] *( kernel["DepthU"] + kernel["LdsPad%s"%tc]))*tP["bpe"])//wavefronts), \
@@ -4617,11 +4616,10 @@ class KernelWriterAssembly(KernelWriter):
               sgpr(sgprLocalWriteoffSet), \
               "lwO%s = WaveOffset%s * waveId  (mulitply by Wave Id to get base address of lwo for each wave) " \
               % (tc,tc))
-          '''
           ## Lws offset calculation for GLVW
           kStr += inst("v_and_b32", \
               vgpr(tmpVgpr), \
-              hex(4*globalParameters["WavefrontWidth"]-1), \
+              hex(globalParameters["WavefrontWidth"]-1), \
               vgpr("Serial"), \
               "")
           kStr += inst("v_lshlrev_b32", \
@@ -4631,14 +4629,13 @@ class KernelWriterAssembly(KernelWriter):
               "lwFO%s = VgprSerialId * glvw * bpe" \
               % (tc))
           ## add Wave start offset to lwo register
-          '''
           kStr += inst("v_add_u32",\
               vgpr(destVgpr), \
               sgpr(sgprLocalWriteoffSet), \
               vgpr(destVgpr), \
               "lwFO%s = (lwFO%s + WaveOffset%s)" \
               % (tc,tc,tc))
-          '''
+
           ## add pad to offset
           ## calculate number lanes for insrting LDSPad
           if not kernel["LdsBlockSizePerPad"] == -1:
@@ -7066,7 +7063,7 @@ class KernelWriterAssembly(KernelWriter):
       ldsPadCount = ((kernel[tP["lsp"]]//numWavefronts) * (kernel["DepthU"]) * tP["bpe"])//kernel["LdsBlockSizePerPad"]
       ldsPadOffset = ldsPadCount*kernel["LdsPad%s"%tc] * perp_masked
       # each wave has its waveOffset
-      lspaOffset = perp_masked * (kernel[tP["lsp"]])
+      lspaOffset = perp_masked * (kernel[tP["lsp"]]//numWavefronts)
       #print("lspaOffset", lspaOffset)
       #print("ldsPadOffset", ldsPadOffset)
       rem = 0
