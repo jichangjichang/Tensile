@@ -9,7 +9,7 @@ GlobalParameters:
   SyncsPerBenchmark: 1
   LibraryPrintDebug: False
   NumElementsToValidate: 16384
-  ValidationMaxToPrint: 2
+  ValidationMaxToPrint: 4
   ValidationPrintValids: False
   ShortNames: False
   MergeFiles: True
@@ -46,7 +46,7 @@ BenchmarkProblems:
       UseBeta: True
       Batched: True
 
-    - # BenchmarkProblemSizeGroup - Standard
+    - # BenchmarkProblemSizeGroup - native interleave
       InitialSolutionParameters:
       BenchmarkCommonParameters:
         - KernelLanguage: ["Assembly"]
@@ -67,30 +67,62 @@ BenchmarkProblems:
         - GlobalSplitU: [1]
         - DepthU: [32]
         - VectorWidth: [2]
-        - GlobalReadVectorWidth: [2]
-        #- GlobalReadCoalesceGroupA: [True,False]
-        #- GlobalReadCoalesceGroupB: [True,False]
-        #- NumLoadsCoalescedA: [1,2]
-        #- NumLoadsCoalescedB: [-1,1,2,4]
-        #- InnerUnroll: [1,4]
+        - GlobalReadVectorWidth: [4]
         - TransposeLDS: [1]
-        #- ExpandPointerSwap: [False, True]
-        - LdsPadA: [2]
-        - LdsPadB: [2]
-        #- DisableKernelPieces: [0,1,2,3,4,5,6,7,9]
-        - SuppressNoLoadLoop: [False]
+        - LdsPadA: [4]
+        - LdsPadB: [4]
+        - SuppressNoLoadLoop: [True]
         - OptNoLoadLoop: [0]
-        #- ScheduleLocalWrite: [0,1]
-        #- ScheduleGlobalRead: [0,1]
-        #- ScheduleIterAlg: [0,1]
+        - ScheduleLocalWrite: [1]
+        - ScheduleGlobalRead: [1]
+        - ScheduleIterAlg: [0]
       BenchmarkForkParameters:
       JoinParameters:
       BenchmarkJoinParameters:
       BenchmarkFinalParameters:
         - ProblemSizes:
-          #- Exact: [ 7680, 8192, 1, 8192, 8224, 8224, 8224, 8224 ]
-          #- Exact: [ 64, 128, 1, 8 ]
-          - Exact: [ 7680, 8192, 1, 8192, 7712, 7712, 8224, 8224 ]
+          - Exact: [ 7680, 8192, 1, 8192, 8224, 8224, 8224, 8224 ]
+ 
+    - # BenchmarkProblemSizeGroup - group
+      InitialSolutionParameters:
+      BenchmarkCommonParameters:
+        - KernelLanguage: ["Assembly"]
+        - EdgeType: ["ShiftPtr"]
+        #- LoopTail: [True]
+        - PrefetchLocalRead: [False]
+        - AssertSummationElementMultiple: [2]
+        - AssertFree0ElementMultiple: [2]
+      ForkParameters:
+        - MatrixInstruction:
+          - [32, 32, 2, 2]
+        - PrefetchGlobalRead: [True]
+        - ThreadTile:
+          - [ 1, 32 ]
+        - WorkGroup:
+          - [ 64, 4, 1 ]
+        - WorkGroupMapping: [8]
+        - StaggerU : [0]
+        - GlobalSplitU: [1]
+        - DepthU: [32]
+        - VectorWidth: [2]
+        - GlobalReadVectorWidth: [4]
+        - InnerUnroll: [16]
+        - TransposeLDS: [1]
+        - LdsPadA: [4]
+        - LdsPadB: [4]
+        - SuppressNoLoadLoop: [False]
+        - OptNoLoadLoop: [0]
+        - ScheduleLocalWrite: [0]
+        - ScheduleGlobalRead: [0]
+        - ScheduleIterAlg: [2]
+      BenchmarkForkParameters:
+      JoinParameters:
+      BenchmarkJoinParameters:
+      BenchmarkFinalParameters:
+        - ProblemSizes:
+          - Exact: [ 7680, 8192, 1, 8192, 8224, 8224, 8224, 8224 ]
+
+
 ########################################
 LibraryLogic:
     ScheduleName: "arcturus"
