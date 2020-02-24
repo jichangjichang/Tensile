@@ -339,6 +339,7 @@ class KernelWriter(metaclass=abc.ABCMeta):
         else:
           break
 
+      iterCode.addInst("v_mov_b32 ","v0 0x0","priority 0 V ALU operation")
       iterCode.addInst("s_setprio ","1","Raise priority while processing macs")
       macIterItem = macIterCode.flatitems()
       # pop the first code which is s_nop 1 for packing
