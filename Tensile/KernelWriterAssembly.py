@@ -3386,8 +3386,6 @@ class KernelWriterAssembly(KernelWriter):
           kStr += inst ("s_mov_b32", sgpr("ZeroPad%s%s_Leading"%(tc, freeDimChar)), leading, "")
           kStr += inst ("s_mov_b32", sgpr("ZeroPad%s%s_Trailing"%(tc, freeDimChar)), trailing, "")
 
-      kStr += inst("s_waitcnt", "lgkmcnt(0)", \
-          "wait for %u bytes of kern args" % self.kernArgOffset )
     else:
       kStr += ".if 0\n"
 
@@ -3460,6 +3458,14 @@ class KernelWriterAssembly(KernelWriter):
 
     return kStr
 
+  ##############################################################################
+  # Wait Resources
+  ##############################################################################
+  def waitResources(self,kernel):
+    kStr = ""
+    kStr += inst("s_waitcnt", "lgkmcnt(0)", \
+        "wait for %u bytes of kern args" % self.kernArgOffset )
+    return kStr
 
   ##############################################################################
   # Perform a magic division (mul by magic number and shift)
