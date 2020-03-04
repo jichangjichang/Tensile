@@ -402,6 +402,96 @@ class KernelWriter(metaclass=abc.ABCMeta):
 
     return iterCode
 
+  def setupNewTileGlLw(self, kernel, tensorParameters, isPap):
+    kl = []
+
+    if self.enable["PreLoop"]:
+      ####################################
+      # Global Read Addresses
+      ####################################
+
+      # tile assignments
+      kl.append(self.comment("global read addresses: tile offset assignment %s" % tensorParameters["tensorChar"]))
+      kl.append(self.graTileAssignment(kernel, tensorParameters))
+
+      # unroll assignments
+      kl.append(self.comment("global read addresses: unroll assignment %s" % tensorParameters["tensorChar"]))
+      kl.append(self.graUnrollAssignment(kernel, tensorParameters))
+
+      # tile offsets
+      kl.append(self.comment("global read addresses: tile offsets %s" % tensorParameters["tensorChar"]))
+      kl.append(self.graTileOffsets(kernel, tensorParameters))
+
+      # unroll offsets
+      kl.append(self.comment("global read addresses: unroll offsets %s" % tensorParameters["tensorChar"]))
+      kl.append(self.graUnrollOffsets(kernel, tensorParameters))
+
+      # tile edges
+      if kernel["EdgeType"] == "ShiftPtr":
+        # Shift here has two purposes:
+        #  1. Ensure the loads are in-bounds to prevent fault.
+        #     BufferLoad uses the buffer limit hardware and does not require bounds checking for this case
+        #  2. Shift-left a wide vector load to ensure it is completely in-bounds.
+        #     If this occurs we need to 'unshift' the C values (see shiftVectorComponents)
+        #     BufferLoad does support this shifting, but if GuaranteeNoPartial=1 then
+        #     it can be guaranteed that no shifting is required.
+        if not (kernel["BufferLoad"] and kernel["GuaranteeNoPartial%s" % tensorParameters["tensorChar"]]):
+          kl.append(self.comment("global read addresses: shift %s" % tensorParameters["tensorChar"]))
+          kl.append(self.graShift(kernel, tensorParameters))
+      elif kernel["EdgeType"] == "Branch":
+        kl.append(self.comment("global read addresses: branch %s" % tensorParameters["tensorChar"]))
+        kl.append(self.graBranch(kernel, tensorParameters))
+
+      # final offsets
+      kl.append(self.comment("global read addresses: final offsets %s" % tensorParameters["tensorChar"]))
+      kl.append(self.graFinalOffsets(kernel, tensorParameters))
+
+      # addresses
+      kl.append(self.comment("global read addresses: addresses %s" % tensorParameters["tensorChar"]))
+      kl.append(self.graAddresses(kernel, tensorParameters))
+
+      # increments
+      kl.append(self.comment("global read addresses: increments %s" % tensorParameters["tensorChar"]))
+      for i in reversed(range(kernel["ProblemType"]["NumIndicesSummation"])):
+        kl.append(self.graIncrements(kernel, i, tensorParameters))
+
+      ####################################
+      # Local Write Addresses
+      ####################################
+      kl.append(self.comment3("Local Write Addresses"))
+
+      # tile assignments
+      kl.append(self.lwaTileAssignment(kernel, tensorParameters))
+
+      # unroll assignments
+      kl.append(self.lwaUnrollAssignment(kernel, tensorParameters))
+
+      # first offsets
+      kl.append(self.comment("local write addresses: first offset %s" % tensorParameters["tensorChar"]))
+      kl.append(self.lwaFirstOffset(kernel, tensorParameters))
+
+      # final offsets
+      kl.append(self.lwaFinalOffsets(kernel, tensorParameters))
+
+      # declare addresses
+      kl.append(self.lwaDeclareAddresses(kernel, tensorParameters))
+
+      # init pointers
+      kl.append(self.localWriteInitPointers(kernel, tensorParameters))
+
+    if self.staggerU:
+      kl.append(self.calculateStagger(kernel, tensorParameters))
+
+    if kernel["PrefetchGlobalRead"]:
+      pfi = 1
+      kl.append(self.comment("prefetch: global -> local %s" % tensorParameters["tensorChar"]))
+      #kl.append(self.openPreloopPrefetch(kernel,tensorParameters))
+      if self.enable["GlobalRead"]:
+        kl.append(str(self.globalReadDo(kernel, 0, tensorParameters)))
+      #kl.append(self.closePreloopPrefetch(kernel,tensorParameters))
+
+    return kl
+
   ##############################################################################
   # returns list of modules or text
   # papIter indicates this is the setup for the "prefetchAcrossPersistent"
@@ -410,27 +500,27 @@ class KernelWriter(metaclass=abc.ABCMeta):
   def setupNewTile(self, kernel, tensorParametersA, tensorParametersB, isPap):
     kl = []
 
-    if self.enable["PreLoop"]:
-      ####################################
-      # Global Read Addresses
-      ####################################
-      kl.append(self.comment3("Begin setupNewTile"))
+    kl.append(self.comment3("Begin setupNewTile"))
 
+    # open non-unrolled summation loops
+    for i in range(kernel["ProblemType"]["NumIndicesSummation"]-1):
+      kl.append(self.comment("summation loop %u"%i))
+      kl.append(self.calculateLoopNumIter(kernel, i, isPap))
+      if self.actualSummationLoops>1:
+        kl.append(self.openLoop(kernel, i))
+    kl.append(self.calculateLoopNumIter(kernel, self.unrollIdx, isPap))
+
+    # declare loop num iter
+    kl.append(self.comment1("declare loop num iterations"))
+    kl.append(self.declareLoopNumIter(kernel))
+
+    if self.staggerU:
+      kl.append(self.declareStaggerParms(kernel))
+
+    if self.enable["PreLoop"]:
       # work-group assignments
       kl.append(self.comment("global read addresses: work-group"))
       kl.append(self.graWorkGroup(kernel, isPap))
-
-      # tile assignments
-      kl.append(self.comment("global read addresses: tile offset assignment a"))
-      kl.append(self.graTileAssignment(kernel, tensorParametersA))
-      kl.append(self.comment("global read addresses: tile offset assignment b"))
-      kl.append(self.graTileAssignment(kernel, tensorParametersB))
-
-      # unroll assignments
-      kl.append(self.comment("global read addresses: unroll assignment a"))
-      kl.append(self.graUnrollAssignment(kernel, tensorParametersA))
-      kl.append(self.comment("global read addresses: unroll assignment b"))
-      kl.append(self.graUnrollAssignment(kernel, tensorParametersB))
 
       # other free indices
       if kernel["ProblemType"]["NumIndicesC"] > 2:
@@ -442,98 +532,12 @@ class KernelWriter(metaclass=abc.ABCMeta):
         kl.append(self.comment("global read addresses: other summation assignments"))
         kl.append(self.graOtherSummationAssignments(kernel))
 
-      # tile offsets
-      kl.append(self.comment("global read addresses: tile offsets a"))
-      kl.append(self.graTileOffsets(kernel, tensorParametersA))
-      kl.append(self.comment("global read addresses: tile offsets b"))
-      kl.append(self.graTileOffsets(kernel, tensorParametersB))
-
-      # unroll offsets
-      kl.append(self.comment("global read addresses: unroll offsets a"))
-      kl.append(self.graUnrollOffsets(kernel, tensorParametersA))
-      kl.append(self.comment("global read addresses: unroll offsets b"))
-      kl.append(self.graUnrollOffsets(kernel, tensorParametersB))
-
-      # tile edges
-      if kernel["EdgeType"] == "ShiftPtr":
-        # Shift here has two purposes:
-        #  1. Ensure the loads are in-bounds to prevent fault.
-        #     BufferLoad uses the buffer limit hardware and does not require bounds checking for this case
-        #  2. Shift-left a wide vector load to ensure it is completely in-bounds.
-        #     If this occurs we need to 'unshift' the C values (see shiftVectorComponents)
-        #     BufferLoad does support this shifting, but if GuaranteeNoPartial=1 then
-        #     it can be guaranteed that no shifting is required.
-        if not (kernel["BufferLoad"] and kernel["GuaranteeNoPartialA"]):
-          kl.append(self.comment("global read addresses: shift a"))
-          kl.append(self.graShift(kernel, tensorParametersA))
-        if not (kernel["BufferLoad"] and  kernel["GuaranteeNoPartialB"]):
-          kl.append(self.comment("global read addresses: shift b"))
-          kl.append(self.graShift(kernel, tensorParametersB))
-      elif kernel["EdgeType"] == "Branch":
-        kl.append(self.comment("global read addresses: branch a"))
-        kl.append(self.graBranch(kernel, tensorParametersA))
-        kl.append(self.comment("global read addresses: branch b"))
-        kl.append(self.graBranch(kernel, tensorParametersB))
-
-      # final offsets
-      kl.append(self.comment("global read addresses: final offsets a"))
-      kl.append(self.graFinalOffsets(kernel, tensorParametersA))
-      kl.append(self.comment("global read addresses: final offsets b"))
-      kl.append(self.graFinalOffsets(kernel, tensorParametersB))
-
-      # addresses
-      kl.append(self.comment("global read addresses: addresses a"))
-      kl.append(self.graAddresses(kernel, tensorParametersA))
-      kl.append(self.comment("global read addresses: addresses b"))
-      kl.append(self.graAddresses(kernel, tensorParametersB))
-
-      # increments
-      kl.append(self.comment("global read addresses: increments a"))
-      for i in reversed(range(kernel["ProblemType"]["NumIndicesSummation"])):
-        kl.append(self.graIncrements(kernel, i, tensorParametersA))
-      kl.append(self.comment("global read addresses: increments b"))
-      for i in reversed(range(kernel["ProblemType"]["NumIndicesSummation"])):
-        kl.append(self.graIncrements(kernel, i, tensorParametersB))
-
-      ####################################
-      # Local Write Addresses
-      ####################################
-      kl.append(self.comment3("Local Write Addresses"))
-
-      # tile assignments
-      kl.append(self.lwaTileAssignment(kernel, tensorParametersA))
-      kl.append(self.lwaTileAssignment(kernel, tensorParametersB))
-
-      # unroll assignments
-      kl.append(self.lwaUnrollAssignment(kernel, tensorParametersA))
-      kl.append(self.lwaUnrollAssignment(kernel, tensorParametersB))
-
-      # first offsets
-      kl.append(self.comment("local write addresses: first offset a"))
-      kl.append(self.lwaFirstOffset(kernel, tensorParametersA))
-      kl.append(self.comment("local write addresses: first offset b"))
-      kl.append(self.lwaFirstOffset(kernel, tensorParametersB))
-
-      # final offsets
-      kl.append(self.lwaFinalOffsets(kernel, tensorParametersA))
-      kl.append(self.lwaFinalOffsets(kernel, tensorParametersB))
-
-      # declare addresses
-      kl.append(self.lwaDeclareAddresses(kernel, tensorParametersA))
-      kl.append(self.lwaDeclareAddresses(kernel, tensorParametersB))
-
-      # init pointers
-      kl.append(self.localWriteInitPointers(kernel, tensorParametersA))
-      kl.append(self.localWriteInitPointers(kernel, tensorParametersB))
+    kl += self.setupNewTileGlLw(kernel, tensorParametersA, isPap)
+    kl += self.setupNewTileGlLw(kernel, tensorParametersB, isPap)
 
     ###########################################################################
     # summations loops: open
     ###########################################################################
-
-    # declare loop num iter
-    kl.append(self.comment1("declare loop num iterations"))
-    kl.append(self.declareLoopNumIter(kernel))
-
     # perform initC in the shadow of the prefetch
     # Prefetch occurs at start of unroll loop
     # If we have multiple summation indices (otherSummationLoops>0),
@@ -542,19 +546,6 @@ class KernelWriter(metaclass=abc.ABCMeta):
 
     if self.doShadowInit != 2:
       kl.append(self.initC(kernel))
-
-    # open non-unrolled summation loops
-    for i in range(kernel["ProblemType"]["NumIndicesSummation"]-1):
-      kl.append(self.comment("summation loop %u"%i))
-      kl.append(self.calculateLoopNumIter(kernel, i, isPap))
-      if self.actualSummationLoops>1:
-        kl.append(self.openLoop(kernel, i))
-    kl.append(self.calculateLoopNumIter(kernel, self.unrollIdx, isPap))
-
-    if self.staggerU:
-      kl.append(self.declareStaggerParms(kernel))
-      kl.append(self.calculateStagger(kernel, tensorParametersA))
-      kl.append(self.calculateStagger(kernel, tensorParametersB))
 
     # isPap don't init the read pointers - we want to continue to use the double-buffer
     # LRO and LWA as assigned
@@ -570,11 +561,7 @@ class KernelWriter(metaclass=abc.ABCMeta):
     ####################################
     if kernel["PrefetchGlobalRead"]:
       pfi = 1
-      kl.append(self.comment("prefetch: global -> local"))
       kl.append(self.openSumAtLeastUnroll(kernel, prefetch=True, isPap=isPap, isOptNLL=False))
-      if self.enable["GlobalRead"]:
-        kl.append(str(self.globalReadDo(kernel, 0, tensorParametersA)))
-        kl.append(str(self.globalReadDo(kernel, 0, tensorParametersB)))
       if self.enable["GlobalReadInc"]:
         kl.append(self.globalReadIncrementAB(kernel, self.unrollIdx, pfi))
 
