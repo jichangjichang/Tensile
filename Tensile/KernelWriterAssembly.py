@@ -1203,7 +1203,7 @@ class KernelWriterAssembly(KernelWriter):
     # localRead A
     localReadWidth = (kernel["VectorWidth"] * tPA["bpe"])//self.bpr
     #bf16mfma todo
-    if kernel["MatrixInstruction"]:
+    if kernel["MatrixInstruction"] and not kernel["TransposeLDS"]:
         localReadWidth = tPA["bpe"]/self.bpr # since only NT form in LDS is supported, the
                                              # only sensible way of loading along k-dimension 
                                              # is one element at a time
@@ -1228,7 +1228,7 @@ class KernelWriterAssembly(KernelWriter):
     # localRead B
     localReadWidth = (kernel["VectorWidth"] * tPB["bpe"])//self.bpr
     #bf16mfma todo
-    if kernel["MatrixInstruction"]:
+    if kernel["MatrixInstruction"] and not kernel["TransposeLDS"]:
         localReadWidth = tPB["bpe"]/self.bpr # since only NT form in LDS is supported, the
                                              # only sensible way of loading along k-dimension 
                                              # is one element at a time
@@ -4113,7 +4113,9 @@ class KernelWriterAssembly(KernelWriter):
           else:
             PerpName = tP["lsc"]
         numPerpElementsPerLoad = kernel[PerpName]
-        numPerpElementsPerWave = tP["nrp"]*numPerpElementsPerLoad
+        wavefronts = kernel["NumThreads"] // globalParameters["WavefrontWidth"]
+        #numPerpElementsPerWave = tP["nrp"]*numPerpElementsPerLoad // wavefronts
+        numPerpElementsPerWave = kernel["MacroTile%s"%tP["tensorChar"]] //wavefronts
         assert(numPerpElementsPerWave>0)
         #calculate numberofLoads
         kStr += inst("s_lshl_b32", sgpr(waveStartSgpr), sgpr("WaveId"), log2(numPerpElementsPerWave),"")
@@ -4738,11 +4740,11 @@ class KernelWriterAssembly(KernelWriter):
         wavefronts = kernel["NumThreads"] // globalParameters["WavefrontWidth"]
         # use  parameter LdsBlockSizePerPAd parameter for adding pad size for lds  fetch efficiency
         # calculate number of block chunks  and add ldsPAd
-        LdsPadCnt = (((kernel["MacroTile%s"%tP["tensorChar"]] * kernel["DepthU"])*tP["bpe"])//wavefronts)//kernel["LdsBlockSizePerPad"]
-        LdsPad_val = LdsPadCnt * (kernel["LdsPad%s"%tc]* tP["bpe"])
+        #LdsPadCnt = (((kernel["MacroTile%s"%tP["tensorChar"]] * kernel["DepthU"])*tP["bpe"])//wavefronts)//kernel["LdsBlockSizePerPad"]
+        #LdsPad_val = LdsPadCnt * (kernel["LdsPad%s"%tc]* tP["bpe"])
         kStr += inst("s_mov_b32", \
             sgpr(sgprLocalWriteoffSet), \
-            hex((((kernel["MacroTile%s"%tP["tensorChar"]] * kernel["DepthU"])*tP["bpe"])//wavefronts) + LdsPad_val), \
+            hex(((kernel["MacroTile%s"%tP["tensorChar"]] *( kernel["DepthU"] + kernel["LdsPad%s"%tc]))*tP["bpe"])//wavefronts), \
              "WaveOffset%s = (lw%s%s + lw%s%s*(MT%s*DepthU)*bpe)//wavefronts)+PAD))*bpe" \
              %(tc, tc, tc, tc, self.unrollChar, tP["tileChar"]) )
         kStr += inst("s_mul_i32", \
@@ -4793,6 +4795,27 @@ class KernelWriterAssembly(KernelWriter):
               vgpr(destVgpr), \
              "lwFO%s = (lwFO%s + LDSPAD)" \
              % (tc,tc))
+        else:
+          divisorVal = log2(kernel["DepthU"]//(tP["glvw"]))
+          kStr += inst("v_lshrrev_b32",\
+              vgpr(tmpVgpr1), \
+              divisorVal, \
+              vgpr(tmpVgpr), \
+              "")
+          #add PadBytes to write Offset
+          kStr += inst("v_mul_lo_u32", \
+              vgpr(tmpVgpr1),
+              (kernel["LdsPad%s"%tc]*tP["bpe"]), \
+              vgpr(tmpVgpr1), \
+              "")
+          #calcualte finale LwFo by adding DepthU dimenstion with LDSPad offset
+          kStr += inst("v_add_u32", \
+              vgpr(destVgpr), \
+              vgpr(tmpVgpr1), \
+              vgpr(destVgpr), \
+             "lwFO%s = (lwFO%s + LDSPAD)" \
+             % (tc,tc))
+
         self.vgprPool.checkIn(tmpVgpr)
         self.vgprPool.checkIn(tmpVgpr1)
       else:
@@ -5141,17 +5164,18 @@ class KernelWriterAssembly(KernelWriter):
             else:
               PerpName = tP["lsc"]
           numPerpElementsPerLoad = kernel[PerpName]
-          numPerpElementsPerWave = tP["nrp"]*numPerpElementsPerLoad
+          wavefronts = kernel["NumThreads"] // globalParameters["WavefrontWidth"]
+          #numPerpElementsPerWave = tP["nrp"]*numPerpElementsPerLoad // wavefronts
+          numPerpElementsPerWave = kernel["MacroTile%s"%tc] // wavefronts
           assert(numPerpElementsPerWave>0)
           #calculate numberofLoads
-          wavefronts = kernel["NumThreads"] // globalParameters["WavefrontWidth"]
           #LdsPadCnt = (((kernel["MacroTile%s"%tc] * kernel["DepthU"])*tP["bpe"])//wavefronts)//kernel["LdsBlockSizePerPad"]
-          LdsPadCnt = (numPerpElementsPerWave * kernel["DepthU"] * tP["bpe"])//kernel["LdsBlockSizePerPad"]
-          LdsPad_val = LdsPadCnt * (kernel["LdsPad%s"%tc]* tP["bpe"])
+          #LdsPadCnt = (numPerpElementsPerWave * kernel["DepthU"] * tP["bpe"])//kernel["LdsBlockSizePerPad"]
+          #LdsPad_val = LdsPadCnt * (kernel["LdsPad%s"%tc]* tP["bpe"])
           kStr += inst("s_mul_i32", \
               sgpr(tmpSgpr), \
               sgpr("WaveId"), \
-              hex((((numPerpElementsPerWave * kernel["DepthU"])*tP["bpe"])) + LdsPad_val), \
+              hex(((numPerpElementsPerWave * (kernel["DepthU"] + kernel["LdsPad%s"%tc]) )*tP["bpe"]) ), \
               "")
           kStr += inst("v_add_u32", \
               vgpr("LocalReadAddr%s"%tc), \
@@ -6000,7 +6024,8 @@ class KernelWriterAssembly(KernelWriter):
   def mfmaIter(self, kernel, m, innerUnroll):
     numVgprsPerMfmaInput = 2 if kernel["ProblemType"]["DataType"].isHalf() else 1
     imod = Code.Module("mfmaCode")
-    if kernel["ProblemType"]["DataType"].isBFloat16() or kernel["ProblemType"]["DataType"].isHalf():
+    if not kernel["TransposeLDS"] and \
+      (kernel["ProblemType"]["DataType"].isBFloat16() or kernel["ProblemType"]["DataType"].isHalf()):
       # a must; for VALU packing writes to be consumed by matrix instruction
       # this can be removed once the vregs are directly loaded via ds_read 
       imod.addInst("s_nop ","1","VALU packing writes to be consumed by matrix instruction")  
@@ -7265,7 +7290,7 @@ class KernelWriterAssembly(KernelWriter):
       else:
  	#TODO re-verify lscaOffset=0
         lscaOffset = 0
-        lspaOffset = lspaOffset*kernel["DepthU"] + ldsPadOffset
+        lspaOffset = lspaOffset*(kernel["DepthU"] + kernel["LdsPad%s"%tc] )
     # print("1lspaOffset", lspaOffset)
     # print("1lscaOffset", lscaOffset)
     #if tP["tlu"] == tP["grcv"]:
@@ -7519,7 +7544,10 @@ class KernelWriterAssembly(KernelWriter):
     else:
       if tP["localReadInstruction"].numOffsets == 1:
         if kernel["MatrixInstruction"]:
-          tP["localReadOffset"] += kernel["LocalSplitU"]*(kernel["MacroTile%u"%tP["tensorIdx"]] + kernel["LdsPad%s"%tc])*kernel["MatrixInstK"]
+          if not kernel["TransposeLDS"]:
+            tP["localReadOffset"] += kernel["LocalSplitU"]*(kernel["MacroTile%u"%tP["tensorIdx"]] + kernel["LdsPad%s"%tc])*kernel["MatrixInstK"]
+          else:
+            tP["localReadOffset"] += kernel["LocalSplitU"]*kernel["MatrixInstK"]
         else:
           tP["localReadOffset"] += kernel["LocalSplitU"]*(kernel["MacroTile%u"%tP["tensorIdx"]] + kernel["LdsPad%s"%tc])
         kStr += self.comment1("N/A, lro->%d"%tP["localReadOffset"])
@@ -7587,26 +7615,8 @@ class KernelWriterAssembly(KernelWriter):
             else:
               paramList.append(tmpVgpr)
             paramList.append(vgpr("LocalReadAddr%s"%tc))
-
-            if not kernel["TransposeLDS"]:
-              offset = ((rIdx * kernel["MatrixInstN"] + kIdx*(kernel["MacroTile%s"%tc]+kernel["LdsPad%s"%tc]) + tP["localReadOffset"]) \
+            offset = ((rIdx * kernel["MatrixInstN"] + kIdx*(kernel["MacroTile%s"%tc]+kernel["LdsPad%s"%tc]) + tP["localReadOffset"]) \
                  *tP["bpe"]+tP["localReadSwapByteOffset"])//offsetMultiplier
-            else:
-              #transposeLDS case
-              # offset = K iteration offset + 'block-offset' for each row / column block + ldsPadOffset
-              # per-load-write = DepthU*LSPA/4*BPE + LdsPadOffset
-              # block-offset = (per-load-write) * InstructionTileOuput
-              # ldsPadOffset = (per-load-write)/LDsBoundaryPerPAd)*LdsPad*BPE
-              #perWavePerP = (kernel["LSP%s"%tc] // ((tP["glvw"] * globalParameters["WavefrontWidth"]) // kernel["DepthU"]))
-              #perLdsWrSize =  perWavePerP * kernel["DepthU"] * tP["bpe"]
-              assert(numOffsets<2)
-              if tc == "A":
-                InstructionTileOuput = kernel["MIWG0"]
-              else:
-                InstructionTileOuput = (globalParameters["WavefrontWidth"] // kernel["MIWG0"]) * (kernel["MatrixInstN"] // kernel["InstSplit"])
-              blockOffset = (InstructionTileOuput) * kernel["DepthU"] * tP["bpe"]
-              ldsPadOffset = (blockOffset//kernel["LdsBlockSizePerPad"])*kernel["LdsPad%s"%tc]*tP["bpe"]
-              offset = (blockOffset + ldsPadOffset)*rIdx + uIdx*kernel["MatrixInstK"]*tP["bpe"] + tP["localReadSwapByteOffset"]
             paramList.append(int(offset))
             oIdx = 0
             # print("Debug: Matrix{}, rIdx offset {}, vIdx offset {}, local read offset {}, bpe {}, net offset {}".format( \
@@ -7675,9 +7685,8 @@ class KernelWriterAssembly(KernelWriter):
                   InstructionTileOuput = kernel["MIWG0"]
                 else:
                   InstructionTileOuput = (globalParameters["WavefrontWidth"] // kernel["MIWG0"] ) * (kernel["MatrixInstN"] // kernel["InstSplit"])
-                blockOffset = (InstructionTileOuput) * kernel["DepthU"] * tP["bpe"]
-                ldsPadOffset = (blockOffset//kernel["LdsBlockSizePerPad"])*kernel["LdsPad%s"%tc]*tP["bpe"]
-                offset = (blockOffset + ldsPadOffset)*rIdx + uIdx*kernel["MatrixInstK"]*tP["bpe"] + tP["localReadSwapByteOffset"]
+                blockOffset = (InstructionTileOuput) * (kernel["DepthU"] + kernel["LdsPad%s"%tc])* tP["bpe"]
+                offset = ((blockOffset )*rIdx  + tP["localReadOffset"])*tP["bpe"] + tP["localReadSwapByteOffset"]
                 paramList.append(offset)
             else:
               paramList.append(((rIdx*blockWidth + kernel["SubGroup%u"%tP["tensorIdx"]]*(vIdx*numOffsets+oIdx)*kernel["VectorWidth"] \
@@ -7723,7 +7732,8 @@ class KernelWriterAssembly(KernelWriter):
       localReadCode.append(self.bomb(self.localReadDoCnt + 10, tmpVgpr+1))
       self.vgprPool.checkIn(tmpVgpr)
     
-    if kernel["MatrixInstruction"] and (kernel["ProblemType"]["DataType"].isBFloat16() or kernel["ProblemType"]["DataType"].isHalf()):
+    if kernel["MatrixInstruction"] and not kernel["TransposeLDS"] and \
+        (kernel["ProblemType"]["DataType"].isBFloat16() or kernel["ProblemType"]["DataType"].isHalf()):
       return imod, pack
     else:
       return imod

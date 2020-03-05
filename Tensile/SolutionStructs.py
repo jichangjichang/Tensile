@@ -2522,9 +2522,9 @@ class Solution:
       if state["TransposeLDS"] == 1:
         if state["ProblemType"]["TLUA"] or state["ProblemType"]["TLUB"]:
           reject(state, "TransposeLds requires TLU=0")
-    if state["TransposeLDS"] == 1:
-      if state["LdsBlockSizePerPad"] == -1:
-        state["LdsBlockSizePerPad"] = 256
+    #if state["TransposeLDS"] == 1:
+    #  if state["LdsBlockSizePerPad"] == -1:
+    #    state["LdsBlockSizePerPad"] = 256
     ldsAlign = int(64 / state["ProblemType"]["DataType"].numRegisters())
     if not state["LdsBlockSizePerPad"] == -1:
         #calculate number of boundaries from MT*depthU
@@ -2535,10 +2535,16 @@ class Solution:
       ldsNumElementsB = state["DepthU"]*state["MacroTile1"]+LdsPadCntB*state["LdsPadB"]
       ldsNumElementsAlignedB = roundUpToNearestMultiple(ldsNumElementsB,ldsAlign)
     else:
-      ldsNumElementsA = state["DepthU"]*(state["MacroTile0"]+state["LdsPadA"])
-      ldsNumElementsAlignedA = roundUpToNearestMultiple(ldsNumElementsA,ldsAlign)
-      ldsNumElementsB = state["DepthU"]*(state["MacroTile1"]+state["LdsPadB"])
-      ldsNumElementsAlignedB = roundUpToNearestMultiple(ldsNumElementsB,ldsAlign)
+      if state["TransposeLDS"] == 1:
+        ldsNumElementsA = state["MacroTile0"] *(state["DepthU"] + state["LdsPadA"])
+        ldsNumElementsAlignedA = roundUpToNearestMultiple(ldsNumElementsA,ldsAlign)
+        ldsNumElementsB = state["MacroTile1"] *(state["DepthU"] + state["LdsPadB"])
+        ldsNumElementsAlignedB = roundUpToNearestMultiple(ldsNumElementsB,ldsAlign)
+      else:
+        ldsNumElementsA = state["DepthU"]*(state["MacroTile0"]+state["LdsPadA"])
+        ldsNumElementsAlignedA = roundUpToNearestMultiple(ldsNumElementsA,ldsAlign)
+        ldsNumElementsB = state["DepthU"]*(state["MacroTile1"]+state["LdsPadB"])
+        ldsNumElementsAlignedB = roundUpToNearestMultiple(ldsNumElementsB,ldsAlign)
     # todo, can the alignment be a power of 2?
     state["LdsOffsetA"] = 0
     if state["PrefetchGlobalRead"]:
