@@ -7685,7 +7685,7 @@ class KernelWriterAssembly(KernelWriter):
                   InstructionTileOuput = kernel["MIWG0"]
                 else:
                   InstructionTileOuput = (globalParameters["WavefrontWidth"] // kernel["MIWG0"] ) * (kernel["MatrixInstN"] // kernel["InstSplit"])
-                blockOffset = (InstructionTileOuput) * (kernel["DepthU"] + kernel["LdsPad%s"%tc])* tP["bpe"]
+                blockOffset = (InstructionTileOuput) * (kernel["DepthU"] + kernel["LdsPad%s"%tc])
                 offset = ((blockOffset )*rIdx  + tP["localReadOffset"])*tP["bpe"] + tP["localReadSwapByteOffset"]
                 paramList.append(offset)
             else:
