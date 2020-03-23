@@ -1,0 +1,71 @@
+BenchmarkProblems:
+- - ConvolutionConfig:
+    - {TensorAFormat: NCHW}
+    - {TensorBFormat: KCYX}
+    - {Filter: 2x1}
+    - {Dilation: 1x2}
+    DataType: s
+    OperationType: ConvolutionForward
+  - BenchmarkCommonParameters:
+    - EdgeType: [ShiftPtr]
+    BenchmarkFinalParameters:
+    - ProblemSizes:
+      - Conv: {c: 32, h: 14, k: 16, n: 8, w: 14}
+      - Conv: {c: 64, h: 7, k: 64, n: 1, w: 7}
+      - Conv: {c: 64, h: 14, k: 64, n: 1, w: 7}
+      - Conv: {c: 64, h: 56, k: 64, n: 1, w: 7}
+      - Conv: {c: 64, h: 7, k: 64, n: 1, w: 14}
+      - Conv: {c: 64, h: 14, k: 64, n: 1, w: 14}
+      - Conv: {c: 64, h: 56, k: 64, n: 1, w: 14}
+      - Conv: {c: 64, h: 7, k: 64, n: 1, w: 56}
+      - Conv: {c: 64, h: 14, k: 64, n: 1, w: 56}
+      - Conv: {c: 64, h: 56, k: 64, n: 1, w: 56}
+      - Conv: {c: 64, h: 7, k: 64, n: 2, w: 7}
+      - Conv: {c: 64, h: 14, k: 64, n: 2, w: 7}
+      - Conv: {c: 64, h: 56, k: 64, n: 2, w: 7}
+      - Conv: {c: 64, h: 7, k: 64, n: 2, w: 14}
+      - Conv: {c: 64, h: 14, k: 64, n: 2, w: 14}
+      - Conv: {c: 64, h: 56, k: 64, n: 2, w: 14}
+      - Conv: {c: 64, h: 7, k: 64, n: 2, w: 56}
+      - Conv: {c: 64, h: 14, k: 64, n: 2, w: 56}
+      - Conv: {c: 64, h: 56, k: 64, n: 2, w: 56}
+      - Conv: {c: 64, h: 7, k: 64, n: 8, w: 7}
+      - Conv: {c: 64, h: 14, k: 64, n: 8, w: 7}
+      - Conv: {c: 64, h: 56, k: 64, n: 8, w: 7}
+      - Conv: {c: 64, h: 7, k: 64, n: 8, w: 14}
+      - Conv: {c: 64, h: 14, k: 64, n: 8, w: 14}
+      - Conv: {c: 64, h: 56, k: 64, n: 8, w: 14}
+      - Conv: {c: 64, h: 7, k: 64, n: 8, w: 56}
+      - Conv: {c: 64, h: 14, k: 64, n: 8, w: 56}
+      - Conv: {c: 64, h: 56, k: 64, n: 8, w: 56}
+    BenchmarkForkParameters: null
+    BenchmarkJoinParameters: null
+    ForkParameters:
+    - PrefetchGlobalRead: [1]
+    - KernelLanguage: [Assembly]
+    - MatrixInstruction:
+      - [32, 32, 1, 2]
+    - ThreadTile:
+      - [1, 32]
+    - WorkGroup:
+      - [16, 16, 1]
+      - [64, 4, 1]
+    - DepthU: [8]
+    - GlobalReadVectorWidth: [-1, 2]
+    - PackSummationDims: [0, 1]
+    - VectorWidth: [1, 4]
+    - FractionalLoad: [0, 1]
+    - PackBatchDims: [0, 1]
+    - AssertStrideAEqual:
+      - {1: 1}
+    - AssertStrideBEqual:
+      - {3: 0}
+    - AssertSizeEqual:
+      - {3: 2}
+    InitialSolutionParameters: null
+    JoinParameters: null
+GlobalParameters: {CMakeBuildType: Release, DataInitTypeAlpha: 1, DataInitTypeC: 4,
+  DataInitTypeD: 4, EnqueuesPerSync: 1, ForceRedoBenchmarkProblems: true, ForceRedoLibraryClient: true,
+  ForceRedoLibraryLogic: true, KernelTime: true, LibraryPrintDebug: false, MergeFiles: true,
+  MinimumRequiredVersion: 4.2.0, NewClient: 2, NumElementsToValidate: 1000, ShortNames: false,
+  SolutionSelectionAlg: 1, SyncsPerBenchmark: 1, ValidationMaxToPrint: 4, ValidationPrintValids: false}

@@ -1,0 +1,84 @@
+BenchmarkProblems:
+- - ConvolutionConfig:
+    - {TensorAFormat: NCHW}
+    - {TensorBFormat: CKYX}
+    - {Filter: 1x1}
+    DataType: s
+    OperationType: ConvolutionForward
+  - BenchmarkCommonParameters:
+    - EdgeType: [ShiftPtr]
+    BenchmarkFinalParameters:
+    - ProblemSizes:
+      - Conv: {c: 128, count: 2, h: 17, k: 128, n: 32, w: 17}
+      - Conv: {c: 128, count: 2, h: 17, k: 128, n: 32, w: 17}
+      - Conv: {c: 128, count: 1, h: 17, k: 192, n: 32, w: 17}
+      - Conv: {c: 128, count: 1, h: 17, k: 192, n: 32, w: 17}
+      - Conv: {c: 1280, count: 1, h: 8, k: 192, n: 32, w: 8}
+      - Conv: {c: 1280, count: 1, h: 8, k: 320, n: 32, w: 8}
+      - Conv: {c: 1280, count: 1, h: 8, k: 384, n: 32, w: 8}
+      - Conv: {c: 1280, count: 1, h: 8, k: 448, n: 32, w: 8}
+      - Conv: {c: 160, count: 4, h: 17, k: 160, n: 32, w: 17}
+      - Conv: {c: 160, count: 4, h: 17, k: 160, n: 32, w: 17}
+      - Conv: {c: 160, count: 2, h: 17, k: 192, n: 32, w: 17}
+      - Conv: {c: 160, count: 2, h: 17, k: 192, n: 32, w: 17}
+      - Conv: {c: 192, count: 4, h: 17, k: 192, n: 32, w: 17}
+      - Conv: {c: 192, count: 1, h: 17, k: 192, n: 32, w: 17}
+      - Conv: {c: 192, count: 4, h: 17, k: 192, n: 32, w: 17}
+      - Conv: {c: 192, count: 1, h: 17, k: 320, n: 32, w: 17}
+      - Conv: {c: 192, count: 1, h: 35, k: 32, n: 32, w: 35}
+      - Conv: {c: 192, count: 1, h: 35, k: 48, n: 32, w: 35}
+      - Conv: {c: 192, count: 2, h: 35, k: 64, n: 32, w: 35}
+      - Conv: {c: 2048, count: 1, h: 8, k: 192, n: 32, w: 8}
+      - Conv: {c: 2048, count: 1, h: 8, k: 320, n: 32, w: 8}
+      - Conv: {c: 2048, count: 1, h: 8, k: 384, n: 32, w: 8}
+      - Conv: {c: 2048, count: 1, h: 8, k: 448, n: 32, w: 8}
+      - Conv: {c: 256, count: 1, h: 35, k: 48, n: 32, w: 35}
+      - Conv: {c: 256, count: 3, h: 35, k: 64, n: 32, w: 35}
+      - Conv: {c: 288, count: 1, h: 35, k: 384, n: 32, w: 35}
+      - Conv: {c: 288, count: 1, h: 35, k: 48, n: 32, w: 35}
+      - Conv: {c: 288, count: 4, h: 35, k: 64, n: 32, w: 35}
+      - Conv: {c: 3, count: 1, h: 299, k: 32, n: 32, w: 299}
+      - Conv: {c: 32, count: 1, h: 147, k: 64, n: 32, w: 147}
+      - Conv: {c: 32, count: 1, h: 149, k: 32, n: 32, w: 149}
+      - Conv: {c: 384, count: 4, h: 8, k: 384, n: 32, w: 8}
+      - Conv: {c: 384, count: 4, h: 8, k: 384, n: 32, w: 8}
+      - Conv: {c: 448, count: 2, h: 8, k: 384, n: 32, w: 8}
+      - Conv: {c: 48, count: 3, h: 35, k: 64, n: 32, w: 35}
+      - Conv: {c: 64, count: 4, h: 35, k: 96, n: 32, w: 35}
+      - Conv: {c: 64, count: 1, h: 73, k: 80, n: 32, w: 73}
+      - Conv: {c: 768, count: 2, h: 17, k: 128, n: 32, w: 17}
+      - Conv: {c: 768, count: 4, h: 17, k: 160, n: 32, w: 17}
+      - Conv: {c: 80, count: 1, h: 73, k: 192, n: 32, w: 73}
+      - Conv: {c: 96, count: 1, h: 35, k: 96, n: 32, w: 35}
+      - Conv: {c: 96, count: 3, h: 35, k: 96, n: 32, w: 35}
+    BenchmarkForkParameters: null
+    BenchmarkJoinParameters: null
+    ForkParameters:
+    - PrefetchGlobalRead: [1]
+    - KernelLanguage: [Assembly]
+    - MatrixInstruction:
+      - [32, 32, 1, 2]
+    - ThreadTile:
+      - [1, 32]
+    - WorkGroup:
+      - [16, 16, 1]
+      - [64, 4, 1]
+    - DepthU: [8]
+    - GlobalReadVectorWidth: [-1, 2]
+    - PackSummationDims: [0, 1]
+    - VectorWidth: [1, 4]
+    - FractionalLoad: [0, 1]
+    - PackBatchDims: [0, 1]
+    - AssertStrideAEqual:
+      - {0: 1}
+    - AssertStrideBEqual:
+      - {0: 1, 2: 0}
+    - AssertSizeEqual:
+      - {}
+    InitialSolutionParameters: null
+    JoinParameters: null
+GlobalParameters: {CMakeBuildType: Release, DataInitTypeAlpha: 1, DataInitTypeC: 4,
+  DataInitTypeD: 4, EnqueuesPerSync: 1, ForceRedoBenchmarkProblems: true, ForceRedoLibraryClient: true,
+  ForceRedoLibraryLogic: true, KernelTime: true, LibraryPrintDebug: false, MergeFiles: true,
+  MinimumRequiredVersion: 4.2.0, NewClient: 2, NumElementsToValidate: 1000, ShortNames: false,
+  SolutionSelectionAlg: 1, SyncsPerBenchmark: 1, ValidationMaxToPrint: 4, ValidationPrintValids: false}

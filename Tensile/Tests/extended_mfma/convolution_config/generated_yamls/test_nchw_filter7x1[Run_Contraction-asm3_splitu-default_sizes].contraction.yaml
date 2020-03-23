@@ -1,0 +1,46 @@
+BenchmarkProblems:
+- - ConvolutionConfig:
+    - {TensorAFormat: NCHW}
+    - {TensorBFormat: KCYX}
+    - {Filter: 7x1}
+    - {PadStart: Nx0}
+    - {PadEnd: Nx0}
+    DataType: s
+    OperationType: ConvolutionForward
+  - BenchmarkCommonParameters:
+    - EdgeType: [ShiftPtr]
+    BenchmarkFinalParameters:
+    - ProblemSizes:
+      - Conv: {c: 32, h: 14, k: 16, n: 8, p: 6, p_: 6, w: 14}
+    BenchmarkForkParameters: null
+    BenchmarkJoinParameters: null
+    ForkParameters:
+    - PrefetchGlobalRead: [1]
+    - KernelLanguage: [Assembly]
+    - MatrixInstruction:
+      - [32, 32, 1, 2]
+    - ThreadTile:
+      - [1, 32]
+    - WorkGroup:
+      - [16, 16, 1]
+      - [64, 4, 1]
+    - DepthU: [8]
+    - PackSummationDims: [0, 1]
+    - GlobalReadVectorWidth: [-1, 2]
+    - GlobalSplitU: [1, 2, 3, 4, 8, 17]
+    - VectorWidth: [1, 4]
+    - PackBatchDims: [1]
+    - FractionalLoad: [0, 1]
+    - AssertStrideAEqual:
+      - {1: 1}
+    - AssertStrideBEqual:
+      - {3: 0}
+    - AssertSizeEqual:
+      - {4: 7}
+    InitialSolutionParameters: null
+    JoinParameters: null
+GlobalParameters: {CMakeBuildType: Release, DataInitTypeAlpha: 1, DataInitTypeC: 4,
+  DataInitTypeD: 4, EnqueuesPerSync: 1, ForceRedoBenchmarkProblems: true, ForceRedoLibraryClient: true,
+  ForceRedoLibraryLogic: true, KernelTime: true, LibraryPrintDebug: false, MergeFiles: true,
+  MinimumRequiredVersion: 4.2.0, NewClient: 2, NumElementsToValidate: 1000, ShortNames: false,
+  SolutionSelectionAlg: 1, SyncsPerBenchmark: 1, ValidationMaxToPrint: 4, ValidationPrintValids: false}

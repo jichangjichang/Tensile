@@ -1,0 +1,62 @@
+BenchmarkProblems:
+- - ConvolutionConfig:
+    - {TensorAFormat: NCHW}
+    - {TensorBFormat: KCYX}
+    - {Filter: 7x1}
+    DataType: s
+    OperationType: ConvolutionForward
+  - BenchmarkCommonParameters:
+    - EdgeType: [ShiftPtr]
+    BenchmarkFinalParameters:
+    - ProblemSizes:
+      - Conv: {c: 1024, h: 14, k: 2048, n: 64, w: 14}
+      - Conv: {c: 1024, h: 14, k: 256, n: 64, w: 14}
+      - Conv: {c: 1024, h: 14, k: 512, n: 64, w: 14}
+      - Conv: {c: 128, h: 28, k: 128, n: 64, w: 28}
+      - Conv: {c: 128, h: 28, k: 512, n: 64, w: 28}
+      - Conv: {c: 2048, h: 7, k: 512, n: 64, w: 7}
+      - Conv: {c: 256, h: 14, k: 1024, n: 64, w: 14}
+      - Conv: {c: 256, h: 14, k: 256, n: 64, w: 14}
+      - Conv: {c: 256, h: 56, k: 128, n: 64, w: 56}
+      - Conv: {c: 256, h: 56, k: 512, n: 64, w: 56}
+      - Conv: {c: 256, h: 56, k: 64, n: 64, w: 56}
+      - Conv: {c: 3, h: 230, k: 64, n: 64, w: 230}
+      - Conv: {c: 512, h: 28, k: 1024, n: 64, w: 28}
+      - Conv: {c: 512, h: 28, k: 128, n: 64, w: 28}
+      - Conv: {c: 512, h: 28, k: 256, n: 64, w: 28}
+      - Conv: {c: 512, h: 7, k: 2048, n: 64, w: 7}
+      - Conv: {c: 512, h: 7, k: 512, n: 64, w: 7}
+      - Conv: {c: 64, h: 56, k: 256, n: 64, w: 56}
+      - Conv: {c: 64, h: 56, k: 64, n: 64, w: 56}
+      - Conv: {c: 64, h: 56, k: 64, n: 64, w: 56}
+    BenchmarkForkParameters: null
+    BenchmarkJoinParameters: null
+    ForkParameters:
+    - PrefetchGlobalRead: [1]
+    - KernelLanguage: [Assembly]
+    - MatrixInstruction:
+      - [32, 32, 1, 2]
+    - ThreadTile:
+      - [1, 32]
+    - WorkGroup:
+      - [16, 16, 1]
+      - [64, 4, 1]
+    - DepthU: [8]
+    - GlobalReadVectorWidth: [-1, 2]
+    - PackSummationDims: [0, 1]
+    - VectorWidth: [1, 4]
+    - FractionalLoad: [0, 1]
+    - PackBatchDims: [0, 1]
+    - AssertStrideAEqual:
+      - {1: 1}
+    - AssertStrideBEqual:
+      - {3: 0}
+    - AssertSizeEqual:
+      - {3: 7}
+    InitialSolutionParameters: null
+    JoinParameters: null
+GlobalParameters: {CMakeBuildType: Release, DataInitTypeAlpha: 1, DataInitTypeC: 4,
+  DataInitTypeD: 4, EnqueuesPerSync: 1, ForceRedoBenchmarkProblems: true, ForceRedoLibraryClient: true,
+  ForceRedoLibraryLogic: true, KernelTime: true, LibraryPrintDebug: false, MergeFiles: true,
+  MinimumRequiredVersion: 4.2.0, NewClient: 2, NumElementsToValidate: 1000, ShortNames: false,
+  SolutionSelectionAlg: 1, SyncsPerBenchmark: 1, ValidationMaxToPrint: 4, ValidationPrintValids: false}
