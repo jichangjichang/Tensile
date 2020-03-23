@@ -100,17 +100,18 @@ class Solutions:
                 [
                     {"PrefetchGlobalRead": [1]},
                     {"KernelLanguage": ["Assembly"]},
+                    {"MatrixInstruction": [
+                        [32,32,1,2]
+                        ]},
                     {"ThreadTile": [
-                        [ 2, 2 ],
-                        [ 4, 8 ],
-                        [ 8, 8 ]
+                        [ 1, 32 ]
                         ]},
                     {"WorkGroup": [
-                        [  8, 8, 1],
-                        [ 16, 8, 1]
+                        [ 16, 16, 1],
+                        [ 64, 4, 1]
                         ]},
                     {"DepthU": [8]},
-                    {"GlobalReadVectorWidth": [-1]},
+                    {"GlobalReadVectorWidth": [-1,2]},
                     {"PackSummationDims": [0,1]},
                     {"VectorWidth": [1,4]},
                     {"FractionalLoad": [0,1]},
@@ -127,21 +128,19 @@ class Solutions:
                 [
                     {"PrefetchGlobalRead": [1]},
                     {"KernelLanguage": ["Assembly"]},
+                    {"MatrixInstruction": [
+                        [32,32,1,2]
+                        ]},
                     {"ThreadTile": [
-                        [ 4, 4 ],
-                        [ 4, 8 ],
-                        [ 8, 8],
+                        [ 1, 32 ]
                         ]},
                     {"WorkGroup": [
-                        [  8, 8, 1],
-                        #[  8, 8, 2],
-                        #[  8, 8, 4],
-                        #[ 16, 8, 2],
-                        #[ 16, 16, 2],
+                        [ 16, 16, 1],
+                        [ 64, 4, 1]
                         ]},
                     {"DepthU": [8]},
                     {"PackSummationDims": [0,1]},
-                    {"GlobalReadVectorWidth": [-1]},
+                    {"GlobalReadVectorWidth": [-1,2]},
                     {"GlobalSplitU": [1,2,3,4,8,17]},
                     {"VectorWidth": [1,4]},
                     {"PackBatchDims": [1]},
