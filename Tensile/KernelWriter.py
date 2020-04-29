@@ -1687,6 +1687,13 @@ class KernelWriter(metaclass=abc.ABCMeta):
         kl.append(self.comment("LocalSplitU: global write"))
         kl.append(self.localSplitUGlobalWrite(kernel))
 
+      elif 1:
+        kl.append(self.comment3("store remap"))
+        ####################################
+        # Store remap
+        ####################################
+        kl.append(self.comment("Store Remap:"))
+        kl.append(self.storeRemap(kernel))
 
       else:
         ####################################
@@ -2740,6 +2747,14 @@ class KernelWriter(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def localSplitUGlobalWrite(self, kernel):
     return ""
+
+  ##############################################################################
+  # Store Remap: Local Write
+  ##############################################################################
+  @abc.abstractmethod
+  def storeRemap(self, kernel):
+    return ""
+
 
   ##############################################################################
   # Not LocalSplitU: Global Write Indices

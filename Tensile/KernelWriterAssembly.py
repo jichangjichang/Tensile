@@ -3017,6 +3017,12 @@ class KernelWriterAssembly(KernelWriter):
     kStr += self.macroRegister("vgprLocalReadAddrB", \
         self.startVgprLocalReadAddressesB)
 
+    if 1: #todo allocate it in other place
+      kStr += self.macroRegister("vgprLocalReadAddrC", \
+          self.startVgprLocalReadAddressesA)
+      kStr += self.macroRegister("vgprLocalWriteAddrC", \
+          self.startVgprLocalReadAddressesB)
+
     # Serial is always the last register in the pool so the store
     # code doesn't have to deal with fragmentation
     startSerial = self.vgprPool.size()-1
@@ -9145,6 +9151,69 @@ class KernelWriterAssembly(KernelWriter):
               elements.append(element)
 
     return (fullVw, elements)
+  ##############################################################################
+  # Store remap:
+  ##############################################################################
+  def storeRemap(self, kernel):
+    if not self.do["PostLoop"]: return ""
+    kStr = ""
+    kStr += self.comment1("Store Remap Local Read")
+
+    tmpS0 = self.getTmpSgpr(3)
+    tmpS1 = tmpS0+1
+    wgMT1 = tmpS0+2
+
+    wg0="WorkGroup0"
+    wg1="WorkGroup1"
+
+    tid0 = self.vgprPool.checkOut(1, "tid0")
+    tid1 = self.vgprPool.checkOut(1, "tid1")
+
+    if kernel["BufferStore"]:
+      self.cinRowPtr  = self.vgprPool.checkOut(1, "cinRowPtr")
+      if not kernel["LdcEqualsLdd"]:
+        self.coutRowPtr = self.vgprPool.checkOut(1, "coutRowPtr")
+
+    tmpV0 = self.vgprPool.checkOut(5, "tmpV0")
+    tmpV1 = tmpV0+1
+    tmpV2 = tmpV0+2
+    tmpV3 = tmpV0+3
+    tmpV4 = tmpV0+4
+
+    ldsPad = 8 #TODO: how do define it
+
+    #calculate local write coord 0,1
+    kStr += vectorStaticDivideAndRemainder(tid1, tid0, "Serial", globalParameters["WavefrontWidth"], \
+      tmpV0, tmpS0)
+
+    kStr += inst("v_mul_lo_u32", vgpr(tid1),
+                  hex(kernel["MatrixInstN"]), vgpr(tid1), "coord1 offset of LDS for each Wave")
+    kStr += inst("v_and_b32", vgpr(tmpV1),
+                  hex(kernel["MatrixInstN"]-1), vgpr("Serial"), "coord1 offset of LDS for each thread")
+    kStr += inst("v_add_u32", vgpr(tid1), vgpr(tmpV1),vgpr(tid1),"coord1 offset in MacroTile")
+    kStr += inst("v_mov_b32", vgpr(tmpV2), hex(kernel["MacroTile0"]+ldsPad), \
+                    "lds stride = MT0 + PAD")
+    kStr += inst("v_mul_lo_u32", vgpr(self.coutRowPtr), vgpr(tid1), vgpr(tmpV2), \
+                  "lds coord1 offset = Col-id* lds stride")
+
+    kStr += "\n"
+    kStr += inst("v_lshrrev_b32", vgpr(tid0),
+                hex(log2(kernel["MatrixInstM"])), vgpr(tid0), \
+                "tid / matrixInstM")
+    kStr += inst("v_lshlrev_b32", vgpr(tid0), hex(4), vgpr(tid0), "lds coord0 offset *= 4 (each thread hold 4 element)")
+
+
+    kStr += inst("_v_add_lshl_u32", \
+      vgpr("LocalReadAddrC"), \
+      vgpr(self.coutRowPtr), \
+      vgpr(tid0), \
+      hex(log2(self.bpeCexternal)), \
+      "local write C address")
+
+
+    self.vgprPool.checkIn(tmpV0)
+
+    return kStr
 
   ##############################################################################
   # Not LocalSplitU: Global Write
