@@ -9161,10 +9161,10 @@ class KernelWriterAssembly(KernelWriter):
     kStr = ""
     if bps==8:
       kStr += inst("ds_write_b64", dst, vgpr(srcVgpr, rpv), \
-                , "offset:%u"%offset, "storeRemap lw")
+                 "offset:%u"%offset, "storeRemap lw")
     elif bps==16:
       kStr += inst("ds_write_b128", dst, vgpr(srcVgpr, rpv), \
-                , "offset:%u"%offset, "storeRemap lw")
+                 "offset:%u"%offset, "storeRemap lw")
     else:
        assert ("bad bps")
 
@@ -9414,7 +9414,7 @@ class KernelWriterAssembly(KernelWriter):
     numBatches = max(1, ceil_divide(len(elements[edgeI]),numElementsPerBatch))
     #print("NumBatches", numBatches, "NumElementsPerBatch", numElementsPerBatch, "numVgprsPerElement", numVgprsPerElement, "len(elements[edgeI])", len(elements[edgeI]))
 
-  return (numBatches, numElementsPerBatch)
+    return (numBatches, numElementsPerBatch)
   ##############################################################################
   # Store Remap: Local Write
   ##############################################################################
@@ -9476,8 +9476,6 @@ class KernelWriterAssembly(KernelWriter):
 
     if kernel["BufferStore"]:
       self.cinRowPtr  = self.vgprPool.checkOut(1, "cinRowPtr")
-      if not kernel["LdcEqualsLdd"]:
-        self.coutRowPtr = self.vgprPool.checkOut(1, "coutRowPtr")
 
     tmpV0 = self.vgprPool.checkOut(5, "tmpV0")
     tmpV1 = tmpV0+1
@@ -9498,7 +9496,7 @@ class KernelWriterAssembly(KernelWriter):
     kStr += inst("v_add_u32", vgpr(tid1), vgpr(tmpV1),vgpr(tid1),"coord1 offset in MacroTile")
     kStr += inst("v_mov_b32", vgpr(tmpV2), hex(kernel["MacroTile0"]+ldsPad), \
                     "lds stride = MT0 + PAD")
-    kStr += inst("v_mul_lo_u32", vgpr(self.coutRowPtr), vgpr(tid1), vgpr(tmpV2), \
+    kStr += inst("v_mul_lo_u32", vgpr(self.cinRowPtr), vgpr(tid1), vgpr(tmpV2), \
                   "lds coord1 offset = Col-id* lds stride")
 
     kStr += "\n"
@@ -9510,13 +9508,16 @@ class KernelWriterAssembly(KernelWriter):
 
     kStr += inst("_v_add_lshl_u32", \
       vgpr("LocalReadAddrC"), \
-      vgpr(self.coutRowPtr), \
+      vgpr(self.cinRowPtr), \
       vgpr(tid0), \
       hex(log2(self.bpeCexternal)), \
       "local write C address")
 
 
     self.vgprPool.checkIn(tmpV0)
+    self.vgprPool.checkIn(tid0)
+    self.vgprPool.checkIn(tid1)
+    self.vgprPool.checkIn(self.cinRowPtr)
 
     return kStr
 

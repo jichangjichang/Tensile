@@ -2749,7 +2749,7 @@ class KernelWriter(metaclass=abc.ABCMeta):
     return ""
 
   ##############################################################################
-  # Store Remap: Local Write
+  # Store Remap:
   ##############################################################################
   @abc.abstractmethod
   def storeRemap(self, kernel):
