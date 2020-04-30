@@ -9152,6 +9152,311 @@ class KernelWriterAssembly(KernelWriter):
 
     return (fullVw, elements)
   ##############################################################################
+  def chooseLocalWrite(self, bps, srcVgpr, dst, rpv, offset):
+    """
+    create the local write instruction for requested vector width and other parms
+    rpv = regs per vector
+    """
+
+    kStr = ""
+    if bps==8:
+      kStr += inst("ds_write_b64", dst, vgpr(srcVgpr, rpv), \
+                , "offset:%u"%offset, "storeRemap lw")
+    elif bps==16:
+      kStr += inst("ds_write_b128", dst, vgpr(srcVgpr, rpv), \
+                , "offset:%u"%offset, "storeRemap lw")
+    else:
+       assert ("bad bps")
+
+    return kStr
+
+  ##############################################################################
+ 
+  def storeRemapAddLocalWrite(self, kernel, ss, offset, sumIdx):
+    """
+    Add stores for the element with addrCalc and sumIdx.
+    """
+    kStr = ""
+
+    bps = kernel["ProblemType"]["DataType"].numBytes() * ss.cfg.gwvw
+    rpv = kernel["ProblemType"]["DataType"].numRegisters() * ss.cfg.gwvw
+
+    addr0 = vgpr("LocalWriteAddrC")
+
+    #if ss.optSrdIncForRow and addrCalc.rowInc:
+      #kStr += addrCalc.incrementToNextRow(kernel, "D", ss, tmpS01)
+      # calculate new local read address and local write address
+
+    if kernel["ProblemType"]["DataType"].isHalf() or kernel["ProblemType"]["DataType"].isBFloat16():
+      if not kernel["ProblemType"]["HighPrecisionAccumulate"]:
+        kStr += self.chooseLocalWrite(bps, sumIdx//2, addr0, rpv, offset)
+      else:
+        kStr += self.chooseLocalWrite(bps, sumIdx, addr0, rpv, offset)
+    elif kernel["ProblemType"]["DataType"].isInt8x4() or kernel["ProblemType"]["DataType"].isSingle():
+      kStr += self.chooseLocalWrite(bps, sumIdx, addr0, rpv, offset)
+    elif kernel["ProblemType"]["DataType"].isDouble() or kernel["ProblemType"]["DataType"].isSingleComplex():
+      kStr += self.chooseLocalWrite(bps, sumIdx*2, addr0, rpv, offset)
+    elif kernel["ProblemType"]["DataType"].isDoubleComplex():
+      rps = kernel["ProblemType"]["DataType"].numRegisters()
+      kStr += self.chooseLocalWrite(bps, sumIdx*rps, addr0, rpv, offset)
+
+    return kStr
+
+
+  ##############################################################################
+  # Store Remap Local Write Batch
+  ##############################################################################
+  def storeRemapLocalWriteBatch(self, kernel, ss, batchIdx, beta, gwvw, \
+      batchElements, coord0, coord1, tmpVgpr, batchElementSgprs, tmpSgpr):
+    kStr = ""
+
+    kStr += self.comment1("optSingleColVgpr=%u optSharedColVgpr=%u optSharedMask=%u optSrdIncForRow=%u" % \
+              (ss.optSingleColVgpr, ss.optSharedColVgpr, ss.optSharedMask, ss.optSrdIncForRow))
+
+    # comment tt1, tt0, vc1, vc0
+    # tt = trhead tile, vc=vector component
+    commentStr = "Store Remap Local Write%s%s Batch #%u (d1,d0,vc1,vc0) =\n   " \
+        % (" Beta" if beta else "", " Edge" if edge else "", batchIdx)
+    for elementIdx in range(0, len(batchElements)):
+      element = batchElements[elementIdx]
+      commentStr += "(%u,%u,%u,%u:vw%u%s)" % \
+        (element[0], element[1], element[2], element[3], gwvw,
+         ":vaw:%u"%atomicW if atomic else "")
+      if elementIdx < len(batchElements)-1:
+        commentStr += "; "
+    kStr += self.comment3(commentStr)
+
+    ss.setupStoreElementsForBatch(kernel, gwvw, batchElements, batchElementSgprs, isOptNLL=False)
+
+    loadsIssued = 0
+    storesIssued = 0
+    tmpS01 = tmpSgpr # scratch sgprs
+    tmpS23 = tmpS01+2
+
+    kStr += self.comment("calc coords, apply mask, and issue loads (if necessary)")
+    for elementIdx in range(0, len(batchElements)):
+      element = batchElements[elementIdx]
+      addr = ss.elementAddr[elementIdx].addrVgpr
+      addrCalc = ss.elementAddr[elementIdx]
+      data = ss.elementData[elementIdx]
+      mask = ss.elementMask[elementIdx]
+      sumIdx = ss.elementSumIdx[elementIdx]
+      d1 = element[0]
+      d0 = element[1]
+      vc1 = element[2]
+      vc0 = element[3]
+
+      kStr += addrCalc.emitAddressSetupCode(kernel, ss, tmpVgpr, tmpS01, edge, beta, atomic, mask, elementIdx)
+
+    ########################################
+    # rC *= alpha
+    if not kernel["InterleaveAlpha"]:
+      kStr += self.comment("rC *= alpha batchEements=%s"%batchElements)
+      for elementIdx in range(0, len(batchElements)):
+        kStr += self.applyAlpha(kernel, gwvw, ss.elementSumIdx, elementIdx, tmpS01)
+
+
+    kStr += self.comment("apply mask, calc new C and issue writes")
+    #kStr += self.bomb() # can see store addresses just before the store inst
+
+    if kernel["ProblemType"]["DataType"].isBFloat16() and kernel["ProblemType"]["HighPrecisionAccumulate"]:
+      vgprBf16Temp = self.vgprPool.checkOut(4)
+      vgprBf16Mask = vgprBf16Temp + 1
+      vgprFp32Nan = vgprBf16Temp + 2
+      vgprBf16Inc = vgprBf16Temp + 3
+      kStr += inst("v_mov_b32", vgpr(vgprBf16Mask), "0xffff0000", "mask for pack two bfloat16 element to 32bit" )
+      kStr += inst("v_mov_b32", vgpr(vgprFp32Nan), "0x7fff0000", "fp32 Nan" )
+      kStr += inst("v_mov_b32", vgpr(vgprBf16Inc), "0x7fff", "rounding bias for bfloat16" )
+
+    for elementIdx in range(0, len(batchElements)):
+      element = batchElements[elementIdx]
+      addr = ss.elementAddr[elementIdx].addrVgpr
+      mask = ss.elementMask[elementIdx]
+      d1 = element[0]
+      d0 = element[1]
+      vc1 = element[2]
+      vc0 = element[3]
+      sumIdx = ss.elementSumIdx[elementIdx]
+
+      # pack stores, beta and non-beta reach here:
+      for vi in range(0, gwvw):
+        sumIdxV = ss.elementSumIdx[elementIdx] + vi
+        if kernel["ProblemType"]["DataType"].isHalf():
+          if kernel["ProblemType"]["HighPrecisionAccumulate"]:
+            kStr += inst("v_cvt_f16_f32", vgpr("ValuC+%u"%sumIdxV), vgpr("ValuC+%u"%sumIdxV), "convert C to fp16" )
+            if vi%2 == 1:
+              assert (gwvw % 2 == 0)
+              d = ss.elementSumIdx[elementIdx] + vi//2
+              kStr += inst("v_pack_b32_f16", vgpr(d), vgpr("ValuC+%u"%(sumIdxV-1)), vgpr("ValuC+%u"%sumIdxV), "Pack with neighbor" )
+
+        elif kernel["ProblemType"]["DataType"].isBFloat16():
+          if kernel["ProblemType"]["HighPrecisionAccumulate"]:
+            kStr += inst("v_cmp_u_f32", sgpr(tmpS01,2), vgpr("ValuC+%u"%sumIdxV), vgpr("ValuC+%u"%sumIdxV), "check Nan" )
+            kStr += inst("v_bfe_u32", vgpr(vgprBf16Temp), vgpr("ValuC+%u"%sumIdxV), "16", "1", "Non-Nan case: store lsb of bf16" )
+            kStr += inst("v_add3_u32", vgpr(vgprBf16Temp), vgpr("ValuC+%u"%sumIdxV), vgpr(vgprBf16Temp), vgpr(vgprBf16Inc), "Non-Nan case: add lsb and the increment for rounding" )
+            kStr += inst("v_cndmask_b32", vgpr("ValuC+%u"%sumIdxV), vgpr(vgprBf16Temp), vgpr(vgprFp32Nan), sgpr(tmpS01,2), "" )
+            if vi%2 == 0:
+              kStr += inst("v_lshrrev_b32", vgpr("ValuC+%u"%sumIdxV), "16", vgpr("ValuC+%u"%sumIdxV), "convert C to bf16" )
+            elif vi%2 == 1:
+              d = ss.elementSumIdx[elementIdx] + vi//2
+              kStr += inst("v_and_or_b32", vgpr(d), vgpr("ValuC+%u"%sumIdxV), vgpr(vgprBf16Mask), vgpr("ValuC+%u"%(sumIdxV-1)), "pack two bf16 to dword")
+
+        addrCalc = ss.elementAddr[elementIdx]
+        kStr += self.storeRemapAddLocalWrite(kernel, ss, addrCalc, sumIdx, tmpS01, edge)
+        storesIssued += 1
+
+      if kernel["ProblemType"]["DataType"].isBFloat16() and kernel["ProblemType"]["HighPrecisionAccumulate"]:
+        self.vgprPool.checkIn(vgprBf16Temp)
+
+    # NotAtomic end
+    # return registers to pool:
+    lastData = -1
+    for elementIdx in range(0, len(batchElements)):
+      if not ss.sharedColVgprs:
+        addr = ss.elementAddr[elementIdx].addrVgpr
+        self.vgprPool.checkIn(addr)
+
+      data = ss.elementData[elementIdx]
+      if data != 0:
+        if data != lastData:
+          self.vgprPool.checkIn(data)
+        lastData = data
+
+    self.ss.firstBatch = False
+
+    return kStr
+
+  ##############################################################################
+  # Store Remap: Local Write
+  ##############################################################################
+  def storeRemapLocalWriteVgprResource(self, kernel, numVgprsPerElement, numVgprAvailable):
+
+    # Grow the register pool if needed - we need enough regs for at least one element
+    # Unfortunate since this means the write logic is setting the VGPR requirement
+    # for the entire kernel but at least we have a functional kernel.
+    # Before growing the pool, see if we can shrink the write vector width instead?
+    # TODO : the vgprSerial is needed for-ever and if we grow here will split the
+    # range of the tmps.  Maybe want to move vgprSerial to first vgpr?
+    minElements = 2 if (kernel["ProblemType"]["DataType"].isHalf() or kernel["ProblemType"]["DataType"].isBFloat16()) else 1
+    minNeeded = minElements*numVgprsPerElement
+    shrinkDb = 0
+    if shrinkDb:
+      print("numVgprAvailable=", numVgprAvailable, "minElements=", minElements, "minNeeded=", minNeeded)
+    if numVgprAvailable < minNeeded:
+      gwvwOrig = gwvw
+      currentOccupancy = self.getOccupancy(kernel, self.vgprPool.size())
+      futureOccupancy = self.getOccupancy(kernel, \
+          self.vgprPool.size() - numVgprAvailable + minNeeded)
+
+      if shrinkDb:
+        print("currentOccupancy=%u futureOccupancy=%u VGPRs=%u numVgprAvail=%u vgprPerElem=%u" \
+            % (currentOccupancy, futureOccupancy, self.vgprPool.size(), \
+               numVgprAvailable, minElements*numVgprsPerElement))
+      if futureOccupancy > currentOccupancy:
+        if shrinkDb:
+          print("warning: %s growing VGPR for GlobalWrite batching - this may bloat VGPR usage" % \
+                (self.kernelName))
+          print("   numVgprAvailable=", numVgprAvailable, \
+                "numVgprsPerElement=", numVgprsPerElement, "atomic=", atomic, \
+                "beta=", beta, "gwvw=", gwvw)
+      elif gwvw != gwvwOrig:
+        self.ss.gwvw = gwvw # make both representations consistent
+        if shrinkDb:
+          print("info: %s shrank gwvw from %u to %u but kept occupancy same=%u." \
+              % (self.kernelName, gwvwOrig, gwvw, currentOccupancy))
+
+      if numVgprAvailable < minElements*numVgprsPerElement:
+        print("info: growing pool += %d * %d for GlobalWrite\n" \
+            % (minElements,numVgprsPerElement))
+        print(self.vgprPool.state())
+        tl = []
+        for i in range(0,minElements):
+          tl.append(self.vgprPool.checkOut(numVgprsPerElement, "grow-pool for GlobalWrite"))
+        for t in tl:
+          self.vgprPool.checkIn(t)
+        numVgprAvailable = self.vgprPool.available()
+        print(self.vgprPool.state())
+
+    #print "NumVgprAvailable", numVgprAvailable
+    if numVgprsPerElement:
+      numElementsPerBatch = numVgprAvailable // numVgprsPerElement
+    else:
+      numElementsPerBatch = len(elements[edgeI]) # max, do 'em all
+
+    if shrinkDb:
+      print("NumElementsPerBatch=", numElementsPerBatch, "LimitedBySgprs=", self.ss.cfg.numElementsPerBatchLimitedBySgprs, \
+          "WARNING" if self.ss.cfg.numElementsPerBatchLimitedBySgprs < numElementsPerBatch else "okay")
+    if self.ss.cfg.numElementsPerBatchLimitedBySgprs < numElementsPerBatch:
+      numElementsPerBatch = self.ss.cfg.numElementsPerBatchLimitedBySgprs
+
+    if (kernel["ProblemType"]["DataType"].isHalf() or kernel["ProblemType"]["DataType"].isBFloat16()):
+      # only do an even number of halves - since these share hi/lo pieces of some registers?
+      if numElementsPerBatch > 1:
+        numElementsPerBatch = int(numElementsPerBatch/2)*2
+      else:
+        # The globalWriteBatch routine below can't handle odd elements per batch
+        # and 0 elements per batch is illegal.
+        # so if we don't have *GPR resources to handle a larger batch then need
+        # to mark overflowedResources rather than generate a kernel that won't work.
+        # It might be possible to fix globalWriteBatch to handle this case but these
+        # are likely to be low-performing so likely not worth optimizing.
+        if shrinkDb:
+          print("WARNING: half requires at least two elements per batch")
+        self.overflowedResources = 3
+
+    assert numElementsPerBatch > 0, "numElementsPerBatch=0 for %s"%self.kernelName
+
+    # if no atomics and no edge, then write whole vectors
+    #if not atomic and not edge:
+    #  numVectorsPerBatch = numElementsPerBatch / kernel["GlobalWriteVectorWidth"]
+    #  #print "  NumVectorsPerBatch", numVectorsPerBatch
+    #  numElementsPerBatch = numVectorsPerBatch * kernel["GlobalWriteVectorWidth"]
+    numBatches = max(1, ceil_divide(len(elements[edgeI]),numElementsPerBatch))
+    #print("NumBatches", numBatches, "NumElementsPerBatch", numElementsPerBatch, "numVgprsPerElement", numVgprsPerElement, "len(elements[edgeI])", len(elements[edgeI]))
+
+  return (numBatches, numElementsPerBatch)
+  ##############################################################################
+  # Store Remap: Local Write
+  ##############################################################################
+  def storeRemapLocalWrite(self, kernel):
+    if not self.do["PostLoop"]: return ""
+    kStr = ""
+
+    (fullVw, elements ) = self.notLocalFullTileElements(kernel)
+    beta = False
+    edge = False
+    atomic = False
+
+    if kernel["ProblemType"]["DataType"].isHalf():
+      if kernel["ProblemType"]["HighPrecisionAccumulate"]:
+        alphaVgprTmp = self.vgprPool.checkOut(1, "alpha")
+        # alpha, beta are packed halfs in half mode (f16.hi == f16.lo) - setup on host
+        kStr += inst("v_mov_b32", vgpr(alphaVgprTmp), sgpr("Alpha"), "sgpr -> vgpr b/c op_sel")
+        kStr += inst("v_cvt_f32_f16", vgpr(alphaVgprTmp), vgpr(alphaVgprTmp), "convert alpha to fp32")
+        kStr += inst("v_readfirstlane_b32", sgpr("Alpha"), vgpr(alphaVgprTmp), "restore alpha sgpr")
+        self.vgprPool.checkIn(alphaVgprTmp)
+
+    numTmpVgpr = 2
+    tmpSgpr = self.getTmpSgpr(6)
+
+    self.ss = self.StoreState(self, kernel, fullVw, edge, beta, atomic, elements)
+
+    numVgprsPerElement = self.ss.cfg.numVgprsPerAddr + int(ceil(self.ss.cfg.numVgprsPerDataPerVI * fullVw))
+    numVgprAvailable = self.vgprPool.availableBlock(numVgprsPerElement)
+    (numBatches, numElementsPerBatch) = self.storeRemapLocalWriteVgprResource(kernel,numVgprsPerElement, numVgprAvailable)
+
+    for batchIdx in range(0, numBatches):
+      elementStartIdx = batchIdx * numElementsPerBatch
+      elementStopIdx = min( elementStartIdx + numElementsPerBatch, len(elements) )
+      elementsThisBatch = elements[elementStartIdx:elementStopIdx]
+
+      kStr += self.storeRemapLocalWriteBatch(kernel, self.ss, batchIdx, beta, fullVw, \
+          elementsThisBatch, self.coord0, self.coord1, tmpVgpr, elementSgprs, tmpSgpr)
+ 
+    return kStr
+
+
+  ##############################################################################
   # Store remap:
   ##############################################################################
   def storeRemap(self, kernel):
