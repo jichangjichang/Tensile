@@ -9472,7 +9472,7 @@ class KernelWriterAssembly(KernelWriter):
   def storeRemap(self, kernel):
     if not self.do["PostLoop"]: return ""
     kStr = ""
-    kStr += self.comment1("Store Remap Local Read")
+    kStr += self.comment1("Store Remap Local Write adderss")
 
     tmpS0 = self.getTmpSgpr(3)
     tmpS1 = tmpS0+1
@@ -9489,9 +9489,9 @@ class KernelWriterAssembly(KernelWriter):
 
     tmpV0 = self.vgprPool.checkOut(5, "tmpV0")
     tmpV1 = tmpV0+1
-    tmpV2 = tmpV0+2
-    tmpV3 = tmpV0+3
-    tmpV4 = tmpV0+4
+    ldsStride = tmpV0+2
+    coord0 = tmpV0+3
+    waveCoord1 = tmpV0+4
 
     ldsPad = 8 #TODO: how do define it
 
@@ -9499,29 +9499,56 @@ class KernelWriterAssembly(KernelWriter):
     kStr += vectorStaticDivideAndRemainder(tid1, tid0, "Serial", globalParameters["WavefrontWidth"], \
       tmpV0, tmpS0)
 
-    kStr += inst("v_mul_lo_u32", vgpr(tid1),
+    kStr += inst("v_mul_lo_u32", vgpr(waveCoord1),
                   hex(kernel["MatrixInstN"]), vgpr(tid1), "coord1 offset of LDS for each Wave")
-    kStr += inst("v_and_b32", vgpr(tmpV1),
+    kStr += inst("v_and_b32", vgpr(tid1),
                   hex(kernel["MatrixInstN"]-1), vgpr("Serial"), "coord1 offset of LDS for each thread")
-    kStr += inst("v_add_u32", vgpr(tid1), vgpr(tmpV1),vgpr(tid1),"coord1 offset in MacroTile")
-    kStr += inst("v_mov_b32", vgpr(tmpV2), hex(kernel["MacroTile0"]+ldsPad), \
+    kStr += inst("v_add_u32", vgpr(tid1), vgpr(waveCoord1),vgpr(tid1),"coord1 offset in MacroTile")
+    kStr += inst("v_mov_b32", vgpr(ldsStride), hex(kernel["MacroTile0"]+ldsPad), \
                     "lds stride = MT0 + PAD")
-    kStr += inst("v_mul_lo_u32", vgpr(self.cinRowPtr), vgpr(tid1), vgpr(tmpV2), \
+    kStr += inst("v_mul_lo_u32", vgpr(self.cinRowPtr), vgpr(tid1), vgpr(ldsStride), \
                   "lds coord1 offset = Col-id* lds stride")
 
-    kStr += "\n"
-    kStr += inst("v_lshrrev_b32", vgpr(tid0),
+    kStr += inst("v_lshrrev_b32", vgpr(coord0),
                 hex(log2(kernel["MatrixInstM"])), vgpr(tid0), \
                 "tid / matrixInstM")
-    kStr += inst("v_lshlrev_b32", vgpr(tid0), hex(4), vgpr(tid0), "lds coord0 offset *= 4 (each thread hold 4 element)")
+    kStr += inst("v_lshlrev_b32", vgpr(coord0), hex(4), vgpr(coord0), "lds coord0 offset *= 4 (each thread hold 4 element)")
 
+
+    kStr += inst("_v_add_lshl_u32", \
+      vgpr("LocalWriteAddrC"), \
+      vgpr(self.cinRowPtr), \
+      vgpr(coord0), \
+      hex(log2(self.bpeCexternal)), \
+      "local write C address")
+
+    kStr += "\n"
+    # calculate local read address
+
+    kStr += self.comment1("Store Remap Local Read address")
+    gwvw = 8
+    nThreadPerCol = kernel["MacroTile0"] // gwvw
+    nColPerLoad = globalParameters["WavefrontWidth"] // nThreadPerCol
+    kStr += inst("v_lshrrev_b32", vgpr(tid1),
+                hex(log2(nThreadPerCol)), vgpr(tid0), \
+                "tid / nThreadPerCol")
+    kStr += inst("v_add_u32", vgpr(tid1), vgpr(waveCoord1),vgpr(tid1),"coord1 offset in MacroTile")
+    kStr += inst("v_mov_b32", vgpr(ldsStride), hex(kernel["MacroTile0"]+ldsPad), \
+                    "lds stride = MT0 + PAD")
+    kStr += inst("v_mul_lo_u32", vgpr(self.cinRowPtr), vgpr(tid1), vgpr(ldsStride), \
+                  "lds coord1 offset = Col-id* lds stride")
+
+    kStr += inst("v_and_b32", vgpr(coord0),
+                  hex(nThreadPerCol-1), vgpr(tid0), "coord0 offset of LDS for each thread")
+    kStr += inst("v_lshlrev_b32", vgpr(coord0), hex(gwvw), vgpr(coord0), "lds coord0 offset *= gwvw (each thread hold gwvw element)")
 
     kStr += inst("_v_add_lshl_u32", \
       vgpr("LocalReadAddrC"), \
       vgpr(self.cinRowPtr), \
-      vgpr(tid0), \
+      vgpr(coord0), \
       hex(log2(self.bpeCexternal)), \
-      "local write C address")
+      "local read C address")
+    kStr += "\n"
 
     kStr += self.storeRemapLocalWrite(kernel)
 
