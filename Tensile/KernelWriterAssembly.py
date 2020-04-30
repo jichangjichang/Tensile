@@ -9172,7 +9172,7 @@ class KernelWriterAssembly(KernelWriter):
 
   ##############################################################################
  
-  def storeRemapAddLocalWrite(self, kernel, ss, offset, sumIdx):
+  def storeRemapAddLocalWrite(self, kernel, ss, addrCalc, sumIdx):
     """
     Add stores for the element with addrCalc and sumIdx.
     """
@@ -9183,7 +9183,9 @@ class KernelWriterAssembly(KernelWriter):
 
     addr0 = vgpr("LocalWriteAddrC")
 
+    offset =  addrCalc.globalOffset
     #if ss.optSrdIncForRow and addrCalc.rowInc:
+      #kStr += self.comment1("wait ds write and read lds memory, then write to global memory")
       #kStr += addrCalc.incrementToNextRow(kernel, "D", ss, tmpS01)
       # calculate new local read address and local write address
 
@@ -9274,11 +9276,15 @@ class KernelWriterAssembly(KernelWriter):
       element = batchElements[elementIdx]
       addr = ss.elementAddr[elementIdx].addrVgpr
       #mask = ss.elementMask[elementIdx]
+      addrCalc = ss.elementAddr[elementIdx]
       d1 = element[0]
       d0 = element[1]
       vc1 = element[2]
       vc0 = element[3]
       sumIdx = ss.elementSumIdx[elementIdx]
+
+      if ss.optSrdIncForRow and addrCalc.rowInc:
+        kStr += self.comment("local read and global write here, then calculate next address")
 
       # pack stores, beta and non-beta reach here:
       for vi in range(0, gwvw):
@@ -9303,9 +9309,7 @@ class KernelWriterAssembly(KernelWriter):
               d = ss.elementSumIdx[elementIdx] + vi//2
               kStr += inst("v_and_or_b32", vgpr(d), vgpr("ValuC+%u"%sumIdxV), vgpr(vgprBf16Mask), vgpr("ValuC+%u"%(sumIdxV-1)), "pack two bf16 to dword")
 
-      #addrCalc = ss.elementAddr[elementIdx]
-      offset = 0 #Todo: add correct offset
-      kStr += self.storeRemapAddLocalWrite(kernel, ss, offset, sumIdx)
+      kStr += self.storeRemapAddLocalWrite(kernel, ss, addrCalc, sumIdx)
       storesIssued += 1
 
       if kernel["ProblemType"]["DataType"].isBFloat16() and kernel["ProblemType"]["HighPrecisionAccumulate"]:
