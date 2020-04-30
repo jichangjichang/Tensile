@@ -9215,13 +9215,13 @@ class KernelWriterAssembly(KernelWriter):
 
     # comment tt1, tt0, vc1, vc0
     # tt = trhead tile, vc=vector component
-    commentStr = "Store Remap Local Write%s%s Batch #%u (d1,d0,vc1,vc0) =\n   " \
-        % (" Beta" if beta else "", " Edge" if edge else "", batchIdx)
+    commentStr = "Store Remap Local Write%s Batch #%u (d1,d0,vc1,vc0) =\n   " \
+        % (" Beta" if beta else "", batchIdx)
     for elementIdx in range(0, len(batchElements)):
       element = batchElements[elementIdx]
       commentStr += "(%u,%u,%u,%u:vw%u%s)" % \
         (element[0], element[1], element[2], element[3], gwvw,
-         ":vaw:%u"%atomicW if atomic else "")
+         ":vaw")
       if elementIdx < len(batchElements)-1:
         commentStr += "; "
     kStr += self.comment3(commentStr)
@@ -9234,20 +9234,22 @@ class KernelWriterAssembly(KernelWriter):
     tmpS23 = tmpS01+2
 
     kStr += self.comment("calc coords, apply mask, and issue loads (if necessary)")
+    # calculate vgpr address
+    '''
     for elementIdx in range(0, len(batchElements)):
       element = batchElements[elementIdx]
       addr = ss.elementAddr[elementIdx].addrVgpr
       addrCalc = ss.elementAddr[elementIdx]
       data = ss.elementData[elementIdx]
-      mask = ss.elementMask[elementIdx]
+      if batchElementSgprs != None:
+        mask = ss.elementMask[elementIdx]
       sumIdx = ss.elementSumIdx[elementIdx]
       d1 = element[0]
       d0 = element[1]
       vc1 = element[2]
       vc0 = element[3]
-
-      kStr += addrCalc.emitAddressSetupCode(kernel, ss, tmpVgpr, tmpS01, edge, beta, atomic, mask, elementIdx)
-
+      kStr += addrCalc.emitAddressSetupCode(kernel, ss, tmpVgpr, tmpS01, False, beta, False, mask, elementIdx)
+    '''
     ########################################
     # rC *= alpha
     if not kernel["InterleaveAlpha"]:
@@ -9271,7 +9273,7 @@ class KernelWriterAssembly(KernelWriter):
     for elementIdx in range(0, len(batchElements)):
       element = batchElements[elementIdx]
       addr = ss.elementAddr[elementIdx].addrVgpr
-      mask = ss.elementMask[elementIdx]
+      #mask = ss.elementMask[elementIdx]
       d1 = element[0]
       d0 = element[1]
       vc1 = element[2]
@@ -9301,9 +9303,10 @@ class KernelWriterAssembly(KernelWriter):
               d = ss.elementSumIdx[elementIdx] + vi//2
               kStr += inst("v_and_or_b32", vgpr(d), vgpr("ValuC+%u"%sumIdxV), vgpr(vgprBf16Mask), vgpr("ValuC+%u"%(sumIdxV-1)), "pack two bf16 to dword")
 
-        addrCalc = ss.elementAddr[elementIdx]
-        kStr += self.storeRemapAddLocalWrite(kernel, ss, addrCalc, sumIdx, tmpS01, edge)
-        storesIssued += 1
+      #addrCalc = ss.elementAddr[elementIdx]
+      offset = 0 #Todo: add correct offset
+      kStr += self.storeRemapAddLocalWrite(kernel, ss, offset, sumIdx)
+      storesIssued += 1
 
       if kernel["ProblemType"]["DataType"].isBFloat16() and kernel["ProblemType"]["HighPrecisionAccumulate"]:
         self.vgprPool.checkIn(vgprBf16Temp)
@@ -9329,7 +9332,7 @@ class KernelWriterAssembly(KernelWriter):
   ##############################################################################
   # Store Remap: Local Write
   ##############################################################################
-  def storeRemapLocalWriteVgprResource(self, kernel, numVgprsPerElement, numVgprAvailable):
+  def storeRemapLocalWriteVgprResource(self, kernel, numVgprsPerElement, numVgprAvailable, elements):
 
     # Grow the register pool if needed - we need enough regs for at least one element
     # Unfortunate since this means the write logic is setting the VGPR requirement
@@ -9381,7 +9384,7 @@ class KernelWriterAssembly(KernelWriter):
     if numVgprsPerElement:
       numElementsPerBatch = numVgprAvailable // numVgprsPerElement
     else:
-      numElementsPerBatch = len(elements[edgeI]) # max, do 'em all
+      numElementsPerBatch = len(elements) # max, do 'em all
 
     if shrinkDb:
       print("NumElementsPerBatch=", numElementsPerBatch, "LimitedBySgprs=", self.ss.cfg.numElementsPerBatchLimitedBySgprs, \
@@ -9411,7 +9414,7 @@ class KernelWriterAssembly(KernelWriter):
     #  numVectorsPerBatch = numElementsPerBatch / kernel["GlobalWriteVectorWidth"]
     #  #print "  NumVectorsPerBatch", numVectorsPerBatch
     #  numElementsPerBatch = numVectorsPerBatch * kernel["GlobalWriteVectorWidth"]
-    numBatches = max(1, ceil_divide(len(elements[edgeI]),numElementsPerBatch))
+    numBatches = max(1, ceil_divide(len(elements),numElementsPerBatch))
     #print("NumBatches", numBatches, "NumElementsPerBatch", numElementsPerBatch, "numVgprsPerElement", numVgprsPerElement, "len(elements[edgeI])", len(elements[edgeI]))
 
     return (numBatches, numElementsPerBatch)
@@ -9437,13 +9440,14 @@ class KernelWriterAssembly(KernelWriter):
         self.vgprPool.checkIn(alphaVgprTmp)
 
     numTmpVgpr = 2
+    tmpVgpr = self.vgprPool.checkOut(numTmpVgpr,"storeRemap tmp vgpr")
     tmpSgpr = self.getTmpSgpr(6)
 
     self.ss = self.StoreState(self, kernel, fullVw, edge, beta, atomic, elements)
 
     numVgprsPerElement = self.ss.cfg.numVgprsPerAddr + int(ceil(self.ss.cfg.numVgprsPerDataPerVI * fullVw))
     numVgprAvailable = self.vgprPool.availableBlock(numVgprsPerElement)
-    (numBatches, numElementsPerBatch) = self.storeRemapLocalWriteVgprResource(kernel,numVgprsPerElement, numVgprAvailable)
+    (numBatches, numElementsPerBatch) = self.storeRemapLocalWriteVgprResource(kernel,numVgprsPerElement, numVgprAvailable, elements)
 
     for batchIdx in range(0, numBatches):
       elementStartIdx = batchIdx * numElementsPerBatch
@@ -9451,8 +9455,10 @@ class KernelWriterAssembly(KernelWriter):
       elementsThisBatch = elements[elementStartIdx:elementStopIdx]
 
       kStr += self.storeRemapLocalWriteBatch(kernel, self.ss, batchIdx, beta, fullVw, \
-          elementsThisBatch, self.coord0, self.coord1, tmpVgpr, elementSgprs, tmpSgpr)
- 
+          elementsThisBatch, self.coord0, self.coord1, tmpVgpr,  None, tmpSgpr)
+
+    self.vgprPool.checkIn(tmpVgpr)
+    del self.ss
     return kStr
 
 
@@ -9513,6 +9519,7 @@ class KernelWriterAssembly(KernelWriter):
       hex(log2(self.bpeCexternal)), \
       "local write C address")
 
+    kStr += self.storeRemapLocalWrite(kernel)
 
     self.vgprPool.checkIn(tmpV0)
     self.vgprPool.checkIn(tid0)
