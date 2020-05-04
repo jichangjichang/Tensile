@@ -9169,7 +9169,6 @@ class KernelWriterAssembly(KernelWriter):
        assert ("bad bps")
 
     return kStr
-
   ##############################################################################
  
   def storeRemapAddLocalWrite(self, kernel, ss, addrCalc, sumIdx):
@@ -9203,8 +9202,34 @@ class KernelWriterAssembly(KernelWriter):
       kStr += self.chooseLocalWrite(bps, sumIdx*rps, addr0, rpv, offset)
 
     return kStr
+  ##############################################################################
+  def storeRemapAddLocalRead(self, kernel, ss):
+    kStr = ""
 
+    kStr += inst("s_waitcnt", "lgkmcnt(0)", "wait for LDS write" )
+    kStr += "\n"
 
+    gwvw = self.storeRemapGwvw
+    startIdx = self.storeRemapStartSumIdx
+    endIdx = self.storeRemapEndSumIdx
+    bpe = kernel["ProblemType"]["DataType"].numBytes()
+    bps = kernel["ProblemType"]["DataType"].numBytes() * gwvw
+    rpv = kernel["ProblemType"]["DataType"].numRegisters() * gwvw
+
+    src = vgpr("LocalReadAddrC")
+    for i in range (startIdx, endIdx, gwvw):
+      offset = self.storeRemapLrOffset * kernel["ProblemType"]["DataType"].numBytes() \
+          * ((i-startIdx)//gwvw)
+      dst = vgpr(i//bpe, gwvw//bpe)
+      if bps==16:
+        kStr += inst("ds_read_b128", dst, src, "offset:%u"%offset, "storeRemap lr")
+
+    kStr += "\n"
+    kStr += inst("s_waitcnt", "lgkmcnt(0)", "wait for LDS read" )
+
+    kStr += "\n"
+
+    return kStr
   ##############################################################################
   # Store Remap Local Write Batch
   ##############################################################################
@@ -9285,6 +9310,9 @@ class KernelWriterAssembly(KernelWriter):
 
       if ss.optSrdIncForRow and addrCalc.rowInc:
         kStr += self.comment("local read and global write here, then calculate next address")
+        self.storeRemapEndSumIdx = sumIdx-1
+        kStr += self.storeRemapAddLocalRead(kernel, ss)
+        self.storeRemapStartSumIdx = sumIdx
 
       # pack stores, beta and non-beta reach here:
       for vi in range(0, gwvw):
@@ -9526,9 +9554,10 @@ class KernelWriterAssembly(KernelWriter):
     # calculate local read address
 
     kStr += self.comment1("Store Remap Local Read address")
-    gwvw = 8
+    self.storeRemapGwvw = gwvw = 8
     nThreadPerCol = kernel["MacroTile0"] // gwvw
     nColPerLoad = globalParameters["WavefrontWidth"] // nThreadPerCol
+    self.storeRemapLrOffset = (kernel["MacroTile0"]+ldsPad) * nColPerLoad
     kStr += inst("v_lshrrev_b32", vgpr(tid1),
                 hex(log2(nThreadPerCol)), vgpr(tid0), \
                 "tid / nThreadPerCol")
@@ -9549,7 +9578,7 @@ class KernelWriterAssembly(KernelWriter):
       hex(log2(self.bpeCexternal)), \
       "local read C address")
     kStr += "\n"
-
+    self.storeRemapStartSumIdx = 0
     kStr += self.storeRemapLocalWrite(kernel)
 
     self.vgprPool.checkIn(tmpV0)
