@@ -9218,6 +9218,10 @@ class KernelWriterAssembly(KernelWriter):
       offset = self.storeRemapLrOffset * kernel["ProblemType"]["DataType"].numBytes() \
           * ((i-startIdx)//gwvw)
       dst = vgpr(i//bpe, gwvw//bpe)
+      if bps==4:
+        kStr += inst("ds_read_b32", dst, src, "offset:%u"%offset, "storeRemap lr")
+      if bps==8:
+        kStr += inst("ds_read_b64", dst, src, "offset:%u"%offset, "storeRemap lr")
       if bps==16:
         kStr += inst("ds_read_b128", dst, src, "offset:%u"%offset, "storeRemap lr")
 
@@ -9248,9 +9252,10 @@ class KernelWriterAssembly(KernelWriter):
       kStr += inst("_v_add_lshl_u32", addr0, addr0,  vgpr(self.storeRemapCoord0), hex(log2(bpe)), "global write C address")
 
       waitCnt = (endIdx-i+1)//gwvw - 1
-      if waitCnt == -1:
+      if waitCnt >= 16:
+        kStr += inst("s_waitcnt", "lgkmcnt(15)", "wait for LDS read" )
+      else:
         kStr += inst("s_waitcnt", "lgkmcnt(%u)"% waitCnt, "wait for LDS read" )
-      kStr += inst("s_waitcnt", "lgkmcnt(%u)"% waitCnt, "wait for LDS read" )
 
       kStr += self.chooseGlobalWrite(True, bps, i//bpe, rpv, addr0, addr1, 0, ntStr)
       #kStr += self.bomb() # can see store addresses just before the store inst
@@ -9560,7 +9565,7 @@ class KernelWriterAssembly(KernelWriter):
     coord0 = tmpV0+3
     waveCoord1 = tmpV0+4
 
-    ldsPad = 8 #TODO: how do define it
+    ldsPad = 4 #TODO: how do define it
 
     #calculate local write coord 0,1
     kStr += vectorStaticDivideAndRemainder(tid1, tid0, "Serial", globalParameters["WavefrontWidth"], \
@@ -9593,7 +9598,7 @@ class KernelWriterAssembly(KernelWriter):
     # calculate local read address
 
     kStr += self.comment1("Store Remap Local Read address")
-    self.storeRemapGwvw = gwvw = 8
+    self.storeRemapGwvw = gwvw = ldsPad
     nThreadPerCol = kernel["MacroTile0"] // gwvw
     nColPerLoad = globalParameters["WavefrontWidth"] // nThreadPerCol
     self.storeRemapLrOffset = (kernel["MacroTile0"]+ldsPad) * nColPerLoad
