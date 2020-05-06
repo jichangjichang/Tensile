@@ -9206,7 +9206,7 @@ class KernelWriterAssembly(KernelWriter):
     kStr += inst("s_waitcnt", "lgkmcnt(0)", "wait for LDS write" )
     kStr += "\n"
 
-    gwvw = self.storeRemapGwvw
+    gwvw = kernel["StoreRemapVectorWidth"]
     startIdx = self.storeRemapStartSumIdx
     endIdx = self.storeRemapEndSumIdx
     bpe = kernel["ProblemType"]["DataType"].numBytes()
@@ -9565,7 +9565,7 @@ class KernelWriterAssembly(KernelWriter):
     coord0 = tmpV0+3
     waveCoord1 = tmpV0+4
 
-    ldsPad = 4 #TODO: how do define it
+    gwvw = ldsPad = kernel["StoreRemapVectorWidth"]
 
     #calculate local write coord 0,1
     kStr += vectorStaticDivideAndRemainder(tid1, tid0, "Serial", globalParameters["WavefrontWidth"], \
@@ -9598,7 +9598,6 @@ class KernelWriterAssembly(KernelWriter):
     # calculate local read address
 
     kStr += self.comment1("Store Remap Local Read address")
-    self.storeRemapGwvw = gwvw = ldsPad
     nThreadPerCol = kernel["MacroTile0"] // gwvw
     nColPerLoad = globalParameters["WavefrontWidth"] // nThreadPerCol
     self.storeRemapLrOffset = (kernel["MacroTile0"]+ldsPad) * nColPerLoad

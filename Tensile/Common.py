@@ -795,6 +795,8 @@ validParameters = {
     "MinVgprNumber":                list(range(0,256)),
 
     "MaxVgprNumber":                list(range(0,257)),
+
+    "StoreRemapVectorWidth":      [0,1,2,4,8],
     }
 
 
@@ -897,6 +899,7 @@ defaultBenchmarkCommonParameters = [
     {"ReplacementKernel":         [ False ] },
     {"MinVgprNumber":             [0]},
     {"MaxVgprNumber":             [256]},
+    {"StoreRemapVectorWidth":     [ 0 ] },
     ]
 # benchmark these solution independently
 defaultForkParameters = []
