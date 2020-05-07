@@ -6382,7 +6382,7 @@ class KernelWriterAssembly(KernelWriter):
       # check alpha
       if self.do["ApplyAlpha"]:
         if kernel["ProblemType"]["DataType"].isHalf():
-          if not kernel["ProblemType"]["HighPrecisionAccumulate"] or kernel["ProblemType"]["ComputeDataType"].isHalf():
+          if not kernel["ProblemType"]["HighPrecisionAccumulate"] :#or kernel["ProblemType"]["ComputeDataType"].isHalf():
             kStr += inst("s_mov_b32", sgpr(tmpSgpr), "0x3c003c00", "Packed alpha==1.0")
             kStr += inst("s_cmp_eq_u32", sgpr("Alpha"), sgpr(tmpSgpr), "alpha == 1.0?")
           else: # HPA
