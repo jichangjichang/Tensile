@@ -9515,7 +9515,7 @@ class KernelWriterAssembly(KernelWriter):
 
     numTmpVgpr = 2
     tmpVgpr = self.vgprPool.checkOut(numTmpVgpr,"storeRemap tmp vgpr")
-    tmpSgpr = self.getTmpSgpr(6)
+    tmpSgpr = self.getTmpSgpr(6).idx()
 
     self.ss = self.StoreState(self, kernel, fullVw, edge, beta, atomic, elements)
 
@@ -9546,7 +9546,7 @@ class KernelWriterAssembly(KernelWriter):
     kStr = ""
     kStr += self.comment1("Store Remap Local Write adderss")
 
-    tmpS0 = self.getTmpSgpr(3)
+    tmpS0 = self.getTmpSgpr(3).idx()
     tmpS1 = tmpS0+1
     wgMT1 = tmpS0+2
 
