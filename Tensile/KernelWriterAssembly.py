@@ -9562,9 +9562,10 @@ class KernelWriterAssembly(KernelWriter):
     coord0 = tmpV0+3
     waveCoord1 = tmpV0+4
 
-    gwvw = ldsPad = kernel["StoreRemapVectorWidth"]
+    gwvw = kernel["StoreRemapVectorWidth"]
+    ldsPad = max(gwvw,4)
 
-    #calculate local write coord 0,1
+    #calculate local write Address: v[vgprLocalWriteAddrC]
     kStr += vectorStaticDivideAndRemainder(tid1, tid0, "Serial", globalParameters["WavefrontWidth"], \
       tmpV0, tmpS0)
 
@@ -9592,7 +9593,7 @@ class KernelWriterAssembly(KernelWriter):
       "local write C address")
 
     kStr += "\n"
-    # calculate local read address
+    # calculate local read address : v[vgprLocalReadAddrC]
 
     kStr += self.comment1("Store Remap Local Read address")
     nThreadPerCol = kernel["MacroTile0"] // gwvw
@@ -9621,8 +9622,8 @@ class KernelWriterAssembly(KernelWriter):
       "local read C address")
     kStr += "\n"
 
-    # calculate global write address
-    kStr += self.comment1("Store Remap global write address")
+    # calculate global write coord0 and coord1
+    kStr += self.comment1("Store Remap global write coord0 and coord1")
     kStr += vectorStaticDivideAndRemainder(waveCoord1, tmpV1, "Serial", globalParameters["WavefrontWidth"], \
       tmpV0, tmpS0)
 
