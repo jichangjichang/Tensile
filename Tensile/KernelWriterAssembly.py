@@ -9556,9 +9556,6 @@ class KernelWriterAssembly(KernelWriter):
     tid0 = self.vgprPool.checkOut(1, "tid0")
     tid1 = self.vgprPool.checkOut(1, "tid1")
 
-    if kernel["BufferStore"]:
-      self.cinRowPtr  = self.vgprPool.checkOut(1, "cinRowPtr")
-
     tmpV0 = self.vgprPool.checkOut(5, "tmpV0")
     tmpV1 = tmpV0+1
     ldsStride = tmpV0+2
@@ -9578,7 +9575,7 @@ class KernelWriterAssembly(KernelWriter):
     kStr += inst("v_add_u32", vgpr(tid1), vgpr(waveCoord1),vgpr(tid1),"coord1 offset in MacroTile")
     kStr += inst("v_mov_b32", vgpr(ldsStride), hex(kernel["MacroTile0"]+ldsPad), \
                     "lds stride = MT0 + PAD")
-    kStr += inst("v_mul_lo_u32", vgpr(self.cinRowPtr), vgpr(tid1), vgpr(ldsStride), \
+    kStr += inst("v_mul_lo_u32", vgpr(tmpV0), vgpr(tid1), vgpr(ldsStride), \
                   "lds coord1 offset = Col-id* lds stride")
 
     kStr += inst("v_lshrrev_b32", vgpr(coord0),
@@ -9589,7 +9586,7 @@ class KernelWriterAssembly(KernelWriter):
 
     kStr += inst("_v_add_lshl_u32", \
       vgpr("LocalWriteAddrC"), \
-      vgpr(self.cinRowPtr), \
+      vgpr(tmpV0), \
       vgpr(coord0), \
       hex(log2(self.bpeCexternal)), \
       "local write C address")
@@ -9608,7 +9605,7 @@ class KernelWriterAssembly(KernelWriter):
     kStr += inst("v_add_u32", vgpr(tid1), vgpr(waveCoord1),vgpr(tid1),"coord1 offset in MacroTile")
     kStr += inst("v_mov_b32", vgpr(ldsStride), hex(kernel["MacroTile0"]+ldsPad), \
                     "lds stride = MT0 + PAD")
-    kStr += inst("v_mul_lo_u32", vgpr(self.cinRowPtr), vgpr(tid1), vgpr(ldsStride), \
+    kStr += inst("v_mul_lo_u32", vgpr(tmpV0), vgpr(tid1), vgpr(ldsStride), \
                   "lds coord1 offset = Col-id* lds stride")
 
     kStr += inst("v_and_b32", vgpr(coord0),
@@ -9618,7 +9615,7 @@ class KernelWriterAssembly(KernelWriter):
 
     kStr += inst("_v_add_lshl_u32", \
       vgpr("LocalReadAddrC"), \
-      vgpr(self.cinRowPtr), \
+      vgpr(tmpV0), \
       vgpr(coord0), \
       hex(log2(self.bpeCexternal)), \
       "local read C address")
@@ -9650,12 +9647,11 @@ class KernelWriterAssembly(KernelWriter):
     self.storeRemapCoord0 = tid0
     self.storeRemapCoord1 = tid1
     self.storeRemapStartSumIdx = 0
+    self.vgprPool.checkIn(tmpV0)
     kStr += self.storeRemapLocalWrite(kernel)
 
-    self.vgprPool.checkIn(tmpV0)
     self.vgprPool.checkIn(tid0)
     self.vgprPool.checkIn(tid1)
-    self.vgprPool.checkIn(self.cinRowPtr)
 
     return kStr
 
