@@ -1687,7 +1687,7 @@ class KernelWriter(metaclass=abc.ABCMeta):
         kl.append(self.comment("LocalSplitU: global write"))
         kl.append(self.localSplitUGlobalWrite(kernel))
 
-      elif kernel["StoreRemapVectorWidth"]:
+      elif 0:#kernel["StoreRemapVectorWidth"]:
         kl.append(self.comment3("store remap"))
         ####################################
         # Store remap
