@@ -2603,6 +2603,17 @@ class Solution:
 
     # lds size is the greater of the two
     ldsNumElements = max(ldsNumElementsAB, ldsNumElementsReduction, ldsNumElementsOccupancy)
+
+    if state["StoreRemapVectorWidth"] > 0:
+      if not state["MatrixInstruction"]:
+        reject(state, "storeRemap only support MaxtrixInstruction kernel")
+      else:
+        wavefronts = state["NumThreads"] // globalParameters["WavefrontWidth"]
+        ldsRemapPad = max(state["StoreRemapVectorWidth"],4) # MI output is vector4
+        ldsNumElementsRemapC = (state["MacroTile0"]+ldsRemapPad)* state["MatrixInstN"] * wavefronts
+        #print("ldsNumElementsRemapC=%u" % ldsNumElementsRemapC)
+        ldsNumElements = max(ldsNumElements, ldsNumElementsRemapC)
+
     state["LdsNumElements"] = ldsNumElements
     ldsSize = ldsNumElements * state["ProblemType"]["DataType"].numBytes()
     if ldsSize > globalParameters["MaxLDS"]:
