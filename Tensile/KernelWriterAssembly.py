@@ -9701,6 +9701,8 @@ class KernelWriterAssembly(KernelWriter):
     strideC1 = "StrideC%s" % (self.indexChars[packedC1[0]])
 
     addr0 = vgpr(tmpVgpr)
+    coord0 = tmpVgpr+1#self.vgprPool.checkOut(2, "SR Store temp coord")
+    coord1 = tmpVgpr+2
 
     if not edge:
       for i in range (startIdx, endIdx, gwvw):
@@ -9726,6 +9728,14 @@ class KernelWriterAssembly(KernelWriter):
       tmpS23 = tmpS01+2
       for i in range (startIdx, endIdx, gwvw):
         for vi in range (0,gwvw):
+
+          if vi == 0:
+            waitCnt = (endIdx-i+1)//gwvw - 1
+            if waitCnt >= 16:
+              kStr += inst("s_waitcnt", "lgkmcnt(15)", "wait for LDS read" )
+            else:
+              kStr += inst("s_waitcnt", "lgkmcnt(%u)"% waitCnt, "wait for LDS read" )
+
           sizeBoundary = [0,0]
           sizeBoundary[0] = \
               sgpr("PackedSize0") if len(kernel["PackedC0IndicesX"]) > 1 \
@@ -9734,30 +9744,23 @@ class KernelWriterAssembly(KernelWriter):
               sgpr("PackedSize1") if len(kernel["PackedC1IndicesX"]) > 1 \
               else self.sizeRef(kernel["ProblemType"]["Index1"])
           currentStep = (i-startIdx)//gwvw
-          kStr += inst("v_add_u32", addr0, vgpr(self.storeRemapOffsetCoord1), self.storeRemapNCPL * currentStep + vi, "offset coord1 += nColPerLoad")
 
-          kStr += inst("v_mul_lo_u32", addr0, addr0, sgpr(strideC1), "coord1 element offset =  coord1 * StrideC")
-          kStr += inst("_v_add_lshl_u32", addr0, addr0,  vgpr(self.storeRemapCoord0), hex(log2(bpe)), "scale to BPE")
-
-          kStr += inst("v_cmp_lt_u32",  sgpr(tmpS01,2), vgpr(self.storeRemapCoord0), \
-                    sizeBoundary[0], "coord0 < size0" )
-          kStr += inst("v_cmp_lt_u32",  sgpr(tmpS23,2), vgpr(self.storeRemapCoord1), \
-                    sizeBoundary[1], "coord1 < size1" )
+          kStr += inst("v_add_u32",vgpr(coord0), vgpr(self.storeRemapCoord0), vi , "coord0 += element index in vector4")
+          kStr += inst("v_cmp_lt_u32",  sgpr(tmpS01,2), vgpr(coord0), sizeBoundary[0], "coord0 < size0" )
+          kStr += inst("v_add_u32", vgpr(coord1), vgpr(self.storeRemapCoord1), self.storeRemapNCPL * currentStep , "coord1 += nColPerLoad")
+          kStr += inst("v_cmp_lt_u32",  sgpr(tmpS23,2), vgpr(coord1), sizeBoundary[1], "coord1 < size1" )
           kStr += inst("s_and_b64",  sgpr(tmpS23,2), sgpr(tmpS01,2), sgpr(tmpS23,2), "in0 && in1" )
-          kStr += inst("v_cndmask_b32", addr0, -1, addr0, \
-                      sgpr(tmpS23,2), "clip if OOB. offset" )
 
-        if vi == 0:
-          waitCnt = (endIdx-i+1)//gwvw - 1
-          if waitCnt >= 16:
-            kStr += inst("s_waitcnt", "lgkmcnt(15)", "wait for LDS read" )
-          else:
-            kStr += inst("s_waitcnt", "lgkmcnt(%u)"% waitCnt, "wait for LDS read" )
+          kStr += inst("v_add_u32", addr0, vgpr(self.storeRemapOffsetCoord1), self.storeRemapNCPL * currentStep , "offset coord1 += nColPerLoad")
+          kStr += inst("v_mul_lo_u32", addr0, addr0, sgpr(strideC1), "coord1 element offset =  coord1 * StrideC")
+          kStr += inst("_v_add_lshl_u32", addr0, addr0,  vgpr(coord0), hex(log2(bpe)), "scale to BPE")
+          kStr += inst("v_cndmask_b32", addr0, -1, addr0, sgpr(tmpS23,2), "clip if OOB. offset" )
 
-        sumIdx = (i-startIdx)+vi
-        kStr += self.chooseGlobalWrite(True, bps, sumIdx//bpe, rpv, addr0, addr1, 0, ntStr, hi16=sumIdx%2)
+          sumIdx = (i-startIdx)+vi
+          kStr += self.chooseGlobalWrite(True, bps, sumIdx//bpe, rpv, addr0, addr1, 0, ntStr, hi16=sumIdx%2)
 
     kStr += "\n"
+    #self.vgprPool.checkIn(coord0)
 
     return kStr
 
@@ -9883,7 +9886,6 @@ class KernelWriterAssembly(KernelWriter):
     self.storeRemapCoord0 = tid0
     self.storeRemapCoord1 = tid1  #global coord1
     self.storeRemapOffsetCoord1 = coord1Offset #offset coord1
-    self.storeRemapStartSumIdx = 0
     self.vgprPool.checkIn(tmpV0)
 
     return kStr
@@ -9910,6 +9912,7 @@ class KernelWriterAssembly(KernelWriter):
     # then use a conservative 1
     edgeVw = kernel["VectorWidth"] if kernel["_VectorStore"] else 1
     edgeVw = min(edgeVw, self.maxGwvw(kernel), kernel["AssertFree0ElementMultiple"])
+
     assert(kernel["VectorWidth"]%edgeVw == 0)
     #if kernel["MatrixInstruction"]:
       ##TODO remove and use VectorWidth once VW mapping of TT is done
@@ -9919,6 +9922,8 @@ class KernelWriterAssembly(KernelWriter):
       #  edgeVw = kernel["StoreVectorWidth"]
 
     if kernel["MatrixInstruction"]:
+      if kernel["StoreRemapVectorWidth"] > 0:
+        edgeVw = kernel["StoreVectorWidth"]
       mfmaColStoreVw = 1 #TODO check can hardcode or not
       #numRowsPerStore = 1 if kernel["MatrixInstM"] == 4 else globalParameters["WavefrontWidth"] // kernel["MatrixInstM"]
       ## number of rregisters required for row/block
@@ -10595,7 +10600,7 @@ class KernelWriterAssembly(KernelWriter):
 
 
       # Now do the edge check and compute the address in bytes:
-      if kernel["BufferStore"]:
+      if kernel["BufferStore"] and kernel["StoreRemapVectorWidth"] == 0:
         if edge:
           # Set address to -1 if OOB on either dimension
           # and only check the x/coord0 index here, save a couple inst
@@ -10869,6 +10874,8 @@ class KernelWriterAssembly(KernelWriter):
       numTmpVgpr = 2
       if len(kernel["PackedC0IndicesX"]) > 1:
         numTmpVgpr += 1
+      if kernel["StoreRemapVectorWidth"] > 0:
+        numTmpVgpr += 1
     else:
       numTmpVgpr = 2 + 3 # GLOBAL_OFFSET_C needs 3, plus 2 tmps?
     tmpVgpr = self.vgprPool.checkOut(numTmpVgpr,"store tmps")
@@ -10905,7 +10912,12 @@ class KernelWriterAssembly(KernelWriter):
         # Calculate Vgprs for Write Batching
         ########################################
 
-        self.ss = self.StoreState(self, kernel, gwvw, edge, beta, atomic, elements[edgeI])
+        if kernel["StoreRemapVectorWidth"] > 0:
+          # For storeRemap, we don't need to consider edge when store into LDS
+          # edge will be consider when final global write which is calculate in storeRemapLrGw()
+          self.ss = self.StoreState(self, kernel, gwvw, False, beta, atomic, elements[edgeI])
+        else:
+          self.ss = self.StoreState(self, kernel, gwvw, edge, beta, atomic, elements[edgeI])
 
         # how many vgprs are needed for zero elements
         # 2 for addressC in vgpr for addition - already checked out
@@ -11045,6 +11057,7 @@ class KernelWriterAssembly(KernelWriter):
 
           if kernel["StoreRemapVectorWidth"] > 0:
             self.StoreRemapLastBatch = 0 if batchIdx != (numBatches-1) else 1
+            self.storeRemapStartSumIdx = 0
 
           kStr += self.globalWriteBatch(kernel, self.ss, batchIdx, beta, edge, atomic, gwvw, atomicW, \
               elementsThisBatch, self.coord0, self.coord1, self.addrD, self.addrC, \
@@ -11052,6 +11065,7 @@ class KernelWriterAssembly(KernelWriter):
               elementSgprs, tmpSgpr)
         # TODO - if this is the last tile, don't need to jump to next instruction
         kStr += inst("s_branch", "label_%04u"%endLabel, "jump to end")
+        del self.ss
 
     # End label
     kStr += "label_%04u:%s"%(endLabel, self.endLine)
