@@ -9768,13 +9768,43 @@ class KernelWriterAssembly(KernelWriter):
               else self.sizeRef(kernel["ProblemType"]["Index1"])
           currentStep = (i-startIdx)//gwvw
 
-          kStr += inst("v_add_u32",vgpr(coord0), vgpr(self.storeRemapCoord0), vi , "coord0 += element index in vector4")
-          kStr += inst("v_cmp_lt_u32",  sgpr(tmpS01,2), vgpr(coord0), sizeBoundary[0], "coord0 < size0" )
+          # calculate global coordination
           kStr += inst("v_add_u32", vgpr(coord1), vgpr(self.storeRemapCoord1), self.storeRemapNCPL * currentStep , "coord1 += nColPerLoad")
+          kStr += inst("v_add_u32",vgpr(coord0), vgpr(self.storeRemapCoord0), vi , "coord0 += element index in vector4")
+
+          if not kernel["GuaranteeNoPartialB"] and self.readTileDimVectorB:
+            kStr += self.comment("shift vector components d1")
+            glvw = kernel["GlobalLoadVectorWidthB"]
+            vTmp1 = self.vgprPool.checkOut(2, "SR Store odd N tmpVgpr")
+            vTmp2 = vTmp1+1
+            sTmp1 = tmpS01
+            sTmp2 = tmpS01+2
+            # check conditions
+            kStr += inst("v_bfi_b32", vgpr(vTmp1), glvw-1, 0, vgpr(coord1), "coord1 & ~(glvw-1)")
+            kStr += inst("v_bfi_b32", vgpr(vTmp2), glvw-1, 0, sgpr("SizesFree+%u"%self.tPB["idx"]), "sizeFree & ~(glvw-1)")
+            kStr += inst("v_cmp_eq_u32", sgpr(sTmp1,2), vgpr(vTmp1), vgpr(vTmp2), "if coord1 is in edge glvw")
+            kStr += inst("v_and_b32", vgpr(vTmp2), sgpr("SizesFree+%u"%self.tPB["idx"]), glvw-1, "sizeFree mod glvw")
+            kStr += inst("v_cmp_gt_u32", sgpr(sTmp2,2), vgpr(vTmp2), 0, "this problem is not multiple size of glvw")
+            kStr += inst("s_and_b64", sgpr(sTmp1,2), sgpr(sTmp1,2), sgpr(sTmp2,2), "AND both conditions")
+            # calculate new coord1
+            kStr += inst("v_add_u32", vgpr(vTmp1), vgpr(coord1), vgpr(vTmp2), "shift coord1")
+            kStr += inst("v_bfi_b32", vgpr(vTmp1), glvw-1, vgpr(vTmp1), sgpr("SizesFree+%u"%self.tPB["idx"]), "new coord1 = (shift coord1 & (glvw-1)) |  (sizeFree & ~(glvw-1))")
+            kStr += inst("v_sub_i32", vgpr(vTmp2), vgpr(vTmp1), vgpr(coord1), "shift how many column")
+            kStr += inst("v_add_u32", vgpr(vTmp2), vgpr(self.storeRemapOffsetCoord1), vgpr(vTmp2), "shift coord1 offset")
+            kStr += inst("v_cndmask_b32", vgpr(coord1), vgpr(coord1), vgpr(vTmp1), \
+                          sgpr(sTmp1,2), "set new coord1 if meet conditions" )
+            kStr += inst("v_cndmask_b32", addr0, vgpr(self.storeRemapOffsetCoord1), vgpr(vTmp2), \
+                          sgpr(sTmp1,2), "set new coord1 offset if meet conditions" )
+            kStr += inst("v_add_u32", addr0, addr0, self.storeRemapNCPL * currentStep , "offset coord1 += nColPerLoad")
+            kStr += "\n"
+            self.vgprPool.checkIn(vTmp1)
+          else:
+            kStr += inst("v_add_u32", addr0, vgpr(self.storeRemapOffsetCoord1), self.storeRemapNCPL * currentStep , "offset coord1 += nColPerLoad")
+
+          kStr += inst("v_cmp_lt_u32",  sgpr(tmpS01,2), vgpr(coord0), sizeBoundary[0], "coord0 < size0" )
           kStr += inst("v_cmp_lt_u32",  sgpr(tmpS23,2), vgpr(coord1), sizeBoundary[1], "coord1 < size1" )
           kStr += inst("s_and_b64",  sgpr(tmpS23,2), sgpr(tmpS01,2), sgpr(tmpS23,2), "in0 && in1" )
 
-          kStr += inst("v_add_u32", addr0, vgpr(self.storeRemapOffsetCoord1), self.storeRemapNCPL * currentStep , "offset coord1 += nColPerLoad")
           kStr += inst("v_mul_lo_u32", addr0, addr0, sgpr(strideC1), "coord1 element offset =  coord1 * StrideC")
           kStr += inst("_v_add_lshl_u32", addr0, addr0,  vgpr(coord0), hex(log2(bpe)), "scale to BPE")
           kStr += inst("v_cndmask_b32", addr0, -1, addr0, sgpr(tmpS23,2), "clip if OOB. offset" )
@@ -10591,7 +10621,8 @@ class KernelWriterAssembly(KernelWriter):
       #   For MFMA shift pointer, correct data is stored in another thread.
       #   Therefore, MFMA cannot use v_mov to amend store data
       #   It needs to modify the coord1 of thread directly.
-      if not kernel["GuaranteeNoPartialB"] and kw.readTileDimVectorB and kernel["MatrixInstruction"] and edge:
+      if not kernel["GuaranteeNoPartialB"] and kw.readTileDimVectorB and kernel["MatrixInstruction"] \
+          and edge and kernel["StoreRemapVectorWidth"] == 0:
         (d1,d0,vc1,vc0) = self.element
         if (d1 == vc1 == d0 == vc0 == 0) or self.newCoord1:
           packedC1 = kernel["PackedC1IndicesX"]
