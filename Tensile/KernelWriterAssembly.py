@@ -6382,7 +6382,7 @@ class KernelWriterAssembly(KernelWriter):
       # check alpha
       if self.do["ApplyAlpha"]:
         if kernel["ProblemType"]["DataType"].isHalf():
-          if not kernel["ProblemType"]["HighPrecisionAccumulate"] :#or kernel["ProblemType"]["ComputeDataType"].isHalf():
+          if not kernel["ProblemType"]["HighPrecisionAccumulate"] or kernel["ProblemType"]["ComputeDataType"].isHalf():
             kStr += inst("s_mov_b32", sgpr(tmpSgpr), "0x3c003c00", "Packed alpha==1.0")
             kStr += inst("s_cmp_eq_u32", sgpr("Alpha"), sgpr(tmpSgpr), "alpha == 1.0?")
           else: # HPA
@@ -6496,6 +6496,11 @@ class KernelWriterAssembly(KernelWriter):
           tmpVgpr= None # don't need tmps for other uses?
         else:
           tmpVgpr= self.vgprPool.checkOut(3, "NLL address tmps")
+
+        if kernel["StoreRemapVectorWidth"] > 0:
+          tmpVgpr= self.vgprPool.checkOut(1, "tmp Vgpr")
+          self.storeRemapStartSumIdx = 0
+
         assert(len(kernel["PackedC1IndicesX"]) == 1)
 
         ss.setupStoreElementsForBatch(kernel, fullVw, elements, None, isOptNLL=True)
@@ -6518,6 +6523,18 @@ class KernelWriterAssembly(KernelWriter):
 
         for elementIdx in range(0, len(elements)):
           kStr += self.comment("store element %d : %s" % (elementIdx, str(elements[elementIdx])))
+          addrCalc = ss.elementAddr[elementIdx]
+          sumIdx = ss.elementSumIdx[elementIdx]
+
+          if ss.optSrdIncForRow and addrCalc.rowInc and kernel["StoreRemapVectorWidth"] > 0:
+          # calculate new local read address and local write address
+            kStr += self.comment("local read and global write here, then calculate next address")
+            self.storeRemapEndSumIdx = sumIdx-1
+            kStr += self.storeRemapAddStore(kernel, ss, addrCalc, tmpVgpr, tmpSgpr, edge=False)
+            kStr += addrCalc.incrementToNextRow(kernel, "D", ss, tmpSgpr)
+            kStr += inst("v_add_u32", vgpr(self.storeRemapCoord1), vgpr(self.storeRemapCoord1), addrCalc.rowInc, "shift storeRemap coord1")
+            self.storeRemapStartSumIdx = sumIdx
+
           # pack stores, beta and non-beta reach here:
           for vi in range(0, fullVw):
             sumIdxV = ss.elementSumIdx[elementIdx] + vi
@@ -6539,12 +6556,18 @@ class KernelWriterAssembly(KernelWriter):
                 d = ss.elementSumIdx[elementIdx] + vi//2
                 kStr += inst("v_and_or_b32", vgpr(d), vgpr("ValuC+%u"%sumIdxV), vgpr(vgprBf16Mask), vgpr("ValuC+%u"%(sumIdxV-1)), "pack two bf16 to dword")
 
-          addrCalc = ss.elementAddr[elementIdx]
-          sumIdx = ss.elementSumIdx[elementIdx]
-
           kStr += addrCalc.emitAddressSetupCode(kernel, ss, tmpVgpr01=tmpVgpr, tmpS01=tmpSgpr, \
                               edge=False, beta=False, atomic=False, mask=None, elementIdx=elementIdx)
-          kStr += self.addStore(kernel, ss, addrCalc, sumIdx, tmpSgpr, edge=False)
+
+          if kernel["StoreRemapVectorWidth"] > 0:
+            kStr += self.storeRemapAddLocalWrite(kernel, ss, addrCalc, sumIdx)
+
+            if elementIdx == (len(elements)-1):
+              kStr += self.comment("last local read and global write")
+              self.storeRemapEndSumIdx = sumIdx+fullVw-1
+              kStr += self.storeRemapAddStore(kernel, ss, addrCalc, tmpVgpr, tmpSgpr, edge=False)
+          else:
+            kStr += self.addStore(kernel, ss, addrCalc, sumIdx, tmpSgpr, edge=False)
 
         if kernel["ProblemType"]["DataType"].isBFloat16() and kernel["ProblemType"]["HighPrecisionAccumulate"]:
           self.vgprPool.checkIn(vgprBf16Temp)
@@ -9701,8 +9724,6 @@ class KernelWriterAssembly(KernelWriter):
     strideC1 = "StrideC%s" % (self.indexChars[packedC1[0]])
 
     addr0 = vgpr(tmpVgpr)
-    coord0 = tmpVgpr+1#self.vgprPool.checkOut(2, "SR Store temp coord")
-    coord1 = tmpVgpr+2
 
     if not edge:
       for i in range (startIdx, endIdx, gwvw):
@@ -9726,6 +9747,8 @@ class KernelWriterAssembly(KernelWriter):
       bps = kernel["ProblemType"]["DataType"].numBytes()
       rpv = kernel["ProblemType"]["DataType"].numRegisters()
       tmpS23 = tmpS01+2
+      coord0 = tmpVgpr+1#self.vgprPool.checkOut(2, "SR Store temp coord")
+      coord1 = tmpVgpr+2
       for i in range (startIdx, endIdx, gwvw):
         for vi in range (0,gwvw):
 
