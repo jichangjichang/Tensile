@@ -2608,9 +2608,12 @@ class Solution:
       if not state["MatrixInstruction"]:
         reject(state, "storeRemap only support MaxtrixInstruction kernel")
       else:
+        if state["MacroTile0"]*state["MatrixInstN"] < state["StoreRemapVectorWidth"]*globalParameters["WavefrontWidth"]:
+          reject(state, "storeRemap: lds elements less than per local read elements of this wave. Please use smaller StoreRemapVectorWidth")
         wavefronts = state["NumThreads"] // globalParameters["WavefrontWidth"]
-        ldsRemapPad = max(state["StoreRemapVectorWidth"],4) # MI output is vector4
-        ldsNumElementsRemapC = (state["MacroTile0"]+ldsRemapPad)* state["MatrixInstN"] * wavefronts
+        ldsRemapPad = max(state["StoreRemapVectorWidth"],4) # MI output is always vector4
+        ldsNumElementsPerWave = (state["MacroTile0"]+ldsRemapPad)* state["MatrixInstN"]
+        ldsNumElementsRemapC = ldsNumElementsPerWave * wavefronts
         #print("ldsNumElementsRemapC=%u" % ldsNumElementsRemapC)
         ldsNumElements = max(ldsNumElements, ldsNumElementsRemapC)
 
