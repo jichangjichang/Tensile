@@ -6498,7 +6498,6 @@ class KernelWriterAssembly(KernelWriter):
           tmpVgpr= self.vgprPool.checkOut(3, "NLL address tmps")
 
         if kernel["StoreRemapVectorWidth"] > 0:
-          tmpVgpr= self.vgprPool.checkOut(1, "tmp Vgpr")
           self.storeRemapStartSumIdx = 0
 
         assert(len(kernel["PackedC1IndicesX"]) == 1)
@@ -9723,7 +9722,8 @@ class KernelWriterAssembly(KernelWriter):
     packedC1 = kernel["PackedC1IndicesX"]
     strideC1 = "StrideC%s" % (self.indexChars[packedC1[0]])
 
-    addr0 = vgpr(tmpVgpr)
+    vTmp = self.vgprPool.checkOut(1, "SR Store temp addr0")
+    addr0 = vgpr(vTmp)
 
     if not edge:
       for i in range (startIdx, endIdx, gwvw):
@@ -9747,8 +9747,8 @@ class KernelWriterAssembly(KernelWriter):
       bps = kernel["ProblemType"]["DataType"].numBytes()
       rpv = kernel["ProblemType"]["DataType"].numRegisters()
       tmpS23 = tmpS01+2
-      coord0 = tmpVgpr+1#self.vgprPool.checkOut(2, "SR Store temp coord")
-      coord1 = tmpVgpr+2
+      coord0 = tmpVgpr
+      coord1 = coord0+1
       for i in range (startIdx, endIdx, gwvw):
         for vi in range (0,gwvw):
 
@@ -9813,7 +9813,7 @@ class KernelWriterAssembly(KernelWriter):
           kStr += self.chooseGlobalWrite(True, bps, sumIdx//bpe, rpv, addr0, addr1, 0, ntStr, hi16=sumIdx%2)
 
     kStr += "\n"
-    #self.vgprPool.checkIn(coord0)
+    self.vgprPool.checkIn(vTmp)
 
     return kStr
 
@@ -10927,8 +10927,6 @@ class KernelWriterAssembly(KernelWriter):
     if kernel["BufferStore"]:
       numTmpVgpr = 2
       if len(kernel["PackedC0IndicesX"]) > 1:
-        numTmpVgpr += 1
-      if kernel["StoreRemapVectorWidth"] > 0:
         numTmpVgpr += 1
     else:
       numTmpVgpr = 2 + 3 # GLOBAL_OFFSET_C needs 3, plus 2 tmps?
