@@ -2611,6 +2611,16 @@ class Solution:
         reject(state, "storeRemap doesn't support GlobalSplitU yet")
       if packedC0 or packedC1:
         reject(state, "storeRemap doesn't support packedC0 and packedC1 yet")
+
+      srMinVw = 1
+      srMaxVw = 8
+      if state["ProblemType"]["DataType"].isSingle():
+        srMaxVw = 4
+      elif state["ProblemType"]["DataType"].isHalf() or state["ProblemType"]["DataType"].isBFloat16():
+        srMinVw = 2
+      if srMinVw > state["StoreRemapVectorWidth"] or srMaxVw < state["StoreRemapVectorWidth"]:
+        reject(state, "StoreRemapVectorWidth %u is not allowed for this data type" % state["StoreRemapVectorWidth"])
+
       if not state["MatrixInstruction"]:
         reject(state, "storeRemap only support MaxtrixInstruction kernel")
       else:
