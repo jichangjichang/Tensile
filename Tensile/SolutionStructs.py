@@ -2605,6 +2605,12 @@ class Solution:
     ldsNumElements = max(ldsNumElementsAB, ldsNumElementsReduction, ldsNumElementsOccupancy)
 
     if state["StoreRemapVectorWidth"] > 0:
+      if state["PersistentKernel"]:
+        reject(state, "storeRemap doesn't support persist kernel yet")
+      if state["GlobalSplitU"] > 1:
+        reject(state, "storeRemap doesn't support GlobalSplitU yet")
+      if packedC0 or packedC1:
+        reject(state, "storeRemap doesn't support packedC0 and packedC1 yet")
       if not state["MatrixInstruction"]:
         reject(state, "storeRemap only support MaxtrixInstruction kernel")
       else:
