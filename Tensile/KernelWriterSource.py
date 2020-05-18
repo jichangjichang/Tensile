@@ -2963,9 +2963,6 @@ class KernelWriterSource(KernelWriter):
             kStr += self.endLine
     return kStr
 
-  def storeRemap(self, kernel):
-    return ""
-
   def openPrefetchAcrossPersistent(self, kernel):
     return ""
 
