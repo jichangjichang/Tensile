@@ -11808,15 +11808,16 @@ class KernelWriterAssembly(KernelWriter):
         vc0 = element[3]
         sumIdx = ss.elementSumIdx[elementIdx]
 
+        # Already write wave column block into LDS
+        # Now read those data back to registers and write to global memroy
         if ss.optSrdIncForRow and addrCalc.rowInc and kernel["StoreRemapVectorWidth"] > 0:
-        # calculate new local read address and local write address
-          kStr += self.comment("local read and global write here, then calculate next address")
+          kStr += self.comment("StoreRemap: local read and global write here")
           self.storeRemapEndSumIdx = sumIdx-1
           kStr += self.storeRemapAddStore(kernel, ss, addrCalc, tmpVgpr, tmpS01, edge)
           kStr += addrCalc.incrementToNextRow(kernel, "D", ss, tmpS01)
           kStr += inst("v_add_u32", vgpr(self.storeRemapCoord1), vgpr(self.storeRemapCoord1), addrCalc.rowInc, "shift storeRemap coord1")
           self.storeRemapStartSumIdx = sumIdx
-          storesIssued += 1 #jimmy fix me:add correct storesIssue
+          storesIssued += 1 #TODO:add correct storesIssue
 
 
         # apply in-bounds exec mask
@@ -11947,6 +11948,7 @@ class KernelWriterAssembly(KernelWriter):
         if kernel["StoreRemapVectorWidth"] > 0:
           kStr += self.storeRemapAddLocalWrite(kernel, ss, addrCalc, sumIdx)
 
+          # Handle last wave column block
           if self.StoreRemapLastBatch == 1 and (elementIdx == len(batchElements)-1):
             kStr += self.comment("last local read and global write")
             self.storeRemapEndSumIdx = sumIdx+gwvw-1
