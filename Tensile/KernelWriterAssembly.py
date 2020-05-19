@@ -9246,7 +9246,7 @@ class KernelWriterAssembly(KernelWriter):
     packedC1 = kernel["PackedC1IndicesX"]
     strideC1 = "StrideC%s" % (self.indexChars[packedC1[0]])
 
-    vTmp = self.vgprPool.checkOut(3, "SR Store temp addr0")
+    vTmp = self.vgprPool.checkOut(1, "SR Store temp addr0")
     addr0 = vgpr(vTmp)
 
     if not edge:
@@ -9268,7 +9268,7 @@ class KernelWriterAssembly(KernelWriter):
       bps = kernel["ProblemType"]["DataType"].numBytes()
       rpv = kernel["ProblemType"]["DataType"].numRegisters()
       tmpS23 = tmpS01+2
-      coord0 = vTmp+1
+      coord0 = tmpVgpr
       coord1 = coord0+1
       for i in range (startIdx, endIdx, gwvw):
         for vi in range (0,gwvw):
@@ -11397,7 +11397,6 @@ class KernelWriterAssembly(KernelWriter):
                 # src0 = beta = f32 = opsel 00
                 # src1 = dataV = f16.lo = opsel 10 or 11 depending on even/odd
                 # src2 = sumIdxV = f32 = opsel 00
-                tmpVgpr = self.vgprPool.checkOut(1)
                 dataCExternal = ss.elementData[elementIdx] + vi//2
                 if (vi%2) == 1:
                   kStr += inst("v_and_b32", vgpr(tmpVgpr), vgpr(dataCExternal), vgpr(vgprBf16Mask), "convert bf16 to fp32")
@@ -11405,7 +11404,6 @@ class KernelWriterAssembly(KernelWriter):
                   kStr += inst("v_lshlrev_b32", vgpr(tmpVgpr), "16", vgpr(dataCExternal), "convert bf16 to fp32" )
                 kStr += inst("v_mac_f32", vgpr("ValuC+%u"%sumIdxV), vgpr(tmpVgpr), sgpr("Beta"), \
                     "finalSum = sum*alpha + C*beta")
-                self.vgprPool.checkIn(tmpVgpr)
 
             elif kernel["ProblemType"]["DataType"].isSingle():
               kStr += inst("v_mac_f32", vgpr("ValuC+%u"%sumIdxV), vgpr(dataV+0), sgpr("Beta"), \
