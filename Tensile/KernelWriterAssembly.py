@@ -9246,7 +9246,7 @@ class KernelWriterAssembly(KernelWriter):
     packedC1 = kernel["PackedC1IndicesX"]
     strideC1 = "StrideC%s" % (self.indexChars[packedC1[0]])
 
-    vTmp = self.vgprPool.checkOut(1, "SR Store temp addr0")
+    vTmp = self.vgprPool.checkOut(3, "SR Store temp addr0")
     addr0 = vgpr(vTmp)
 
     if not edge:
@@ -9268,7 +9268,7 @@ class KernelWriterAssembly(KernelWriter):
       bps = kernel["ProblemType"]["DataType"].numBytes()
       rpv = kernel["ProblemType"]["DataType"].numRegisters()
       tmpS23 = tmpS01+2
-      coord0 = tmpVgpr
+      coord0 = vTmp+1
       coord1 = coord0+1
       for i in range (startIdx, endIdx, gwvw):
         for vi in range (0,gwvw):
@@ -9288,7 +9288,7 @@ class KernelWriterAssembly(KernelWriter):
 
           # calculate global coordination
           kStr += inst("v_add_u32", vgpr(coord1), vgpr(self.storeRemapCoord1), self.storeRemapNCPL * currentStep , "coord1 += nColPerLoad")
-          kStr += inst("v_add_u32",vgpr(coord0), vgpr(self.storeRemapCoord0), vi , "coord0 += element index in vector4")
+          kStr += inst("v_add_u32",vgpr(coord0), vgpr(self.storeRemapCoord0), vi , "coord0 += element index of storeVector")
 
           if not kernel["GuaranteeNoPartialB"] and self.readTileDimVectorB:
             kStr += self.comment("shift vector components d1")
@@ -10174,8 +10174,8 @@ class KernelWriterAssembly(KernelWriter):
 
 
       # Now do the edge check and compute the address in bytes:
-      if kernel["BufferStore"] and kernel["StoreRemapVectorWidth"] == 0:
-        if edge:
+      if kernel["BufferStore"]:
+        if edge and not kernel["StoreRemapVectorWidth"]:
           # Set address to -1 if OOB on either dimension
           # and only check the x/coord0 index here, save a couple inst
           sizeBoundary = [0,0]
@@ -10486,8 +10486,9 @@ class KernelWriterAssembly(KernelWriter):
 
         if kernel["StoreRemapVectorWidth"] > 0:
           # For storeRemap, we don't need to consider edge when store into LDS
-          # edge will be consider when final global write which is calculate in storeRemapLrGw()
+          # edge will be consider when final global write which is calculate in storeRemapAddStore()
           self.ss = self.StoreState(self, kernel, gwvw, False, beta, atomic, elements[edgeI])
+          self.storeRemapStartSumIdx = 0 #reset Start Sum Index
         else:
           self.ss = self.StoreState(self, kernel, gwvw, edge, beta, atomic, elements[edgeI])
 
@@ -10628,8 +10629,7 @@ class KernelWriterAssembly(KernelWriter):
           # VGPRS.  We do not want to accidentally overflow and grow the pool here:
 
           if kernel["StoreRemapVectorWidth"] > 0:
-            self.StoreRemapLastBatch = 0 if batchIdx != (numBatches-1) else 1
-            self.storeRemapStartSumIdx = 0
+            self.StoreRemapLastBatch = 1 if batchIdx == (numBatches-1) else 0
 
           kStr += self.globalWriteBatch(kernel, self.ss, batchIdx, beta, edge, atomic, gwvw, atomicW, \
               elementsThisBatch, self.coord0, self.coord1, self.addrD, self.addrC, \
