@@ -6419,7 +6419,10 @@ class KernelWriterAssembly(KernelWriter):
         # TODO - maybe this should be encapulated in the SS setup code
         tmpSgpr = self.getTmpSgpr(2).idx()
         if ss.optSingleColVgpr:
-          tmpVgpr= None # don't need tmps for other uses?
+          if not kernel["StoreRemapVectorWidth"]:
+            tmpVgpr= None # don't need tmps for other uses?
+          else:
+            tmpVgpr= self.vgprPool.checkOut(1, "NLL store remap tmps")
         else:
           tmpVgpr= self.vgprPool.checkOut(3, "NLL address tmps")
 
@@ -6451,12 +6454,13 @@ class KernelWriterAssembly(KernelWriter):
           addrCalc = ss.elementAddr[elementIdx]
           sumIdx = ss.elementSumIdx[elementIdx]
 
-          if ss.optSrdIncForRow and addrCalc.rowInc and kernel["StoreRemapVectorWidth"] > 0:
+          if ss.optSrdIncForRow and addrCalc.rowInc and kernel["StoreRemapVectorWidth"]:
             kStr += self.comment("StoreRemap: process local read and global write")
             self.storeRemapEndSumIdx = sumIdx
             kStr += self.storeRemapAddStore(kernel, ss, addrCalc, tmpVgpr, tmpSgpr, edge=False)
             kStr += addrCalc.incrementToNextRow(kernel, "D", ss, tmpSgpr)
-            kStr += inst("v_add_u32", vgpr(self.storeRemapCoord1), vgpr(self.storeRemapCoord1), addrCalc.rowInc, "shift storeRemap coord1")
+            kStr += inst("v_mov_b32", vgpr(tmpVgpr), addrCalc.rowInc, "set shift rows")
+            kStr += inst("v_add_u32", vgpr(self.storeRemapCoord1), vgpr(self.storeRemapCoord1), vgpr(tmpVgpr), "shift storeRemap coord1")
             self.storeRemapStartSumIdx = sumIdx
 
           # pack stores, beta and non-beta reach here:
@@ -9369,7 +9373,7 @@ class KernelWriterAssembly(KernelWriter):
     kStr += vectorStaticDivideAndRemainder(waveCoord1, tmpV1, "Serial", globalParameters["WavefrontWidth"], \
       tmpV0, tmpS0)
 
-    ColsPerWave = kernel["MacroTile1"] // 4
+    ColsPerWave = kernel["MatrixInstN"] #kernel["MacroTile1"] // 4
     kStr += inst("v_mul_lo_u32", vgpr(waveCoord1),
                   hex(ColsPerWave), vgpr(waveCoord1), "coord1 offset of global memory for each Wave")
     kStr += inst("v_lshrrev_b32", vgpr(tmpV1),\
@@ -11246,7 +11250,8 @@ class KernelWriterAssembly(KernelWriter):
           self.storeRemapEndSumIdx = sumIdx
           kStr += self.storeRemapAddStore(kernel, ss, addrCalc, tmpVgpr, tmpS01, edge)
           kStr += addrCalc.incrementToNextRow(kernel, "D", ss, tmpS01)
-          kStr += inst("v_add_u32", vgpr(self.storeRemapCoord1), vgpr(self.storeRemapCoord1), addrCalc.rowInc, "shift storeRemap coord1")
+          kStr += inst("v_mov_b32", vgpr(tmpVgpr), addrCalc.rowInc, "set shift rows")
+          kStr += inst("v_add_u32", vgpr(self.storeRemapCoord1), vgpr(self.storeRemapCoord1), vgpr(tmpVgpr), "shift storeRemap coord1")
           self.storeRemapStartSumIdx = sumIdx
           storesIssued += 1 #TODO:add correct storesIssue
 
