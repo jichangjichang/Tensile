@@ -9236,37 +9236,8 @@ class KernelWriterAssembly(KernelWriter):
           # calculate global coordination
           kStr += inst("v_add_u32", vgpr(coord1), vgpr(self.storeRemapCoord1), self.storeRemapNCPL * currentStep , "coord1 += nColPerLoad")
           kStr += inst("v_add_u32",vgpr(coord0), vgpr(self.storeRemapCoord0), vi , "coord0 += element index of storeVector")
-
-          if not kernel["GuaranteeNoPartialB"] and self.readTileDimVectorB:
-            kStr += self.comment("shift vector components d1")
-            glvw = kernel["GlobalLoadVectorWidthB"]
-            vTmp1 = self.vgprPool.checkOut(2, "SR Store odd N tmpVgpr")
-            vTmp2 = vTmp1+1
-            sTmp1 = tmpS01
-            sTmp2 = tmpS01+2
-            # check conditions
-            kStr += inst("v_bfi_b32", vgpr(vTmp1), glvw-1, 0, vgpr(coord1), "coord1 & ~(glvw-1)")
-            kStr += inst("v_bfi_b32", vgpr(vTmp2), glvw-1, 0, sgpr("SizesFree+%u"%self.tPB["idx"]), "sizeFree & ~(glvw-1)")
-            kStr += inst("v_cmp_eq_u32", sgpr(sTmp1,2), vgpr(vTmp1), vgpr(vTmp2), "if coord1 is in edge glvw")
-            kStr += inst("v_and_b32", vgpr(vTmp2), sgpr("SizesFree+%u"%self.tPB["idx"]), glvw-1, "sizeFree mod glvw")
-            kStr += inst("v_cmp_gt_u32", sgpr(sTmp2,2), vgpr(vTmp2), 0, "this problem is not multiple size of glvw")
-            kStr += inst("s_and_b64", sgpr(sTmp1,2), sgpr(sTmp1,2), sgpr(sTmp2,2), "AND both conditions")
-            # calculate new coord1
-            kStr += inst("v_add_u32", vgpr(vTmp1), vgpr(coord1), vgpr(vTmp2), "shift coord1")
-            kStr += inst("v_bfi_b32", vgpr(vTmp1), glvw-1, vgpr(vTmp1), sgpr("SizesFree+%u"%self.tPB["idx"]), \
-                          "new coord1 = (shift coord1 & (glvw-1)) |  (sizeFree & ~(glvw-1))")
-            kStr += inst("v_sub_i32", vgpr(vTmp2), vgpr(vTmp1), vgpr(coord1), "shift how many column")
-            kStr += inst("v_add_u32", vgpr(vTmp2), vgpr(self.storeRemapOffsetCoord1), vgpr(vTmp2), "shift coord1 offset")
-            kStr += inst("v_cndmask_b32", vgpr(coord1), vgpr(coord1), vgpr(vTmp1), \
-                          sgpr(sTmp1,2), "set new coord1 if meet conditions" )
-            kStr += inst("v_cndmask_b32", addr0, vgpr(self.storeRemapOffsetCoord1), vgpr(vTmp2), \
-                          sgpr(sTmp1,2), "set new coord1 offset if meet conditions" )
-            kStr += inst("v_add_u32", addr0, addr0, self.storeRemapNCPL * currentStep , "offset coord1 += nColPerLoad")
-            kStr += "\n"
-            self.vgprPool.checkIn(vTmp1)
-          else:
-            kStr += inst("v_add_u32", addr0, vgpr(self.storeRemapOffsetCoord1), self.storeRemapNCPL * currentStep , \
-                          "offset coord1 += nColPerLoad")
+          kStr += inst("v_add_u32", addr0, vgpr(self.storeRemapOffsetCoord1), self.storeRemapNCPL * currentStep , \
+                        "offset coord1 += nColPerLoad")
 
           kStr += inst("v_cmp_lt_u32",  sgpr(tmpS01,2), vgpr(coord0), sizeBoundary[0], "coord0 < size0" )
           kStr += inst("v_cmp_lt_u32",  sgpr(tmpS23,2), vgpr(coord1), sizeBoundary[1], "coord1 < size1" )
@@ -9373,7 +9344,7 @@ class KernelWriterAssembly(KernelWriter):
     kStr += vectorStaticDivideAndRemainder(waveCoord1, tmpV1, "Serial", globalParameters["WavefrontWidth"], \
       tmpV0, tmpS0)
 
-    ColsPerWave = kernel["MatrixInstN"] #kernel["MacroTile1"] // 4
+    ColsPerWave = kernel["MatrixInstN"]
     kStr += inst("v_mul_lo_u32", vgpr(waveCoord1),
                   hex(ColsPerWave), vgpr(waveCoord1), "coord1 offset of global memory for each Wave")
     kStr += inst("v_lshrrev_b32", vgpr(tmpV1),\
@@ -9403,6 +9374,7 @@ class KernelWriterAssembly(KernelWriter):
 
     kStr += "\n"
 
+    self.storeRemapLdsPad = ldsPad
     self.storeRemapCoord0 = tid0
     self.storeRemapCoord1 = tid1  #global coord1
     self.storeRemapOffsetCoord1 = coord1Offset #offset coord1
@@ -9585,6 +9557,10 @@ class KernelWriterAssembly(KernelWriter):
           self.optSingleColVgpr = 1
 
         if not atomic and len(kernel["PackedC1IndicesX"]) == 1:
+          self.optSrdIncForRow = 1
+
+      if kernel["StoreRemapVectorWidth"]:
+          self.optSingleColVgpr = 1
           self.optSrdIncForRow = 1
 
       if kernel["ProblemType"]["UseInitialStridesCD"]:
@@ -10060,7 +10036,7 @@ class KernelWriterAssembly(KernelWriter):
       #   Therefore, MFMA cannot use v_mov to amend store data
       #   It needs to modify the coord1 of thread directly.
       if not kernel["GuaranteeNoPartialB"] and kw.readTileDimVectorB and \
-          kernel["EnableMatrixInstruction"] and edge and not kernel["StoreRemapVectorWidth"]:
+          kernel["EnableMatrixInstruction"] and edge:
         (d1,d0,vc1,vc0) = self.element
         if (d1 == vc1 == d0 == vc0 == 0) or self.newCoord1:
           packedC1 = kernel["PackedC1IndicesX"]
@@ -10084,10 +10060,17 @@ class KernelWriterAssembly(KernelWriter):
           kStr += inst("v_sub_i32", vgpr(vTmp2), vgpr(vTmp1), vgpr(self.coord1Vgpr), "shift how many column")
           kStr += inst("v_cndmask_b32", vgpr(self.coord1Vgpr), vgpr(self.coord1Vgpr), vgpr(vTmp1), \
                         sgpr(sTmp1,2), "set new coord1 if meet conditions" )
-          kStr += inst("v_mul_i32_i24", vgpr(vTmp2), vgpr(vTmp2), sgpr(strideC1), "shift column *  StridesC")
-          kStr += inst("v_add_i32", vgpr(vTmp1), vgpr(kw.cinRowPtr), vgpr(vTmp2), "new rowStart address")
+          kStr += inst("v_mad_i32_i24", vgpr(vTmp1), sgpr(strideC1), vgpr(vTmp2), vgpr(kw.cinRowPtr), \
+                      "new rowStart address += shift column * StridesC")
           kStr += inst("v_cndmask_b32", vgpr(kw.cinRowPtr), vgpr(kw.cinRowPtr), vgpr(vTmp1), \
                         sgpr(sTmp1,2), "set new rowStart if meet conditions" )
+          if kernel["StoreRemapVectorWidth"]:
+            kStr += inst("v_mov_b32", vgpr(vTmp1), hex((kernel["MacroTile0"]+kw.storeRemapLdsPad)*kw.bpeCexternal), \
+                        "lds byte stride = (MT0 + PAD) * bpe")
+            kStr += inst("v_mad_i32_i24", vgpr(vTmp1), vgpr(vTmp1), vgpr(vTmp2), vgpr("LocalWriteAddrC"), \
+                        "new lds write address += shift column * Lds byte Stride")
+            kStr += inst("v_cndmask_b32", vgpr("LocalWriteAddrC"), vgpr("LocalWriteAddrC"), vgpr(vTmp1), \
+                          sgpr(sTmp1,2), "set new rowStart if meet conditions" )
           kStr += "\n"
 
 
@@ -10402,13 +10385,7 @@ class KernelWriterAssembly(KernelWriter):
         # Calculate Vgprs for Write Batching
         ########################################
 
-        if kernel["StoreRemapVectorWidth"]:
-          # For storeRemap, we don't need to consider edge when store into LDS
-          # edge will be consider when final global write which is calculate in storeRemapAddStore()
-          self.ss = self.StoreState(self, kernel, gwvw, False, beta, atomic, elements[edgeI])
-          self.storeRemapStartSumIdx = 0 #reset Start Sum Index
-        else:
-          self.ss = self.StoreState(self, kernel, gwvw, edge, beta, atomic, elements[edgeI])
+        self.ss = self.StoreState(self, kernel, gwvw, edge, beta, atomic, elements[edgeI])
 
         # how many vgprs are needed for zero elements
         # 2 for addressC in vgpr for addition - already checked out
@@ -10548,6 +10525,8 @@ class KernelWriterAssembly(KernelWriter):
 
           if kernel["StoreRemapVectorWidth"]:
             self.StoreRemapLastBatch = 1 if batchIdx == (numBatches-1) else 0
+            if batchIdx == 0:
+              self.storeRemapStartSumIdx = 0 #Reset Start Sum index
 
           kStr += self.globalWriteBatch(kernel, self.ss, batchIdx, beta, edge, atomic, gwvw, atomicW, \
               elementsThisBatch, self.coord0, self.coord1, self.addrD, self.addrC, \
