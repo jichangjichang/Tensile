@@ -10492,6 +10492,16 @@ class KernelWriterAssembly(KernelWriter):
           firstRow = [e for e in elements[edgeI] if e[0]==0 and e[2]==0]
           numElementsPerBatch=min(len(firstRow),numElementsPerBatch)
 
+        if kernel["StoreRemapVectorWidth"] and edge and not kernel["GuaranteeNoPartialB"] and self.readTileDimVectorB:
+          # hack to avoid modifing local write address across rows to support shift vector d1 in storeRemap
+          firstRow = [e for e in elements[edgeI] if e[0]==0 and e[2]==0]
+          # find largest factor and smaller than numElementPerBatch
+          for d in range(1, len(firstRow)+1):
+            #if len(firstRow)%d == 0 and len(firstRow)//d <= numElementsPerBatch:
+            if len(firstRow)//d <= numElementsPerBatch:
+              numElementsPerBatch = len(firstRow)//d
+              break
+
         # if no atomics and no edge, then write whole vectors
         #if not atomic and not edge:
         #  numVectorsPerBatch = numElementsPerBatch / kernel["GlobalWriteVectorWidth"]
