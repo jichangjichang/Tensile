@@ -2737,7 +2737,7 @@ class Solution:
     # lds size is the greater of the two
     ldsNumElements = max(ldsNumElementsAB, ldsNumElementsReduction, ldsNumElementsOccupancy)
 
-    if state["StoreRemapVectorWidth"] > 0:
+    if state["StoreRemapVectorWidth"]:
       if state["PersistentKernel"]:
         reject(state, "storeRemap doesn't support persist kernel yet")
       if state["GlobalSplitU"] > 1:
@@ -2943,20 +2943,20 @@ class Solution:
       if cont1 and cont2:
         reject(state, "GlobalLoadVectorWidthB %u %% MIOutputVectorWidth %u must be 0" % \
           (state["GlobalLoadVectorWidthB"], state["MIOutputVectorWidth"]))
-    else:
-      if not bufferLoad or not state["GuaranteeNoPartialA"]:
-        # Restrict GRVW/VW combos so shift-ptr logic will work
-        if state["GlobalLoadVectorWidthA"] > 1 \
-            and state["GlobalLoadVectorWidthA"] != state["VectorWidth"]:
-            reject(state, "GlobalLoadVectorWidthA %u must be == VectorWidth %u or == 1" % \
-                    (state["GlobalLoadVectorWidthA"], state["VectorWidth"]))
+    #else:
+    if not bufferLoad or not state["GuaranteeNoPartialA"]:
+      # Restrict GRVW/VW combos so shift-ptr logic will work
+      if state["GlobalLoadVectorWidthA"] > 1 \
+          and state["GlobalLoadVectorWidthA"] != state["VectorWidth"]:
+          reject(state, "GlobalLoadVectorWidthA %u must be == VectorWidth %u or == 1" % \
+                  (state["GlobalLoadVectorWidthA"], state["VectorWidth"]))
 
-      if not bufferLoad or not state["GuaranteeNoPartialB"]:
-        # Restrict GRVW/VW combos so shift-ptr logic will work
-        if state["GlobalLoadVectorWidthB"] > 1 \
-            and state["GlobalLoadVectorWidthB"] != state["VectorWidth"]:
-            reject(state, "GlobalLoadVectorWidthB %u must be == VectorWidth %u or == 1" % \
-                    (state["GlobalLoadVectorWidthB"], state["VectorWidth"]))
+    if not bufferLoad or not state["GuaranteeNoPartialB"]:
+      # Restrict GRVW/VW combos so shift-ptr logic will work
+      if state["GlobalLoadVectorWidthB"] > 1 \
+          and state["GlobalLoadVectorWidthB"] != state["VectorWidth"]:
+          reject(state, "GlobalLoadVectorWidthB %u must be == VectorWidth %u or == 1" % \
+                  (state["GlobalLoadVectorWidthB"], state["VectorWidth"]))
 
     # these work everywhere, no special restrictions
     state["AssertMinApproxSize"] = 0
