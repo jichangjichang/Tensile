@@ -9166,6 +9166,7 @@ class KernelWriterAssembly(KernelWriter):
     endIdx = self.storeRemapEndSumIdx
     bpe = kernel["ProblemType"]["DataType"].numBytes()
     bps = kernel["ProblemType"]["DataType"].numBytes() * gwvw
+    rpe = kernel["ProblemType"]["DataType"].numRegisters()
     rpv = kernel["ProblemType"]["DataType"].numRegisters() * gwvw
 
     src = vgpr("LocalReadAddrC")
@@ -9178,7 +9179,10 @@ class KernelWriterAssembly(KernelWriter):
       elif bps==8:
         kStr += inst("ds_read_b64", dst, src, "offset:%u"%offset, "storeRemap lr")
       elif bps==16:
-        kStr += inst("ds_read_b128", dst, src, "offset:%u"%offset, "storeRemap lr")
+        dst = vgpr((i-startIdx), (rpv//2))
+        kStr += inst("ds_read_b64", dst, src, "offset:%u"%offset, "storeRemap lr")
+        dst = vgpr((i-startIdx+2), (rpv//2))
+        kStr += inst("ds_read_b64", dst, src, "offset:%u"%(offset+8), "storeRemap lr")
 
     kStr += "\n"
 
@@ -9207,13 +9211,14 @@ class KernelWriterAssembly(KernelWriter):
         kStr += inst("v_mul_lo_u32", addr0, addr0, sgpr(strideC1), "coord1 offset =  coord1 * StrideC")
         kStr += inst("_v_add_lshl_u32", addr0, addr0,  vgpr(self.storeRemapCoord0), hex(log2(bpe)), "global write C address")
 
-        lgkmcnt = min((endIdx-i)//gwvw - 1, 15)
+        if bps==16:
+          lgkmcnt = min(((endIdx-i)//gwvw - 1)*2, 15)
+        else:
+          lgkmcnt = min((endIdx-i)//gwvw - 1, 15)
         kStr += inst("s_waitcnt", "lgkmcnt(%u)"% lgkmcnt, "wait for LDS read" )
 
         kStr += self.chooseGlobalWrite(True, bps, (i-startIdx), rpv, addr0, addr1, 0, ntStr)
     else:
-      bps = kernel["ProblemType"]["DataType"].numBytes()
-      rpv = kernel["ProblemType"]["DataType"].numRegisters()
       tmpS23 = tmpS01+2
       coord0 = tmpVgpr
       coord1 = coord0+1
@@ -9221,7 +9226,10 @@ class KernelWriterAssembly(KernelWriter):
         for vi in range (0,gwvw):
 
           if vi == 0:
-            lgkmcnt = min((endIdx-i)//gwvw - 1, 15)
+            if bps == 16:
+              lgkmcnt = min(((endIdx-i)//gwvw - 1)*2, 15)
+            else:
+              lgkmcnt = min((endIdx-i)//gwvw - 1, 15)
             kStr += inst("s_waitcnt", "lgkmcnt(%u)"% lgkmcnt, "wait for LDS read" )
 
           sizeBoundary = [0,0]
@@ -9247,8 +9255,8 @@ class KernelWriterAssembly(KernelWriter):
           kStr += inst("_v_add_lshl_u32", addr0, addr0,  vgpr(coord0), hex(log2(bpe)), "scale to BPE")
           kStr += inst("v_cndmask_b32", addr0, -1, addr0, sgpr(tmpS23,2), "clip if OOB. offset" )
 
-          sumIdx = (i-startIdx)+ int(vi*rpv)
-          kStr += self.chooseGlobalWrite(True, bps, sumIdx, rpv, addr0, addr1, 0, ntStr, hi16=vi%2)
+          sumIdx = (i-startIdx)+ int(vi*rpe)
+          kStr += self.chooseGlobalWrite(True, bpe, sumIdx, rpe, addr0, addr1, 0, ntStr, hi16=vi%2)
 
     kStr += "\n"
     self.vgprPool.checkIn(vTmp)
