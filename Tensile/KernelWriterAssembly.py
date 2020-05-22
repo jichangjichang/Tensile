@@ -9288,7 +9288,7 @@ class KernelWriterAssembly(KernelWriter):
     waveCoord1 = tmpV0+4
 
     gwvw = kernel["StoreRemapVectorWidth"]
-    ldsPad = max(gwvw,4)
+    ldsPad = 4
 
     #calculate local write Address: v[vgprLocalWriteAddrC]
     kStr += vectorStaticDivideAndRemainder(tid1, tid0, "Serial", globalParameters["WavefrontWidth"], \
