@@ -9823,6 +9823,16 @@ class KernelWriterAssembly(KernelWriter):
           % (d1,vc1,d0,vc0))
       if ss.optSingleColVgpr:
         self.coord0Vgpr = kw.coord0
+        if kernel["StoreRemapVectorWidth"] and edge and self.newCoord1 and self.rowInc:
+          if self.rowInc <= 64:
+            kStr += inst("_v_add_co_u32", vgpr(self.coord1Vgpr), "vcc", \
+                      vgpr(self.kernelWriter.coord1), self.rowInc, \
+                      "coord1.1: coord1Vgpr += d1*sg1*VW + vc1")
+          else:
+            kStr += inst("s_mov_b32", sgpr(tmpS01), self.rowInc, "rowInc d1=%u vc1=%u"%(d0, vc0))
+            kStr += inst("_v_add_co_u32", vgpr(self.coord1Vgpr), "vcc", \
+                      vgpr(self.kernelWriter.coord1), sgpr(tmpS01), \
+                      "coord1.2: coord1 += d1*sg1*VW + vc1")
       elif not ss.optSharedColVgpr or (d1 == vc1 == 0):
         # not share mode or first row always does the address calc math:
 
@@ -9852,6 +9862,8 @@ class KernelWriterAssembly(KernelWriter):
               kStr += inst("_v_add_co_u32", vgpr(self.coord1Vgpr), "vcc", \
                         vgpr(self.kernelWriter.coord1), sgpr(tmpS01), \
                         "coord1.2: coord1 += d1*sg1*VW + vc1")
+
+
       return kStr
 
     # storeChar is 'C' or 'D'
