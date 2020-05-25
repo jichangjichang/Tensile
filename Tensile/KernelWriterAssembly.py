@@ -9356,7 +9356,7 @@ class KernelWriterAssembly(KernelWriter):
     kStr += vectorStaticDivideAndRemainder(waveCoord1, tmpV1, "Serial", globalParameters["WavefrontWidth"], \
       tmpV0, tmpS0)
 
-    ColsPerWave = kernel["MatrixInstN"]
+    ColsPerWave = kernel["MatrixInstN"] * kernel["MatrixInstBN"]
     kStr += inst("v_mul_lo_u32", vgpr(waveCoord1),
                   hex(ColsPerWave), vgpr(waveCoord1), "coord1 offset of global memory for each Wave")
     kStr += inst("v_lshrrev_b32", vgpr(tmpV1),\
