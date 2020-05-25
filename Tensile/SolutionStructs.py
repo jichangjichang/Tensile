@@ -2737,7 +2737,10 @@ class Solution:
     # lds size is the greater of the two
     ldsNumElements = max(ldsNumElementsAB, ldsNumElementsReduction, ldsNumElementsOccupancy)
 
+    #check not support cases and calculate lds resources
     if state["StoreRemapVectorWidth"]:
+      if not state["EnableMatrixInstruction"]:
+        reject(state, "storeRemap only support MaxtrixInstruction kernel")
       if state["PersistentKernel"]:
         reject(state, "storeRemap doesn't support persist kernel yet")
       if state["GlobalSplitU"] > 1:
@@ -2754,17 +2757,14 @@ class Solution:
       if srMinVw > state["StoreRemapVectorWidth"] or srMaxVw < state["StoreRemapVectorWidth"]:
         reject(state, "StoreRemapVectorWidth %u is not allowed for this data type" % state["StoreRemapVectorWidth"])
 
-      if not state["EnableMatrixInstruction"]:
-        reject(state, "storeRemap only support MaxtrixInstruction kernel")
-      else:
-        if state["MacroTile0"]*state["MatrixInstN"] < state["StoreRemapVectorWidth"]*globalParameters["WavefrontWidth"]:
-          reject(state, "storeRemap: lds elements less than per local read elements of this wave. Please use smaller StoreRemapVectorWidth")
-        wavefronts = state["NumThreads"] // globalParameters["WavefrontWidth"]
-        ldsRemapPad = max(state["StoreRemapVectorWidth"],4) # MI output is always vector4
-        ldsNumElementsPerWave = (state["MacroTile0"]+ldsRemapPad)* state["MatrixInstN"]
-        ldsNumElementsRemapC = ldsNumElementsPerWave * wavefronts
-        #print("ldsNumElementsRemapC=%u" % ldsNumElementsRemapC)
-        ldsNumElements = max(ldsNumElements, ldsNumElementsRemapC)
+      if state["MacroTile0"]*state["MatrixInstN"] < state["StoreRemapVectorWidth"]*globalParameters["WavefrontWidth"]:
+        reject(state, "storeRemap: number of lds elements less than per wave local read elements. Please use smaller StoreRemapVectorWidth")
+      wavefronts = state["NumThreads"] // globalParameters["WavefrontWidth"]
+      ldsRemapPad = state["MIOutputVectorWidth"]
+      ldsNumElementsPerWave = (state["MacroTile0"]+ldsRemapPad)* state["MatrixInstN"]
+      ldsNumElementsRemapC = ldsNumElementsPerWave * wavefronts
+      #print("ldsNumElementsRemapC=%u" % ldsNumElementsRemapC)
+      ldsNumElements = max(ldsNumElements, ldsNumElementsRemapC)
 
     state["LdsNumElements"] = ldsNumElements
     ldsSize = ldsNumElements * state["ProblemType"]["DataType"].numBytes()
