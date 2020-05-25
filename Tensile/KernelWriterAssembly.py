@@ -3036,13 +3036,6 @@ class KernelWriterAssembly(KernelWriter):
     kStr += self.macroRegister("vgprLocalReadAddrB", \
         self.startVgprLocalReadAddressesB)
 
-    # re-use localRead A B vgprs for storeRemap
-    if kernel["StoreRemapVectorWidth"]:
-      kStr += self.macroRegister("vgprLocalReadAddrC", \
-          self.startVgprLocalReadAddressesA)
-      kStr += self.macroRegister("vgprLocalWriteAddrC", \
-          self.startVgprLocalReadAddressesB)
-
     # Serial is always the last register in the pool so the store
     # code doesn't have to deal with fragmentation
     startSerial = self.vgprPool.size()-1
@@ -9024,6 +9017,8 @@ class KernelWriterAssembly(KernelWriter):
     self.vgprPool.checkIn(self.coord1)
 
     if kernel["StoreRemapVectorWidth"]:
+      self.vgprPool.checkIn(self.storeRemapLW)
+      self.vgprPool.checkIn(self.storeRemapLR)
       self.vgprPool.checkIn(self.storeRemapCoord0)
       self.vgprPool.checkIn(self.storeRemapCoord1)
       self.vgprPool.checkIn(self.storeRemapOffsetCoord1)
@@ -9140,7 +9135,7 @@ class KernelWriterAssembly(KernelWriter):
     bps = kernel["ProblemType"]["DataType"].numBytes() * ss.cfg.gwvw
     rpv = kernel["ProblemType"]["DataType"].numRegisters() * ss.cfg.gwvw
 
-    addr0 = vgpr("LocalWriteAddrC")
+    addr0 = vgpr(self.storeRemapLW)
     offset =  addrCalc.globalOffset
 
     # only consider store with vector4
@@ -9174,7 +9169,7 @@ class KernelWriterAssembly(KernelWriter):
     rpe = kernel["ProblemType"]["DataType"].numRegisters()
     rpv = kernel["ProblemType"]["DataType"].numRegisters() * gwvw
 
-    src = vgpr("LocalReadAddrC")
+    src = vgpr(self.storeRemapLR)
     for i in range (startIdx, endIdx, gwvw):
       offset = self.storeRemapLrOffset * kernel["ProblemType"]["DataType"].numBytes() \
           * ((i-startIdx)//gwvw)
@@ -9285,6 +9280,8 @@ class KernelWriterAssembly(KernelWriter):
     tid0 = self.vgprPool.checkOut(1, "SR coord0")
     tid1 = self.vgprPool.checkOut(1, "SR coord1")
     coord1Offset = self.vgprPool.checkOut(1, "SR coord1 offset")
+    storeRemapLW = self.vgprPool.checkOut(1, "SR local write")
+    storeRemapLR = self.vgprPool.checkOut(1, "SR local read")
 
     tmpV0 = self.vgprPool.checkOut(5, "tmpV0")
     tmpV1 = tmpV0+1
@@ -9315,7 +9312,7 @@ class KernelWriterAssembly(KernelWriter):
                   "lds coord0 offset *= 4 (each thread hold 4 element)")
 
     kStr += inst("_v_add_lshl_u32", \
-      vgpr("LocalWriteAddrC"), \
+      vgpr(storeRemapLW), \
       vgpr(tmpV0), \
       vgpr(coord0), \
       hex(log2(self.bpeCexternal)), \
@@ -9344,7 +9341,7 @@ class KernelWriterAssembly(KernelWriter):
                   "lds coord0 offset *= gwvw (each thread hold gwvw element)")
 
     kStr += inst("_v_add_lshl_u32", \
-      vgpr("LocalReadAddrC"), \
+      vgpr(storeRemapLR), \
       vgpr(tmpV0), \
       vgpr(coord0), \
       hex(log2(self.bpeCexternal)), \
@@ -9386,8 +9383,10 @@ class KernelWriterAssembly(KernelWriter):
 
     kStr += "\n"
 
-    self.storeRemapCoord0 = tid0  #global coord0
-    self.storeRemapCoord1 = tid1  #global coord1
+    self.storeRemapLW = storeRemapLW  #local write
+    self.storeRemapLR = storeRemapLR  #local read
+    self.storeRemapCoord0 = tid0      #global coord0
+    self.storeRemapCoord1 = tid1      #global coord1
     self.storeRemapOffsetCoord1 = coord1Offset #offset coord1
 
     self.vgprPool.checkIn(tmpV0)
@@ -10092,9 +10091,9 @@ class KernelWriterAssembly(KernelWriter):
           if kernel["StoreRemapVectorWidth"]:
             kStr += inst("v_mov_b32", vgpr(vTmp1), hex((kernel["MacroTile0"]+kernel["MIOutputVectorWidth"])*kw.bpeCexternal), \
                         "lds byte stride = (MT0 + PAD) * bpe")
-            kStr += inst("v_mad_i32_i24", vgpr(vTmp1), vgpr(vTmp1), vgpr(vTmp2), vgpr("LocalWriteAddrC"), \
+            kStr += inst("v_mad_i32_i24", vgpr(vTmp1), vgpr(vTmp1), vgpr(vTmp2), vgpr(kw.storeRemapLW), \
                         "new lds write address += shift column * Lds byte Stride")
-            kStr += inst("v_cndmask_b32", vgpr("LocalWriteAddrC"), vgpr("LocalWriteAddrC"), vgpr(vTmp1), \
+            kStr += inst("v_cndmask_b32", vgpr(kw.storeRemapLW), vgpr(kw.storeRemapLW), vgpr(vTmp1), \
                           sgpr(sTmp1,2), "set new rowStart if meet conditions" )
           kStr += "\n"
 
