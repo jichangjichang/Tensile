@@ -2747,6 +2747,10 @@ class Solution:
         reject(state, "storeRemap doesn't support GlobalSplitU yet")
       if packedC0 or packedC1:
         reject(state, "storeRemap doesn't support packedC0 and packedC1 yet")
+      if state["MIWaveGroup"][0] > 1:
+        reject(state, "storeRemap doesn't support MI wave group in M direction yet")
+      if state["MatrixInstBN"] > 1:
+        reject(state, "storeRemap doesn't support MI multi blocks in N direction yet")
 
       srMinVw = 1
       srMaxVw = 8
