@@ -2749,8 +2749,8 @@ class Solution:
         reject(state, "storeRemap doesn't support packedC0 and packedC1 yet")
       if state["MIWaveGroup"][0] > 1:
         reject(state, "storeRemap doesn't support MI wave group in M direction yet")
-      if state["MatrixInstBN"] > 1:
-        reject(state, "storeRemap doesn't support MI multi blocks in N direction yet")
+      if state["MatrixInstBN"] > 1 and state["MatrixInstN"] == 4:
+        reject(state, "storeRemap doesn't support MI4x4 multi blocks in N direction yet")
 
       srMinVw = 1
       srMaxVw = 8
@@ -2764,7 +2764,7 @@ class Solution:
       if state["MacroTile0"]*state["MatrixInstN"] < state["StoreRemapVectorWidth"]*globalParameters["WavefrontWidth"]:
         reject(state, "storeRemap: number of lds elements less than per wave local read elements. Please use smaller StoreRemapVectorWidth")
       wavefronts = state["NumThreads"] // globalParameters["WavefrontWidth"]
-      ldsRemapPad = state["MIOutputVectorWidth"]
+      ldsRemapPad = max(state["StoreRemapVectorWidth"],state["MIOutputVectorWidth"])
       ldsNumElementsPerWave = (state["MacroTile0"]+ldsRemapPad)* state["MatrixInstN"]
       ldsNumElementsRemapC = ldsNumElementsPerWave * wavefronts
       #print("ldsNumElementsRemapC=%u" % ldsNumElementsRemapC)
@@ -2947,20 +2947,20 @@ class Solution:
       if cont1 and cont2:
         reject(state, "GlobalLoadVectorWidthB %u %% MIOutputVectorWidth %u must be 0" % \
           (state["GlobalLoadVectorWidthB"], state["MIOutputVectorWidth"]))
-    #else:
-    if not bufferLoad or not state["GuaranteeNoPartialA"]:
-      # Restrict GRVW/VW combos so shift-ptr logic will work
-      if state["GlobalLoadVectorWidthA"] > 1 \
-          and state["GlobalLoadVectorWidthA"] != state["VectorWidth"]:
-          reject(state, "GlobalLoadVectorWidthA %u must be == VectorWidth %u or == 1" % \
-                  (state["GlobalLoadVectorWidthA"], state["VectorWidth"]))
+    else:
+      if not bufferLoad or not state["GuaranteeNoPartialA"]:
+        # Restrict GRVW/VW combos so shift-ptr logic will work
+        if state["GlobalLoadVectorWidthA"] > 1 \
+            and state["GlobalLoadVectorWidthA"] != state["VectorWidth"]:
+            reject(state, "GlobalLoadVectorWidthA %u must be == VectorWidth %u or == 1" % \
+                    (state["GlobalLoadVectorWidthA"], state["VectorWidth"]))
 
-    if not bufferLoad or not state["GuaranteeNoPartialB"]:
-      # Restrict GRVW/VW combos so shift-ptr logic will work
-      if state["GlobalLoadVectorWidthB"] > 1 \
-          and state["GlobalLoadVectorWidthB"] != state["VectorWidth"]:
-          reject(state, "GlobalLoadVectorWidthB %u must be == VectorWidth %u or == 1" % \
-                  (state["GlobalLoadVectorWidthB"], state["VectorWidth"]))
+      if not bufferLoad or not state["GuaranteeNoPartialB"]:
+        # Restrict GRVW/VW combos so shift-ptr logic will work
+        if state["GlobalLoadVectorWidthB"] > 1 \
+            and state["GlobalLoadVectorWidthB"] != state["VectorWidth"]:
+            reject(state, "GlobalLoadVectorWidthB %u must be == VectorWidth %u or == 1" % \
+                    (state["GlobalLoadVectorWidthB"], state["VectorWidth"]))
 
     # these work everywhere, no special restrictions
     state["AssertMinApproxSize"] = 0

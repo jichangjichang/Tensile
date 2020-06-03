@@ -6419,7 +6419,6 @@ class KernelWriterAssembly(KernelWriter):
             tmpVgpr= self.vgprPool.checkOut(1, "NLL store remap tmps")
         else:
           tmpVgpr= self.vgprPool.checkOut(3, "NLL address tmps")
-
         assert(len(kernel["PackedC1IndicesX"]) == 1)
 
         ss.setupStoreElementsForBatch(kernel, fullVw, elements, None, isOptNLL=True)
@@ -9179,10 +9178,7 @@ class KernelWriterAssembly(KernelWriter):
       elif bps==8:
         kStr += inst("ds_read_b64", dst, src, "offset:%u"%offset, "storeRemap lr")
       elif bps==16:
-        dst = vgpr((i-startIdx), (rpv//2))
-        kStr += inst("ds_read_b64", dst, src, "offset:%u"%offset, "storeRemap lr")
-        dst = vgpr((i-startIdx+2), (rpv//2))
-        kStr += inst("ds_read_b64", dst, src, "offset:%u"%(offset+8), "storeRemap lr")
+        kStr += inst("ds_read_b128", dst, src, "offset:%u"%offset, "storeRemap lr")
 
     kStr += "\n"
 
@@ -9211,10 +9207,7 @@ class KernelWriterAssembly(KernelWriter):
         kStr += inst("v_mul_lo_u32", addr0, addr0, sgpr(strideC1), "coord1 offset =  coord1 * StrideC")
         kStr += inst("_v_add_lshl_u32", addr0, addr0,  vgpr(self.storeRemapCoord0), hex(log2(bpe)), "global write C address")
 
-        if bps==16:
-          lgkmcnt = min(((endIdx-i)//gwvw - 1)*2, 15)
-        else:
-          lgkmcnt = min((endIdx-i)//gwvw - 1, 15)
+        lgkmcnt = min((endIdx-i)//gwvw - 1, 15)
         kStr += inst("s_waitcnt", "lgkmcnt(%u)"% lgkmcnt, "wait for LDS read" )
 
         kStr += self.chooseGlobalWrite(True, bps, (i-startIdx), rpv, addr0, addr1, 0, ntStr)
@@ -9226,10 +9219,7 @@ class KernelWriterAssembly(KernelWriter):
         for vi in range (0,gwvw):
 
           if vi == 0:
-            if bps == 16:
-              lgkmcnt = min(((endIdx-i)//gwvw - 1)*2, 15)
-            else:
-              lgkmcnt = min((endIdx-i)//gwvw - 1, 15)
+            lgkmcnt = min((endIdx-i)//gwvw - 1, 15)
             kStr += inst("s_waitcnt", "lgkmcnt(%u)"% lgkmcnt, "wait for LDS read" )
 
           sizeBoundary = [0,0]
@@ -9270,9 +9260,8 @@ class KernelWriterAssembly(KernelWriter):
     kStr = ""
     kStr += self.comment1("Store Remap Local Write adderss")
 
-    tmpS0 = self.getTmpSgpr(3).idx()
-    tmpS1 = tmpS0+1
-    wgMT1 = tmpS0+2
+    tmpS0 = self.getTmpSgpr(2).idx()
+    wgMT1 = tmpS0+1
 
     wg0="WorkGroup0"
     wg1="WorkGroup1"
@@ -9290,7 +9279,7 @@ class KernelWriterAssembly(KernelWriter):
     waveCoord1 = tmpV0+4
 
     gwvw = kernel["StoreRemapVectorWidth"]
-    ldsPad = kernel["MIOutputVectorWidth"]
+    ldsPad = max(kernel["StoreRemapVectorWidth"],kernel["MIOutputVectorWidth"])
 
     #calculate local write Address: v[vgprLocalWriteAddrC]
     kStr += vectorStaticDivideAndRemainder(tid1, tid0, "Serial", globalParameters["WavefrontWidth"], \
@@ -9382,6 +9371,8 @@ class KernelWriterAssembly(KernelWriter):
         "coord1 = tid1*VW + wg1*MT1")
 
     kStr += "\n"
+
+    kStr += self.syncThreads(kernel, "StoreRemap Start")
 
     self.storeRemapLW = storeRemapLW  #local write
     self.storeRemapLR = storeRemapLR  #local read
@@ -9874,8 +9865,6 @@ class KernelWriterAssembly(KernelWriter):
               kStr += inst("_v_add_co_u32", vgpr(self.coord1Vgpr), "vcc", \
                         vgpr(self.kernelWriter.coord1), sgpr(tmpS01), \
                         "coord1.2: coord1 += d1*sg1*VW + vc1")
-
-
       return kStr
 
     # storeChar is 'C' or 'D'
@@ -10059,8 +10048,7 @@ class KernelWriterAssembly(KernelWriter):
       #   For MFMA shift pointer, correct data is stored in another thread.
       #   Therefore, MFMA cannot use v_mov to amend store data
       #   It needs to modify the coord1 of thread directly.
-      if not kernel["GuaranteeNoPartialB"] and kw.readTileDimVectorB and \
-          kernel["EnableMatrixInstruction"] and edge:
+      if not kernel["GuaranteeNoPartialB"] and kw.readTileDimVectorB and kernel["EnableMatrixInstruction"] and edge:
         (d1,d0,vc1,vc0) = self.element
         if (d1 == vc1 == d0 == vc0 == 0) or self.newCoord1:
           packedC1 = kernel["PackedC1IndicesX"]
@@ -10089,7 +10077,8 @@ class KernelWriterAssembly(KernelWriter):
           kStr += inst("v_cndmask_b32", vgpr(kw.cinRowPtr), vgpr(kw.cinRowPtr), vgpr(vTmp1), \
                         sgpr(sTmp1,2), "set new rowStart if meet conditions" )
           if kernel["StoreRemapVectorWidth"]:
-            kStr += inst("v_mov_b32", vgpr(vTmp1), hex((kernel["MacroTile0"]+kernel["MIOutputVectorWidth"])*kw.bpeCexternal), \
+            ldsPad = max(kernel["StoreRemapVectorWidth"],kernel["MIOutputVectorWidth"])
+            kStr += inst("v_mov_b32", vgpr(vTmp1), hex((kernel["MacroTile0"]+ldsPad)*kw.bpeCexternal), \
                         "lds byte stride = (MT0 + PAD) * bpe")
             kStr += inst("v_mad_i32_i24", vgpr(vTmp1), vgpr(vTmp1), vgpr(vTmp2), vgpr(kw.storeRemapLW), \
                         "new lds write address += shift column * Lds byte Stride")
@@ -11268,8 +11257,7 @@ class KernelWriterAssembly(KernelWriter):
           kStr += inst("v_mov_b32", vgpr(tmpVgpr), addrCalc.rowInc, "set shift rows")
           kStr += inst("v_add_u32", vgpr(self.storeRemapCoord1), vgpr(self.storeRemapCoord1), vgpr(tmpVgpr), "shift storeRemap coord1")
           self.storeRemapStartSumIdx = sumIdx
-          storesIssued += 1 #TODO:add correct storesIssue
-
+          storesIssued += 1
 
         # apply in-bounds exec mask
         if edge and not kernel["BufferStore"]:
@@ -11404,7 +11392,7 @@ class KernelWriterAssembly(KernelWriter):
             kStr += self.comment("last local read and global write")
             self.storeRemapEndSumIdx = sumIdx+gwvw
             kStr += self.storeRemapAddStore(kernel, ss, addrCalc, tmpVgpr, tmpS01, edge)
-            storesIssued += 1 #TODO:add correct storesIssue
+            storesIssued += 1
 
       if kernel["ProblemType"]["DataType"].isBFloat16() and kernel["ProblemType"]["HighPrecisionAccumulate"]:
         self.vgprPool.checkIn(vgprBf16Temp)
