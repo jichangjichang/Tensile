@@ -111,6 +111,7 @@ const unsigned int solutionMetaData[maxNumSolutions][10] = {
 /* runtime structures */
 TensileStatus status;
 hipStream_t stream;
+hipStream_t stream2;
 
 void *deviceD;
 void *deviceC;
@@ -189,7 +190,9 @@ TensileStatus generatedCallToSolution(
     DataType beta,
     unsigned int numEvents = 0,
     hipEvent_t *startEvent = NULL,
-    hipEvent_t *stopEvent = NULL ) {
+    hipEvent_t *stopEvent = NULL,
+    hipEvent_t *startEvent2 = NULL,
+    hipEvent_t *stopEvent2 = NULL  ) {
   // calculate parameters assuming packed data
   unsigned int strideD0I = 1;
   unsigned int strideD1J = 1 * ((ldd != std::numeric_limits<unsigned int>::max()) ? ldd : std::max(minStrides[0], sizes[0]));
@@ -237,7 +240,7 @@ TensileStatus generatedCallToSolution(
       sizeK,
       sizeL,
       stream,
-      numEvents, startEvent, stopEvent); // events
+      numEvents, startEvent, stopEvent, stream2, startEvent2, stopEvent2); // events
 };
 
 /* results file name */

@@ -770,6 +770,16 @@ bool callLibrary(DestDataType*   initialD,
             hipEventCreateWithFlags(&l_eventStop[syncIdx][enqIdx], hipEventDefault);
         }
     }
+    hipEvent_t l_eventStart2[numSyncsPerBenchmark][numEnqueuesPerSync];
+    hipEvent_t l_eventStop2[numSyncsPerBenchmark][numEnqueuesPerSync];
+    for(unsigned int syncIdx = 0; syncIdx < numSyncsPerBenchmark; syncIdx++)
+    {
+        for(unsigned int enqIdx = 0; enqIdx < numEnqueuesPerSync; enqIdx++)
+        {
+            hipEventCreateWithFlags(&l_eventStart2[syncIdx][enqIdx], hipEventDefault);
+            hipEventCreateWithFlags(&l_eventStop2[syncIdx][enqIdx], hipEventDefault);
+        }
+    }
 #endif
 
     // time solution
@@ -896,6 +906,8 @@ bool callLibrary(DestDataType*   initialD,
                                                      l_eventStop[syncIdx][enqIdx]);
                 ::hipEventDestroy(l_eventStart[syncIdx][enqIdx]);
                 ::hipEventDestroy(l_eventStop[syncIdx][enqIdx]);
+                ::hipEventDestroy(l_eventStart2[syncIdx][enqIdx]);
+                ::hipEventDestroy(l_eventStop2[syncIdx][enqIdx]);
             }
         }
         // convert to nano-seconds
@@ -1043,6 +1055,16 @@ bool benchmarkAllSolutions(DestDataType*   initialD,
         {
             hipEventCreateWithFlags(&l_eventStart[syncIdx][enqIdx], hipEventDefault);
             hipEventCreateWithFlags(&l_eventStop[syncIdx][enqIdx], hipEventDefault);
+        }
+    }
+    hipEvent_t l_eventStart2[numSyncsPerBenchmark][numEnqueuesPerSync];
+    hipEvent_t l_eventStop2[numSyncsPerBenchmark][numEnqueuesPerSync];
+    for(unsigned int syncIdx = 0; syncIdx < numSyncsPerBenchmark; syncIdx++)
+    {
+        for(unsigned int enqIdx = 0; enqIdx < numEnqueuesPerSync; enqIdx++)
+        {
+            hipEventCreateWithFlags(&l_eventStart2[syncIdx][enqIdx], hipEventDefault);
+            hipEventCreateWithFlags(&l_eventStop2[syncIdx][enqIdx], hipEventDefault);
         }
     }
 #endif
@@ -1221,7 +1243,9 @@ bool benchmarkAllSolutions(DestDataType*   initialD,
                                                                    beta,
                                                                    numEnqueuesPerSync,
                                                                    &l_eventStart[syncIdx][enqIdx],
-                                                                   &l_eventStop[syncIdx][enqIdx]);
+                                                                   &l_eventStop[syncIdx][enqIdx],
+                                                                   &l_eventStart2[syncIdx][enqIdx],
+                                                                   &l_eventStop2[syncIdx][enqIdx]);
 
                     if(status == hipErrorFileNotFound)
                     {
@@ -1458,6 +1482,8 @@ bool benchmarkAllSolutions(DestDataType*   initialD,
             {
                 ::hipEventDestroy(l_eventStart[syncIdx][enqIdx]);
                 ::hipEventDestroy(l_eventStop[syncIdx][enqIdx]);
+                ::hipEventDestroy(l_eventStart2[syncIdx][enqIdx]);
+                ::hipEventDestroy(l_eventStop2[syncIdx][enqIdx]);
             }
         }
 #endif
@@ -1712,6 +1738,16 @@ bool benchmarkAllSolutionsForSize(unsigned int problemIdx,
             hipEventCreateWithFlags(&l_eventStop[syncIdx][enqIdx], hipEventDefault);
         }
     }
+    hipEvent_t l_eventStart2[numSyncsPerBenchmark][numEnqueuesPerSync];
+    hipEvent_t l_eventStop2[numSyncsPerBenchmark][numEnqueuesPerSync];
+    for(unsigned int syncIdx = 0; syncIdx < numSyncsPerBenchmark; syncIdx++)
+    {
+        for(unsigned int enqIdx = 0; enqIdx < numEnqueuesPerSync; enqIdx++)
+        {
+            hipEventCreateWithFlags(&l_eventStart2[syncIdx][enqIdx], hipEventDefault);
+            hipEventCreateWithFlags(&l_eventStop2[syncIdx][enqIdx], hipEventDefault);
+        }
+    }
 #endif
 
     fastestGFlops        = 0;
@@ -1951,7 +1987,9 @@ bool benchmarkAllSolutionsForSize(unsigned int problemIdx,
                                                                beta,
                                                                numEnqueuesPerSync,
                                                                &l_eventStart[syncIdx][enqIdx],
-                                                               &l_eventStop[syncIdx][enqIdx]);
+                                                               &l_eventStop[syncIdx][enqIdx],
+                                                                   &l_eventStart2[syncIdx][enqIdx],
+                                                                   &l_eventStop2[syncIdx][enqIdx]);
 
                 if(status == hipErrorFileNotFound)
                 {
@@ -2156,6 +2194,8 @@ bool benchmarkAllSolutionsForSize(unsigned int problemIdx,
             {
                 ::hipEventDestroy(l_eventStart[syncIdx][enqIdx]);
                 ::hipEventDestroy(l_eventStop[syncIdx][enqIdx]);
+                ::hipEventDestroy(l_eventStart2[syncIdx][enqIdx]);
+                ::hipEventDestroy(l_eventStop2[syncIdx][enqIdx]);
             }
         }
 #endif

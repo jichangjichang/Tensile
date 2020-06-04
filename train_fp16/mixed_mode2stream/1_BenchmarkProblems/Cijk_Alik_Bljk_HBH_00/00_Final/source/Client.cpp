@@ -326,6 +326,7 @@ void initControls()
     status = hipSetDevice(deviceIdx);
     tensileStatusCheck(status);
     status = hipStreamCreate(&stream);
+    status = hipStreamCreate(&stream2);
     tensileStatusCheck(status);
 
     hipDeviceProp_t deviceProperties;
@@ -390,5 +391,6 @@ void destroyControls()
     clReleaseDevice(device);
 #else
     hipStreamDestroy(stream);
+    hipStreamDestroy(stream2);
 #endif
 }

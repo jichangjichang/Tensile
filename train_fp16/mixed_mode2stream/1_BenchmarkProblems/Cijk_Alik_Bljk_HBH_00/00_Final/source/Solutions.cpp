@@ -50,7 +50,11 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT128x128x32_MI32x32x4x2_SE_SRVW0(
     hipStream_t stream,
     unsigned int numInputEvents,
     hipEvent_t * inputEvents,
-    hipEvent_t * outputEvent) {
+    hipEvent_t * outputEvent,
+    hipStream_t stream2,
+    hipEvent_t * inputEvents2,
+    hipEvent_t * outputEvent2
+) {
   TensileStatus status;
 
   /* module function args */
@@ -431,7 +435,12 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT128x128x32_MI32x32x4x2_SE_SRVW8(
     hipStream_t stream,
     unsigned int numInputEvents,
     hipEvent_t * inputEvents,
-    hipEvent_t * outputEvent) {
+    hipEvent_t * outputEvent,
+    hipStream_t stream2,
+    hipEvent_t * inputEvents2,
+    hipEvent_t * outputEvent2
+) {
+
   TensileStatus status;
 
   /* module function args */
