@@ -130,11 +130,11 @@ TensileStatus SolutionLock::getFunction(hipFunction_t*       f,
         }
     }
 
-    if(!_deviceFunctions[deviceId])
+    if(1)//!_deviceFunctions[deviceId])
     {
         std::lock_guard<std::mutex> loadModuleLock(_loadModuleMutex);
         hipModule_t                 module = nullptr;
-        if(!_deviceFunctions[deviceId])
+        if(1)//!_deviceFunctions[deviceId])
         {
             if(codeFromExe == nullptr)
             {
