@@ -82,13 +82,13 @@ const unsigned int maxNumIndices = 4;
 const unsigned int totalIndices[numProblemTypes] = { 4 };
 const unsigned int numProblems = 2;
 const unsigned int problemSizes[numProblems][8] = {
-  { 1024, 2048,    1, 2048, 1024, 1024, 2048, 2048 },  { 1024, 1920,    1, 2048, 1024, 1024, 2048, 2048 }};
+  { 1024, 2048,    1, 4096, 1024, 1024, 4096, 4096 },  { 1024, 1920,    1, 4096, 1024, 1024, 4096, 4096 }};
 const unsigned int minStrides[4] = {0, 0, 0, 0};
 /* problem sizes */
 size_t maxSizeD = 21233664;
 size_t maxSizeC = 21233664;
-size_t maxSizeA = 74612736;
-size_t maxSizeB = 74612736;
+size_t maxSizeA = 74612736*2;
+size_t maxSizeB = 74612736*2;
 
 /* current problem size */
 
