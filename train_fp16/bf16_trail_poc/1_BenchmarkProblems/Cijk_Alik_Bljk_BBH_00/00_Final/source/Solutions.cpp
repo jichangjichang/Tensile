@@ -52,7 +52,7 @@ TensileStatus Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_SRVW0(
     hipEvent_t * inputEvents,
     hipEvent_t * outputEvent) {
   TensileStatus status;
-
+{
   /* module function args */
   struct {
     // Size of Tensor's packed dims, in elements
@@ -95,11 +95,13 @@ TensileStatus Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_SRVW0(
   /* kernels */
   const unsigned int numKernels = 1; // 1 or 4
   hipFunction_t hipFunction;
-  status = solutionLock->getFunction(&hipFunction, deviceId, "Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_K1_SRVW0", nullptr);;
+  status = solutionLock->getFunction(&hipFunction, deviceId, "Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_K1_SRVW4", nullptr);;
   if (status) return status;
 
   /* num kernels */
   unsigned int numEnqueues[numKernels] = { 1 };
+  unsigned int ori_sizeJ = sizeJ;
+  sizeJ = 1920;
 
   /* grid sizes */
   const unsigned int workDim = 3;
@@ -169,7 +171,7 @@ TensileStatus Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_SRVW0(
 
   int kernelsLaunched=0;
 
-  /* kernel 0: Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_K1_SRVW0 */
+  /* kernel 0: Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_K1_SRVW4 */
   unsigned int kernelIdx = 0;
   for (unsigned int enqueueIdx = 0; enqueueIdx < numEnqueues[0]; enqueueIdx++) {
   try {
@@ -220,6 +222,188 @@ TensileStatus Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_SRVW0(
       NULL,
       (void**)hipLaunchParams
       ,(inputEvents && kernelsLaunched==1) ? inputEvents[enqueueIdx]:nullptr
+      ,(outputEvent && ori_sizeJ == 1920) ? outputEvent[enqueueIdx]:nullptr
+      );
+    if (ori_sizeJ == 1920)
+      return tensileStatusSuccess;
+  } catch (const std::exception& e) {
+#ifdef DEBUG
+    std::cerr << e.what() << std::endl;
+#endif
+    return tensileStatusFailure;
+  }
+  }}//first kernel
+{
+  /* module function args */
+  struct {
+    // Size of Tensor's packed dims, in elements
+    uint64_t tensor2dSizeC;
+    uint64_t tensor2dSizeA;
+    uint64_t tensor2dSizeB;
+    tensile_bfloat16 * dataD;
+    const tensile_bfloat16 * dataC;
+    const tensile_bfloat16 * dataA;
+    const tensile_bfloat16 * dataB;
+    float alpha;
+    float beta;
+    unsigned int strideD1J;
+    unsigned int strideD2K;
+    unsigned int strideC1J;
+    unsigned int strideC2K;
+    unsigned int strideA1I;
+    unsigned int strideA2K;
+    unsigned int strideB1J;
+    unsigned int strideB2K;
+    unsigned int sizeI;
+    unsigned int sizeJ;
+    unsigned int sizeK;
+    unsigned int sizeL;
+    int staggerUIter;
+    unsigned int problemNumGroupTiles0;
+    unsigned int problemNumGroupTiles1;
+    unsigned int magicNumberProblemNumGroupTiles0;
+    unsigned int gridNumWorkGroups0;
+    unsigned int numFullBlocks;
+    unsigned int wgmRemainder1;
+    unsigned int magicNumberWgmRemainder1;
+    unsigned int pad;
+  } hipFunctionArgs;
+  size_t hipFunctionArgsSize = sizeof(hipFunctionArgs);
+  void *hipLaunchParams[] = {HIP_LAUNCH_PARAM_BUFFER_POINTER, &hipFunctionArgs, HIP_LAUNCH_PARAM_BUFFER_SIZE, &hipFunctionArgsSize, HIP_LAUNCH_PARAM_END};
+  int deviceId;
+  hipGetDevice(&deviceId);
+
+  /* kernels */
+  const unsigned int numKernels = 1; // 1 or 4
+  hipFunction_t hipFunction;
+  status = solutionLock->getFunction(&hipFunction, deviceId, "Cijk_Alik_Bljk_BBH_MT32x32x96_MI16x16x8x1_SE_K1", nullptr);;
+  if (status) return status;
+
+  /* num kernels */
+  unsigned int numEnqueues[numKernels] = { 1 };
+
+  sizeJ = 128;
+  /* grid sizes */
+  const unsigned int workDim = 3;
+  const unsigned int threadTile[2] = { 4, 2 };
+  const unsigned int groupSize[2] = { 8, 16 };
+  size_t localWorkSize[3] = { 128, 1, 1 };
+  size_t globalWorkSize[numKernels][3];
+  globalWorkSize[0][2] = 1;
+  globalWorkSize[0][2] *= sizeK;
+  unsigned int sizeOfC0 = sizeI;
+  unsigned int sizeOfC1 = sizeJ;
+  unsigned int macroTile0 = static_cast<unsigned int>(groupSize[0] * threadTile[0]);
+  unsigned int macroTile1 = static_cast<unsigned int>(groupSize[1] * threadTile[1]);
+  unsigned int totalWorkGroups0 = sizeOfC0 / macroTile0;
+  unsigned int totalWorkGroups1 = sizeOfC1 / macroTile1;
+  // b/c single kernel, add extra work-group here if edge needed
+  if (totalWorkGroups0*macroTile0 < sizeOfC0) { totalWorkGroups0++; }
+  if (totalWorkGroups1*macroTile1 < sizeOfC1) { totalWorkGroups1++; }
+  unsigned int problemNumGroupTiles0 = totalWorkGroups0;
+  unsigned int problemNumGroupTiles1 = totalWorkGroups1;
+  const unsigned smallNumMagicShift = 31; // bozo, review
+  unsigned magicNumberProblemNumGroupTiles0 = (1L<<smallNumMagicShift) / problemNumGroupTiles0 + 1; // bozo, review
+  unsigned numFullBlocks =  problemNumGroupTiles1 / 10; // divide by WorkGroupMapping
+  unsigned wgmRemainder1 =  problemNumGroupTiles1 % 10;
+  if (wgmRemainder1 == 0) wgmRemainder1 = 10;
+  unsigned magicNumberWgmRemainder1 = ((1L<<smallNumMagicShift) / wgmRemainder1 + 1);
+  globalWorkSize[0][0] = totalWorkGroups0;
+  globalWorkSize[0][1] = totalWorkGroups1;
+
+  /* index sizes */
+  unsigned int sizes[numKernels][1][4];
+  sizes[0][0][0] = sizeI;
+  sizes[0][0][1] = sizeJ;
+  sizes[0][0][2] = sizeK;
+  sizes[0][0][3] = sizeL;
+  uint64_t tensor2dSizeC = 1 * std::max(sizeI, strideC1J) * std::max(sizeJ, strideC2K);
+  uint64_t tensor2dSizeA = 1;
+  uint64_t tensor2dSizeAStride = 0;
+  uint64_t tensor2dSizeAOffset = 0;
+  tensor2dSizeAStride = std::max(tensor2dSizeA*sizeL, (uint64_t)strideA1I);
+  tensor2dSizeAOffset += tensor2dSizeAStride - tensor2dSizeA*sizeL;
+  tensor2dSizeA = tensor2dSizeAStride;
+  tensor2dSizeAStride = std::max(tensor2dSizeA*sizeI, (uint64_t)strideA2K);
+  tensor2dSizeAOffset += tensor2dSizeAStride - tensor2dSizeA*sizeI;
+  tensor2dSizeA = tensor2dSizeAStride;
+  tensor2dSizeA -= tensor2dSizeAOffset;
+
+  uint64_t tensor2dSizeB = 1;
+  uint64_t tensor2dSizeBStride = 0;
+  uint64_t tensor2dSizeBOffset = 0;
+  tensor2dSizeBStride = std::max(tensor2dSizeB*sizeL, (uint64_t)strideB1J);
+  tensor2dSizeBOffset += tensor2dSizeBStride - tensor2dSizeB*sizeL;
+  tensor2dSizeB = tensor2dSizeBStride;
+  tensor2dSizeBStride = std::max(tensor2dSizeB*sizeJ, (uint64_t)strideB2K);
+  tensor2dSizeBOffset += tensor2dSizeBStride - tensor2dSizeB*sizeJ;
+  tensor2dSizeB = tensor2dSizeBStride;
+  tensor2dSizeB -= tensor2dSizeBOffset;
+  tensor2dSizeC = 1024*128;
+  tensor2dSizeB = 4096*128;
+
+  unsigned int staggerUIter = 16; // how many stride-sized clicks to stagger start offset
+  int unrollLoopIters = sizeL/96/1; // /DepthU/GSU
+  while (staggerUIter>1) {
+    if (unrollLoopIters >= (staggerUIter*2)) {
+      break;}
+    staggerUIter /= 2; // step down to smaller stagger
+  }
+  if (staggerUIter>=1) staggerUIter -= 1;
+
+  int kernelsLaunched=0;
+
+  /* kernel 0: Cijk_Alik_Bljk_BBH_MT32x32x96_MI16x16x8x1_SE_K1 */
+  unsigned int kernelIdx = 0;
+  for (unsigned int enqueueIdx = 0; enqueueIdx < numEnqueues[0]; enqueueIdx++) {
+  try {
+    hipFunctionArgs.tensor2dSizeC = tensor2dSizeC;
+    hipFunctionArgs.tensor2dSizeA = tensor2dSizeA;
+    hipFunctionArgs.tensor2dSizeB = tensor2dSizeB;
+    hipFunctionArgs.dataD = dataD +(1920 *1024) ;
+    hipFunctionArgs.dataC = dataC +(1920 *1024) ;
+    hipFunctionArgs.dataA = dataA;
+    hipFunctionArgs.dataB = dataB +(1920 *4096) ;
+    hipFunctionArgs.alpha = alpha;
+    hipFunctionArgs.beta = beta;
+    hipFunctionArgs.strideD1J = strideD1J;
+    hipFunctionArgs.strideD2K = strideD2K;
+    hipFunctionArgs.strideC1J = strideC1J;
+    hipFunctionArgs.strideC2K = strideC2K;
+    hipFunctionArgs.strideA1I = strideA1I;
+    hipFunctionArgs.strideA2K = strideA2K;
+    hipFunctionArgs.strideB1J = strideB1J;
+    hipFunctionArgs.strideB2K = strideB2K;
+    hipFunctionArgs.sizeI = sizes[kernelIdx][enqueueIdx][0];
+    hipFunctionArgs.sizeJ = sizes[kernelIdx][enqueueIdx][1];
+    hipFunctionArgs.sizeK = sizes[kernelIdx][enqueueIdx][2];
+    hipFunctionArgs.sizeL = sizes[kernelIdx][enqueueIdx][3];
+    hipFunctionArgs.tensor2dSizeC = tensor2dSizeC;
+    hipFunctionArgs.tensor2dSizeA = tensor2dSizeA;
+    hipFunctionArgs.tensor2dSizeB = tensor2dSizeB;
+    hipFunctionArgs.staggerUIter = staggerUIter;
+
+    hipFunctionArgs.problemNumGroupTiles0 = problemNumGroupTiles0;
+    hipFunctionArgs.problemNumGroupTiles1 = problemNumGroupTiles1;
+    hipFunctionArgs.magicNumberProblemNumGroupTiles0 = magicNumberProblemNumGroupTiles0;
+    hipFunctionArgs.gridNumWorkGroups0 = globalWorkSize[kernelIdx][0];
+    hipFunctionArgs.numFullBlocks = numFullBlocks;
+    hipFunctionArgs.wgmRemainder1 = wgmRemainder1;
+    hipFunctionArgs.magicNumberWgmRemainder1 = magicNumberWgmRemainder1;
+    kernelsLaunched++;
+    hipExtModuleLaunchKernel(
+      hipFunction,
+      globalWorkSize[kernelIdx][0]*localWorkSize[0],
+      globalWorkSize[kernelIdx][1]*localWorkSize[1],
+      globalWorkSize[kernelIdx][2]*localWorkSize[2],
+      localWorkSize[0],
+      localWorkSize[1],
+      localWorkSize[2],
+      0, // groupMemBytes
+      stream,
+      NULL,
+      (void**)hipLaunchParams
+      ,nullptr//(inputEvents && kernelsLaunched==1) ? inputEvents[enqueueIdx]:nullptr
       ,outputEvent ? outputEvent[enqueueIdx]:nullptr
       );
   } catch (const std::exception& e) {
@@ -229,7 +413,7 @@ TensileStatus Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_SRVW0(
     return tensileStatusFailure;
   }
   }
-
+}//second kernel
   return tensileStatusSuccess;
 }
 
@@ -474,7 +658,7 @@ TensileStatus Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_SRVW4(
   /* kernels */
   const unsigned int numKernels = 1; // 1 or 4
   hipFunction_t hipFunction;
-  status = solutionLock->getFunction(&hipFunction, deviceId, "Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_K1_SRVW4", nullptr);;
+  status = solutionLock->getFunction(&hipFunction, deviceId, "Cijk_Alik_Bljk_BBH_MT64x128x64_MI32x32x4x1_SE_K1", nullptr);;
   if (status) return status;
 
   /* num kernels */
@@ -482,7 +666,7 @@ TensileStatus Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_SRVW4(
 
   /* grid sizes */
   const unsigned int workDim = 3;
-  const unsigned int threadTile[2] = { 64, 1 };
+  const unsigned int threadTile[2] = { 32, 1 };
   const unsigned int groupSize[2] = { 2, 128 };
   size_t localWorkSize[3] = { 256, 1, 1 };
   size_t globalWorkSize[numKernels][3];
@@ -501,9 +685,9 @@ TensileStatus Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_SRVW4(
   unsigned int problemNumGroupTiles1 = totalWorkGroups1;
   const unsigned smallNumMagicShift = 31; // bozo, review
   unsigned magicNumberProblemNumGroupTiles0 = (1L<<smallNumMagicShift) / problemNumGroupTiles0 + 1; // bozo, review
-  unsigned numFullBlocks =  problemNumGroupTiles1 / 1; // divide by WorkGroupMapping
-  unsigned wgmRemainder1 =  problemNumGroupTiles1 % 1;
-  if (wgmRemainder1 == 0) wgmRemainder1 = 1;
+  unsigned numFullBlocks =  problemNumGroupTiles1 / 10; // divide by WorkGroupMapping
+  unsigned wgmRemainder1 =  problemNumGroupTiles1 % 10;
+  if (wgmRemainder1 == 0) wgmRemainder1 = 10;
   unsigned magicNumberWgmRemainder1 = ((1L<<smallNumMagicShift) / wgmRemainder1 + 1);
   globalWorkSize[0][0] = totalWorkGroups0;
   globalWorkSize[0][1] = totalWorkGroups1;
@@ -538,9 +722,9 @@ TensileStatus Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_SRVW4(
   tensor2dSizeB -= tensor2dSizeBOffset;
 
   unsigned int staggerUIter = 16; // how many stride-sized clicks to stagger start offset
-  int unrollLoopIters = sizeL/32/1; // /DepthU/GSU
+  int unrollLoopIters = sizeL/64/1; // /DepthU/GSU
   while (staggerUIter>1) {
-    if (unrollLoopIters >= (staggerUIter*4)) {
+    if (unrollLoopIters >= (staggerUIter*2)) {
       break;}
     staggerUIter /= 2; // step down to smaller stagger
   }
@@ -548,7 +732,7 @@ TensileStatus Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_SRVW4(
 
   int kernelsLaunched=0;
 
-  /* kernel 0: Cijk_Alik_Bljk_BBH_MT128x128x32_MI32x32x2x2_SE_K1_SRVW4 */
+  /* kernel 0: Cijk_Alik_Bljk_BBH_MT64x128x64_MI32x32x4x1_SE_K1 */
   unsigned int kernelIdx = 0;
   for (unsigned int enqueueIdx = 0; enqueueIdx < numEnqueues[0]; enqueueIdx++) {
   try {
