@@ -1,0 +1,288 @@
+GlobalParameters:
+  MinimumRequiredVersion: 4.14.0
+  PrintLevel: 1
+  ForceRedoBenchmarkProblems: True
+  ForceRedoLibraryLogic: True
+  ForceRedoLibraryClient: True
+  CMakeBuildType: Release
+  EnqueuesPerSync: 1
+  SyncsPerBenchmark: 1
+  LibraryPrintDebug: False
+  NumElementsToValidate: 4096
+  NumBenchmarks: 3
+  ValidationMaxToPrint: 4
+  ValidationPrintValids: False
+  ShortNames: False
+  MergeFiles: True
+  Platform: 0
+  Device: 0
+  KernelTime: True
+  PinClocks: False
+  SleepPercent: 200
+  PrintSolutionRejectionReason: True
+  # PrintWinnersOnly: True
+  DataInitTypeA: 3
+  DataInitTypeB: 3
+  DataInitTypeC: 3
+  #DataInitTypeD: 0
+  DataInitTypeBeta: 0
+  DataInitTypeAlpha: 1
+  PrintTensorA: 0
+  PrintTensorB: 0
+  PrintTensorD: 0
+  NewClient: 0
+
+BenchmarkProblems:
+  ########################################
+  # TN - standard
+  ########################################
+  -
+    - # ProblemType
+      OperationType: GEMM
+      DataType: B
+      # DestDataType: B
+      ComputeDataType: s
+      HighPrecisionAccumulate: True
+      TransposeA: True
+      TransposeB: False
+      #TransposeA: False
+      #TransposeB: True
+      UseBeta: True
+      Batched: True
+
+    - # BenchmarkProblemSizeGroup - 128x128 best
+      InitialSolutionParameters:
+      BenchmarkCommonParameters:
+        - KernelLanguage: ["Assembly"]
+        - EdgeType: ["ShiftPtr"]
+        #- LoopTail: [True]
+      ForkParameters:
+        - MatrixInstruction:
+          #- [32, 32, 4, 1]
+          - [32, 32, 2, 2]
+          #- [16, 16, 8, 1]
+          #- [4, 4, 4, 16]
+          #- [16, 16, 2, 4]
+        - ThreadTile:
+          #- [ 1, 16 ]
+          #- [ 2, 16 ]
+          #- [ 1, 32 ]
+          #- [ 2, 32 ]
+          - [ 2, 32 ]
+          #- [ 2, 64 ]
+          #- [ 2, 96 ]
+        - WorkGroup:
+          #- [ 256, 1, 1 ]
+          #- [ 128, 2, 1 ]
+          #- [ 64, 2, 1 ]
+          - [ 64, 4, 1 ]
+          #- [ 16, 16, 1 ]
+          #- [ 32, 8, 1 ]
+        - AssertSummationElementMultiple: [1]
+        - AssertFree0ElementMultiple: [1]
+        - AssertFree1ElementMultiple: [1]
+        - WorkGroupMapping: [1]
+        - PrefetchGlobalRead: [1]
+        - PrefetchLocalRead: [1]
+        - DepthU: [32]
+        - VectorWidth: [4]
+        - GlobalReadVectorWidth: [2]
+        - SuppressNoLoadLoop: [0]
+        - OptNoLoadLoop: [1]
+        - ScheduleLocalWrite: [1]
+        - ScheduleGlobalRead: [1]
+        - ScheduleIterAlg: [3]
+        - InnerUnroll: [1]
+        - ExpandPointerSwap: [1]
+        - StaggerU: [16]
+        - StaggerUStride: [256]
+        - StaggerUMapping: [1]
+        - GlobalReadCoalesceGroupA: [1]
+        - GlobalReadCoalesceGroupB: [1]
+        - NumLoadsCoalescedA: [1]
+        - NumLoadsCoalescedB: [1]
+        # - UseSgprForGRO: [1]
+        # - GlobalSplitU: [3]
+        # - DirectToLds: [1]
+        - LdsPadA: [4]
+        - LdsPadB: [8]
+        - TransposeLDS: [1]
+        - LdsBlockSizePerPad: [128]
+        - StoreRemapVectorWidth: [0,4]
+      JoinParameters:
+      BenchmarkJoinParameters:
+      BenchmarkFinalParameters:
+        - ProblemSizes:
+          - Exact: [ 1024, 2048, 1, 4096]
+          - Exact: [ 1024, 1920, 1, 4096]
+
+    - # BenchmarkProblemSizeGroup - best kernel for 1k2k4k
+      InitialSolutionParameters:
+      BenchmarkCommonParameters:
+        - KernelLanguage: ["Assembly"]
+        - EdgeType: ["ShiftPtr"]
+        #- LoopTail: [True]
+      ForkParameters:
+        - MatrixInstruction:
+          - [32, 32, 4, 1]
+          #- [32, 32, 2, 2]
+          #- [16, 16, 8, 1]
+          #- [4, 4, 4, 16]
+          #- [16, 16, 2, 4]
+        - ThreadTile:
+          #- [ 1, 16 ]
+          #- [ 2, 16 ]
+          #- [ 1, 32 ]
+          #- [ 2, 32 ]
+          - [ 2, 32 ]
+          #- [ 2, 64 ]
+          #- [ 2, 96 ]
+        - WorkGroup:
+          #- [ 256, 1, 1 ]
+          #- [ 128, 2, 1 ]
+          #- [ 64, 2, 1 ]
+          #- [ 64, 4, 1 ]
+          #- [ 16, 16, 1 ]
+          - [ 32, 8, 1 ]
+        - AssertSummationElementMultiple: [1]
+        - AssertFree0ElementMultiple: [1]
+        - AssertFree1ElementMultiple: [1]
+        - WorkGroupMapping: [10]
+        - PrefetchGlobalRead: [1]
+        - PrefetchLocalRead: [1]
+        - DepthU: [64]
+        - VectorWidth: [4]
+        - GlobalReadVectorWidth: [4]
+        - SuppressNoLoadLoop: [0]
+        - OptNoLoadLoop: [1]
+        - ScheduleLocalWrite: [1]
+        - ScheduleGlobalRead: [1]
+        - ScheduleIterAlg: [3]
+        - InnerUnroll: [1]
+        - ExpandPointerSwap: [1]
+        - StaggerU: [16]
+        - StaggerUStride: [256]
+        - StaggerUMapping: [0]
+        - GlobalReadCoalesceGroupA: [1]
+        - GlobalReadCoalesceGroupB: [1]
+        - NumLoadsCoalescedA: [1]
+        - NumLoadsCoalescedB: [1]
+        # - UseSgprForGRO: [1]
+        # - GlobalSplitU: [3]
+        # - DirectToLds: [1]
+        - LdsPadA: [4]
+        - LdsPadB: [4]
+        - TransposeLDS: [1]
+        - LdsBlockSizePerPad: [128]
+        - StoreRemapVectorWidth: [4]
+      JoinParameters:
+      BenchmarkJoinParameters:
+      BenchmarkFinalParameters:
+        - ProblemSizes:
+          - Exact: [ 1024, 2048, 1, 4096]
+          #- Exact: [ 1024, 1920, 1, 4096]
+
+    - # BenchmarkProblemSizeGroup - Standard
+      InitialSolutionParameters:
+      BenchmarkCommonParameters:
+        - KernelLanguage: ["Assembly"]
+        - EdgeType: ["ShiftPtr"]
+        #- LoopTail: [True]
+      ForkParameters:
+        - MatrixInstruction:
+          #- [32, 32, 4, 1]
+          #- [32, 32, 2, 2]
+          #- [32, 32, 8, 1]
+          - [16, 16, 8, 1]
+          #- [4, 4, 4, 16]
+          #- [16, 16, 2, 4]
+        - ThreadTile:
+          #- [ 1, 16 ]
+          #- [ 2, 16 ]
+          - [ 1, 32 ]
+          #- [ 2, 32 ]
+          #- [ 2, 64 ]
+          #- [ 2, 96 ]
+        - WorkGroup:
+          #- [ 256, 1, 1 ]
+          #- [ 128, 2, 1 ]
+          #- [ 16, 8, 1 ]
+          #- [ 64, 1, 1 ]
+          - [ 64, 2, 1 ]
+          #- [ 64, 4, 1 ]
+          #- [ 16, 16, 1 ]
+          #- [ 32, 8, 1 ]
+        - AssertSummationElementMultiple: [1]
+        - AssertFree0ElementMultiple: [1]
+        - AssertFree1ElementMultiple: [1]
+        - WorkGroupMapping: [10]
+        - PrefetchGlobalRead: [1]
+        - PrefetchLocalRead: [1]
+        - DepthU: [96]
+        - VectorWidth: [4]
+        - GlobalReadVectorWidth: [4]
+        - SuppressNoLoadLoop: [0]
+        - OptNoLoadLoop: [1]
+        - ScheduleLocalWrite: [1]
+        - ScheduleGlobalRead: [1]
+        - ScheduleIterAlg: [3]
+        - InnerUnroll: [1]
+        - ExpandPointerSwap: [1]
+        - StaggerU: [16]
+        - StaggerUStride: [256]
+        - StaggerUMapping: [0]
+        - GlobalReadCoalesceGroupA: [1]
+        - GlobalReadCoalesceGroupB: [1]
+        - NumLoadsCoalescedA: [1]
+        - NumLoadsCoalescedB: [1]
+        # - UseSgprForGRO: [1]
+        # - GlobalSplitU: [3]
+        # - DirectToLds: [1]
+        - LdsPadA: [4]
+        - LdsPadB: [4]
+        - TransposeLDS: [1]
+        - LdsBlockSizePerPad: [128]
+        - StoreRemapVectorWidth: [0]
+      JoinParameters:
+      BenchmarkJoinParameters:
+      BenchmarkFinalParameters:
+        - ProblemSizes:
+          - Exact: [ 1024, 128, 1, 4096]
+
+#    - # BenchmarkProblemSizeGroup - Standard
+#      InitialSolutionParameters:
+#      BenchmarkCommonParameters:
+#        - LoopTail: [True]
+#        - KernelLanguage: ["Assembly"]
+#        - EdgeType: ["ShiftPtr"]
+#      ForkParameters:
+#        - ThreadTile:
+#          - [ 4, 2 ]
+#          - [ 2, 4 ]
+#          - [ 4, 4 ]
+#          - [ 6, 6 ]
+#          #- [ 8, 8 ]
+#          #- [ 4, 4 ]
+#        - WorkGroup:
+#          #- [ 16, 16, 1 ]
+#          - [ 16, 16, 1 ]
+#          - [ 8, 8, 1 ]
+#        - WorkGroupMapping: [1,2,4,8,16,32]
+#        - PrefetchGlobalRead: [1]
+#        - PrefetchLocalRead: [1]
+#        - DepthU: [32,64,128]
+#        - VectorWidth: [2,4]
+#        - LdsPadA: [2,4]
+#        - LdsPadB: [2,4]
+#      JoinParameters:
+#      BenchmarkJoinParameters:
+#      BenchmarkFinalParameters:
+#        - ProblemSizes:
+#          #- Exact: [ 1024, 2048, 1, 2048]
+#          #- Exact: [ 1024, 1920, 1, 2048]
+#          - Exact: [ 1024, 128, 1, 2048]
+
+LibraryLogic:
+    ScheduleName: "arcturus"
+    DeviceNames: ["Device 7380", "Device 7388", "Device 738c", "Device 7390"]
+    ArchitectureName: "gfx908"

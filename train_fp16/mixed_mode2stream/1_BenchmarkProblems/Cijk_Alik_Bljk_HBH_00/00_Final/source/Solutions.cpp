@@ -286,7 +286,7 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT128x128x32_MI32x32x4x2_SE_SRVW0(
   /* kernels */
   const unsigned int numKernels = 1; // 1 or 4
   hipFunction_t hipFunction;
-  status = solutionLock->getFunction(&hipFunction, deviceId, "Cijk_Alik_Bljk_HBH_MT128x16x32_SE_K1", nullptr);;
+  status = solutionLock->getFunction(&hipFunction, deviceId, "Cijk_Alik_Bljk_HBH_MT64x32x16_SE_K1", nullptr);;
   if (status) return status;
 
   /* num kernels */
@@ -295,8 +295,8 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT128x128x32_MI32x32x4x2_SE_SRVW0(
   sizeJ = 128;
   /* grid sizes */
   const unsigned int workDim = 3;
-  const unsigned int threadTile[2] = { 2, 4 };
-  const unsigned int groupSize[2] = { 64, 4 };
+  const unsigned int threadTile[2] = { 4, 2 };
+  const unsigned int groupSize[2] = { 16, 16 };
   size_t localWorkSize[3] = { 256, 1, 1 };
   size_t globalWorkSize[numKernels][3];
   globalWorkSize[0][2] = 1;
@@ -349,14 +349,13 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT128x128x32_MI32x32x4x2_SE_SRVW0(
   tensor2dSizeBOffset += tensor2dSizeBStride - tensor2dSizeB*sizeJ;
   tensor2dSizeB = tensor2dSizeBStride;
   tensor2dSizeB -= tensor2dSizeBOffset;
-
   tensor2dSizeC = 1024*128;
   tensor2dSizeB = 2048*128;
 
   unsigned int staggerUIter = 32; // how many stride-sized clicks to stagger start offset
-  int unrollLoopIters = sizeL/32/1; // /DepthU/GSU
+  int unrollLoopIters = sizeL/16/1; // /DepthU/GSU
   while (staggerUIter>1) {
-    if (unrollLoopIters >= (staggerUIter*4)) {
+    if (unrollLoopIters >= (staggerUIter*8)) {
       break;}
     staggerUIter /= 2; // step down to smaller stagger
   }
@@ -364,7 +363,7 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT128x128x32_MI32x32x4x2_SE_SRVW0(
 
   int kernelsLaunched=0;
 
-  /* kernel 0: Cijk_Alik_Bljk_HBH_MT128x16x32_SE_K1 */
+  /* kernel 0: Cijk_Alik_Bljk_HBH_MT64x32x16_SE_K1 */
   unsigned int kernelIdx = 0;
   for (unsigned int enqueueIdx = 0; enqueueIdx < numEnqueues[0]; enqueueIdx++) {
   try {
@@ -419,7 +418,7 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT128x128x32_MI32x32x4x2_SE_SRVW0(
       ,(inputEvents2 && kernelsLaunched==1) ? inputEvents2[enqueueIdx]:nullptr
       ,outputEvent2 ? outputEvent2[enqueueIdx]:nullptr
       );
-#if 1 
+#if 0 
   hipEvent_t stop;
   hipEventCreate(&stop);
   hipEventRecord(stop,stream2);
@@ -434,6 +433,7 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT128x128x32_MI32x32x4x2_SE_SRVW0(
   }
 }//valu kernel
 #endif
+
   return tensileStatusSuccess;
 }
 
