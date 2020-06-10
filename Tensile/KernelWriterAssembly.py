@@ -9338,10 +9338,10 @@ class KernelWriterAssembly(KernelWriter):
     self.storeRemapLrOffset = (kernel["MacroTile0"]+ldsPad) * nColPerLoad
     self.storeRemapNCPL = nColPerLoad
 
-    kStr += inst("v_lshrrev_b32", vgpr(tid1),\
+    kStr += inst("v_lshrrev_b32", vgpr(tmpV1),\
                 hex(log2(nThreadPerCol)), vgpr(tid0), \
                 "tid / nThreadPerCol")
-    kStr += inst("v_add_u32", vgpr(coord1Offset), vgpr(waveCoord1),vgpr(tid1),"coord1 offset in MacroTile")
+    kStr += inst("v_add_u32", vgpr(coord1Offset), vgpr(waveCoord1),vgpr(tmpV1),"coord1 offset in MacroTile")
     kStr += inst("v_mul_lo_u32", vgpr(tmpV0), vgpr(coord1Offset), vgpr(ldsStride), \
                   "lds coord1 offset = Col-id* lds stride")
 
@@ -9360,15 +9360,27 @@ class KernelWriterAssembly(KernelWriter):
 
     # calculate global write coord0 and coord1
     kStr += self.comment1("Store Remap global write coord0 and coord1")
-    kStr += vectorStaticDivideAndRemainder(waveCoord1, tmpV1, "Serial", globalParameters["WavefrontWidth"], \
+    kStr += vectorStaticDivideAndRemainder(tid1, tid0, "Serial", globalParameters["WavefrontWidth"]*kernel["MIWaveGroup"][0], \
       tmpV0, tmpS0)
 
-    ColsPerWave = kernel["MatrixInstN"] * kernel["MatrixInstBN"]
+    ColsPerBlockShape = kernel["MatrixInstN"] * kernel["MatrixInstBN"]
+
     kStr += inst("v_mul_lo_u32", vgpr(waveCoord1),
-                  hex(ColsPerWave), vgpr(waveCoord1), "coord1 offset of global memory for each Wave")
+                  hex(ColsPerBlockShape), vgpr(tid1), "coord1 offset of global memory for each Wave")
+
+    # tid0 = 0 ~ 127, tid1 = 0~1
+
+    kStr += vectorStaticDivideAndRemainder(tid1, tid0, tid0, globalParameters["WavefrontWidth"], \
+      tmpV0, tmpS0)
+
+    # tid0 = 0 ~ 63, tid1 = 0~1
+    kStr += inst("v_mad_u32_u24", vgpr(waveCoord1), kernel["MatrixInstN"]//kernel["MIWaveGroup"][0], vgpr(tid1), vgpr(waveCoord1), \
+                  "waveCoord1 += waveCoord0 * MiN / WaveGroupM")
+
     kStr += inst("v_lshrrev_b32", vgpr(tmpV1),\
-                hex(log2(nThreadPerCol)), vgpr(tmpV1), \
+                hex(log2(nThreadPerCol)), vgpr(tid0), \
                 "tid / nThreadPerCol")
+
     kStr += inst("v_add_u32", vgpr(coord1Offset), vgpr(waveCoord1),vgpr(tmpV1),"coord1 offset in MacroTile")
 
     kStr += inst("s_mul_i32", \
