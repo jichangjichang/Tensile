@@ -2751,9 +2751,6 @@ class Solution:
       if packedC0 or packedC1:
         reject(state, "storeRemap doesn't support packedC0 and packedC1 yet")
         return
-      if state["MIWaveGroup"][0] > 1:
-        reject(state, "storeRemap doesn't support MI wave group in M direction yet")
-        return
       if state["MatrixInstBN"] > 1 and state["MatrixInstN"] == 4:
         reject(state, "storeRemap doesn't support MI4x4 multi blocks in N direction yet")
         return
@@ -2768,8 +2765,13 @@ class Solution:
         reject(state, "StoreRemapVectorWidth %u is not allowed for this data type" % state["StoreRemapVectorWidth"])
         return
 
+      if state["StoreRemapVectorWidth"] * globalParameters["WavefrontWidth"] < state["MacroTile0"]:
+        reject(state, "storeRemap: Per wave single global write instruction doesn't enough to write one M column." + \
+               " Please use larger StoreRemapVectorWidth.")
+        return
       if (state["MacroTile0"]*state["MatrixInstN"])//state["MIWaveGroup"][0] < state["StoreRemapVectorWidth"]*globalParameters["WavefrontWidth"]:
-        reject(state, "storeRemap: number of lds elements less than per wave local read elements. Please use smaller StoreRemapVectorWidth")
+        reject(state, "storeRemap: number elements of lds less than per wave per local read elements." + \
+               " Please use smaller StoreRemapVectorWidth.")
         return
       ldsRemapPad = max(state["StoreRemapVectorWidth"],state["MIOutputVectorWidth"])
       ldsNumElementsRemapC = (state["MacroTile0"]+ldsRemapPad)* state["MatrixInstN"] * state["MIWaveGroup"][1]

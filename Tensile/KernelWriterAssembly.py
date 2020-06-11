@@ -9158,6 +9158,11 @@ class KernelWriterAssembly(KernelWriter):
     kStr = ""
 
     kStr += inst("s_waitcnt", "lgkmcnt(0)", "wait for LDS write" )
+
+    #Data exchange between different waves
+    #Make sure LDS writes are finished of all waves
+    if kernel["MIWaveGroup"][0] > 1:
+      kStr += self.indent + self.syncStr + " //wait all lds write finished" + self.endLine
     kStr += "\n"
 
     gwvw = kernel["StoreRemapVectorWidth"]
@@ -9250,6 +9255,11 @@ class KernelWriterAssembly(KernelWriter):
 
     kStr += "\n"
     self.vgprPool.checkIn(vTmp)
+
+    #Data exchange between different waves
+    #Make sure LDS reads are finished of all waves
+    if kernel["MIWaveGroup"][0] > 1:
+      kStr += self.indent + self.syncStr + " //wait all lds read finished" + self.endLine
 
     return kStr
 
