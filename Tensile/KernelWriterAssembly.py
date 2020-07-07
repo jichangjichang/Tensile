@@ -8657,13 +8657,12 @@ class KernelWriterAssembly(KernelWriter):
       tmpS23 = tmpS01+2
       coord0 = tmpVgpr
       coord1 = coord0+1
-      for i in range (startIdx, endIdx, gwvw):
-        for vi in range (0,gwvw):
-
-          if vi == 0:
-            lgkmcnt = min((endIdx-i)//gwvw - 1, 15)
-            kStr += inst("s_waitcnt", "lgkmcnt(%u)"% lgkmcnt, "wait for LDS read" )
-
+      lrVw = kernel["StoreRemapVectorWidth"]
+      edgeVw = min(kernel["AssertFree0ElementMultiple"],kernel["StoreRemapVectorWidth"])
+      bps = kernel["ProblemType"]["DataType"].numBytes() * edgeVw
+      rpv = kernel["ProblemType"]["DataType"].numRegisters() * edgeVw
+      for i in range (startIdx, endIdx, lrVw):
+        for vi in range (0, lrVw, edgeVw):
           sizeBoundary = [0,0]
           sizeBoundary[0] = \
               sgpr("PackedSize0") if len(kernel["PackedC0IndicesX"]) > 1 \
@@ -8671,11 +8670,11 @@ class KernelWriterAssembly(KernelWriter):
           sizeBoundary[1] = \
               sgpr("PackedSize1") if len(kernel["PackedC1IndicesX"]) > 1 \
               else self.sizeRef(kernel["ProblemType"]["Index1"])
-          currentStep = (i-startIdx)//gwvw
+          currentStep = (i-startIdx)//lrVw
 
           # calculate global coordination
           kStr += inst("v_add_u32", vgpr(coord1), vgpr(self.storeRemapCoord1), self.storeRemapNCPL * currentStep , "coord1 += nColPerLoad")
-          kStr += inst("v_add_u32",vgpr(coord0), vgpr(self.storeRemapCoord0), vi , "coord0 += element index of storeVector")
+          kStr += inst("v_add_u32",vgpr(coord0), vgpr(self.storeRemapCoord0), vi , "coord0 += element index of load vector")
           kStr += inst("v_add_u32", addr0, vgpr(self.storeRemapOffsetCoord1), self.storeRemapNCPL * currentStep , \
                         "offset coord1 += nColPerLoad")
 
@@ -8687,8 +8686,15 @@ class KernelWriterAssembly(KernelWriter):
           kStr += inst("_v_add_lshl_u32", addr0, addr0,  vgpr(coord0), hex(log2(bpe)), "scale to BPE")
           kStr += inst("v_cndmask_b32", addr0, -1, addr0, sgpr(tmpS23,2), "clip if OOB. offset" )
 
+          if vi == 0:
+            lgkmcnt = min((endIdx-i)//lrVw - 1, 15)
+            kStr += inst("s_waitcnt", "lgkmcnt(%u)"% lgkmcnt, "wait for LDS read" )
+
           sumIdx = (i-startIdx)+ int(vi*rpe)
-          kStr += self.chooseGlobalWrite(True, bpe, sumIdx, rpe, addr0, addr1, 0, ntStr, hi16=vi%2)
+          if bps == 2:
+            kStr += self.chooseGlobalWrite(True, bpe, sumIdx, rpe, addr0, addr1, 0, ntStr, hi16=vi%2)
+          else:
+            kStr += self.chooseGlobalWrite(True, bps, sumIdx, rpv, addr0, addr1, 0, ntStr)
 
     kStr += "\n"
     self.vgprPool.checkIn(vTmp)
