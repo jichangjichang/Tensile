@@ -27,6 +27,7 @@
 
 #include "Solutions.h"
 #include <algorithm>
+#include <math.h>
 TensileStatus Cijk_Alik_Bljk_HBH_MT64x128x32_MI32x32x4x2_SE_1LDSB0_GRVW2_LBSPP128_PLR9(
     SolutionLock * solutionLock,
     TensileHalf * dataD,
@@ -168,18 +169,128 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT64x128x32_MI32x32x4x2_SE_1LDSB0_GRVW2_LBSPP12
   if (staggerUIter>=1) staggerUIter -= 1;
 
   int kernelsLaunched=0;
+#if 1
+  /* Copy A B to temp AB */
+  unsigned int tempStrideA1I = ((unsigned int)(pow(2, ceil(log2(strideA1I))))) + 32;
+  unsigned int tempStrideA2K = tempStrideA1I * sizeI;
+  unsigned int tempStrideB1J = ((unsigned int)(pow(2, ceil(log2(strideB1J))))) + 32;
+  unsigned int tempStrideB2K = tempStrideB1J * sizeJ;
 
+  // enqueue CopyA kernel
+  size_t localWorkSizeTempAB[3] = { 8, 8, 1};
+  size_t globalWorkSizeTempAB[3];
+  size_t totalWorkGroupsTempAB0 = sizeL / localWorkSizeTempAB[0];
+  size_t totalWorkGroupsTempAB1 = sizeI / localWorkSizeTempAB[1];
+  if (totalWorkGroupsTempAB0*localWorkSizeTempAB[0] < sizeL) { totalWorkGroupsTempAB0++; }
+  if (totalWorkGroupsTempAB1*localWorkSizeTempAB[1] < sizeI) { totalWorkGroupsTempAB1++; }
+  globalWorkSizeTempAB[0] = totalWorkGroupsTempAB0;
+  globalWorkSizeTempAB[1] = totalWorkGroupsTempAB1;
+  globalWorkSizeTempAB[2] = 1;
+  globalWorkSizeTempAB[2] *= sizeK;
+
+  try {
+#if 1
+    kernelsLaunched++;
+    if( inputEvents != NULL )
+      hipEventRecord(inputEvents[0], stream );
+    hipLaunchKernelGGL(
+      HIP_KERNEL_NAME(Cijk_AB_Copy_OptStride),
+      dim3(globalWorkSizeTempAB[0], globalWorkSizeTempAB[1], globalWorkSizeTempAB[2]),
+      dim3(localWorkSizeTempAB[0], localWorkSizeTempAB[1], localWorkSizeTempAB[2]),
+      0, // groupMemBytes
+      stream,
+      const_cast<TensileHalf *>(dataA+tensor2dSizeA),   //out
+      dataA,     //in
+      tempStrideA1I, //out
+      tempStrideA2K,
+      strideA1I, //in
+      strideA2K,
+      sizeL,
+      sizeI,
+      sizeK);
+#endif
+    //hipEventRecord(outputEvent[0], stream );
+  } catch (const std::exception& e) {
+#ifdef DEBUG
+    std::cerr << e.what() << std::endl;
+#endif
+    return tensileStatusFailure;
+  }
+
+
+  totalWorkGroupsTempAB0 = sizeL / localWorkSizeTempAB[0];
+  totalWorkGroupsTempAB1 = sizeJ / localWorkSizeTempAB[1];
+  if (totalWorkGroupsTempAB0*localWorkSizeTempAB[0] < sizeL) { totalWorkGroupsTempAB0++; }
+  if (totalWorkGroupsTempAB1*localWorkSizeTempAB[1] < sizeJ) { totalWorkGroupsTempAB1++; }
+  globalWorkSizeTempAB[0] = totalWorkGroupsTempAB0;
+  globalWorkSizeTempAB[1] = totalWorkGroupsTempAB1;
+  globalWorkSizeTempAB[2] = 1;
+  globalWorkSizeTempAB[2] *= sizeK;
+
+  try {
+#if 1
+    kernelsLaunched++;
+    //if( inputEvents != NULL )
+    //  hipEventRecord(inputEvents[0], stream );
+    hipLaunchKernelGGL(
+      HIP_KERNEL_NAME(Cijk_AB_Copy_OptStride),
+      dim3(globalWorkSizeTempAB[0], globalWorkSizeTempAB[1], globalWorkSizeTempAB[2]),
+      dim3(localWorkSizeTempAB[0], localWorkSizeTempAB[1], localWorkSizeTempAB[2]),
+      0, // groupMemBytes
+      stream,
+      const_cast<TensileHalf *>(dataB+tensor2dSizeB),   //out
+      dataB,     //in
+      tempStrideB1J, //out
+      tempStrideB2K,
+      strideB1J, //in
+      strideB2K,
+      sizeL,
+      sizeJ,
+      sizeK);
+    //hipEventRecord(outputEvent[0], stream );
+#endif
+  } catch (const std::exception& e) {
+#ifdef DEBUG
+    std::cerr << e.what() << std::endl;
+#endif
+    return tensileStatusFailure;
+  }
+
+  uint64_t tempTensor2dSizeA = 1;
+  uint64_t tempTensor2dSizeAStride = 0;
+  uint64_t tempTensor2dSizeAOffset = 0;
+  tempTensor2dSizeAStride = std::max(tempTensor2dSizeA*sizeL, (uint64_t)tempStrideA1I);
+  tempTensor2dSizeAOffset += tempTensor2dSizeAStride - tempTensor2dSizeA*sizeL;
+  tempTensor2dSizeA = tempTensor2dSizeAStride;
+  tempTensor2dSizeAStride = std::max(tempTensor2dSizeA*sizeI, (uint64_t)tempStrideA2K);
+  tempTensor2dSizeAOffset += tempTensor2dSizeAStride - tempTensor2dSizeA*sizeI;
+  tempTensor2dSizeA = tempTensor2dSizeAStride;
+  tempTensor2dSizeA -= tempTensor2dSizeAOffset;
+
+  uint64_t tempTensor2dSizeB = 1;
+  uint64_t tempTensor2dSizeBStride = 0;
+  uint64_t tempTensor2dSizeBOffset = 0;
+  tempTensor2dSizeBStride = std::max(tempTensor2dSizeB*sizeL, (uint64_t)tempStrideB1J);
+  tempTensor2dSizeBOffset += tempTensor2dSizeBStride - tempTensor2dSizeB*sizeL;
+  tempTensor2dSizeB = tempTensor2dSizeBStride;
+  tempTensor2dSizeBStride = std::max(tempTensor2dSizeB*sizeJ, (uint64_t)tempStrideB2K);
+  tempTensor2dSizeBOffset += tempTensor2dSizeBStride - tempTensor2dSizeB*sizeJ;
+  tempTensor2dSizeB = tempTensor2dSizeBStride;
+  tempTensor2dSizeB -= tempTensor2dSizeBOffset;
+
+  /* Copy end */
+#endif
   /* kernel 0: Cijk_Alik_Bljk_HBH_MT64x128x32_MI32x32x4x2_SE_1LDSB0_GRVW2_K1_LBSPP128_PLR9 */
   unsigned int kernelIdx = 0;
   for (unsigned int enqueueIdx = 0; enqueueIdx < numEnqueues[0]; enqueueIdx++) {
   try {
     hipFunctionArgs.tensor2dSizeC = tensor2dSizeC;
-    hipFunctionArgs.tensor2dSizeA = tensor2dSizeA;
-    hipFunctionArgs.tensor2dSizeB = tensor2dSizeB;
+    hipFunctionArgs.tensor2dSizeA = tempTensor2dSizeA;
+    hipFunctionArgs.tensor2dSizeB = tempTensor2dSizeB;
     hipFunctionArgs.dataD = dataD;
     hipFunctionArgs.dataC = dataC;
-    hipFunctionArgs.dataA = dataA;
-    hipFunctionArgs.dataB = dataB;
+    hipFunctionArgs.dataA = dataA+tensor2dSizeA;
+    hipFunctionArgs.dataB = dataB+tensor2dSizeB;
     hipFunctionArgs.alpha[0] = alpha;
     hipFunctionArgs.alpha[1] = alpha;
     hipFunctionArgs.beta[0] = beta;
@@ -188,17 +299,17 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT64x128x32_MI32x32x4x2_SE_1LDSB0_GRVW2_LBSPP12
     hipFunctionArgs.strideD2K = strideD2K;
     hipFunctionArgs.strideC1J = strideC1J;
     hipFunctionArgs.strideC2K = strideC2K;
-    hipFunctionArgs.strideA1I = strideA1I;
-    hipFunctionArgs.strideA2K = strideA2K;
-    hipFunctionArgs.strideB1J = strideB1J;
-    hipFunctionArgs.strideB2K = strideB2K;
+    hipFunctionArgs.strideA1I = tempStrideA1I;
+    hipFunctionArgs.strideA2K = tempStrideA2K;
+    hipFunctionArgs.strideB1J = tempStrideB1J;
+    hipFunctionArgs.strideB2K = tempStrideB2K;
     hipFunctionArgs.sizeI = sizes[kernelIdx][enqueueIdx][0];
     hipFunctionArgs.sizeJ = sizes[kernelIdx][enqueueIdx][1];
     hipFunctionArgs.sizeK = sizes[kernelIdx][enqueueIdx][2];
     hipFunctionArgs.sizeL = sizes[kernelIdx][enqueueIdx][3];
     hipFunctionArgs.tensor2dSizeC = tensor2dSizeC;
-    hipFunctionArgs.tensor2dSizeA = tensor2dSizeA;
-    hipFunctionArgs.tensor2dSizeB = tensor2dSizeB;
+    hipFunctionArgs.tensor2dSizeA = tempTensor2dSizeA;
+    hipFunctionArgs.tensor2dSizeB = tempTensor2dSizeB;
     hipFunctionArgs.staggerUIter = staggerUIter;
 
     hipFunctionArgs.problemNumGroupTiles0 = problemNumGroupTiles0;

@@ -75,34 +75,4 @@ __device__ inline tensile_half2
     result = llvm_fma_v2f16(multiplier, multiplicand, addend);
     return result;
 };
-#if 1
-extern "C"
-__global__ void Cijk_AB_Copy_OptStride(
-  tensile_half * dst,
-  tensile_half * src,
-  unsigned int const strideO1J,
-  unsigned int const strideOK,
-  unsigned int const strideI1J,
-  unsigned int const strideIK,
-  unsigned int const size0I,
-  unsigned int const size1J,
-  unsigned int const sizeK)
-{
-/* hard-coded initial strides */
-#define GLOBAL_O(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*strideO1J + (IDXK)*strideOK ))
-#define GLOBAL_I(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*strideI1J + (IDXK)*strideIK ))
-  if ((hc_get_workitem_absolute_id(0) >=  size0I)
-   || (hc_get_workitem_absolute_id(1) >=  size1J)
-   || (hc_get_workitem_absolute_id(2) >=  sizeK))
-    return;
-  unsigned int wgK = ( hc_get_group_id(2));
-  unsigned int global0I = ( hc_get_workitem_absolute_id(0));
-  unsigned int global1J = ( hc_get_workitem_absolute_id(1));
-  uint64_t idxO = GLOBAL_O( (uint64_t)global0I, global1J, wgK);
-  uint64_t idxI = GLOBAL_I( (uint64_t)global0I, global1J, wgK);
-    dst[idxO] =  src[idxI];
-}
-#undef GLOBAL_O
-#undef GLOBAL_I
-#endif
 #endif

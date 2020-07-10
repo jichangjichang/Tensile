@@ -75,5 +75,4 @@ __device__ inline tensile_half2
     result = llvm_fma_v2f16(multiplier, multiplicand, addend);
     return result;
 };
-
 #endif

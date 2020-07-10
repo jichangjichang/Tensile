@@ -1544,19 +1544,19 @@ class ProblemSizes:
                 else problemSize[self.problemType["IndexAssignmentsA"][0]]
       sizeA = max(self.minStrides[self.problemType["IndexAssignmentsA"][0]], sizeLda)
       for i in self.problemType["IndexAssignmentsA"][1:]:
-        sizeA *= max(self.minStrides[i], problemSize[i])
+        sizeA *= max(self.minStrides[i] + 32, problemSize[i])
 
       sizeLdb = problemSize[self.problemType["IndexAssignmentsLD"][3]] \
                 if problemType["OperationType"] == "GEMM" \
                 else problemSize[self.problemType["IndexAssignmentsB"][0]]
       sizeB = max(self.minStrides[self.problemType["IndexAssignmentsB"][0]], sizeLdb)
       for i in self.problemType["IndexAssignmentsB"][1:]:
-        sizeB *= max(self.minStrides[i], problemSize[i])
+        sizeB *= max(self.minStrides[i]+ 32, problemSize[i])
 
       self.maxD = max(self.maxD, sizeD)
       self.maxC = max(self.maxC, sizeC)
-      self.maxA = max(self.maxA, sizeA)
-      self.maxB = max(self.maxB, sizeB)
+      self.maxA = max(self.maxA, sizeA*2)
+      self.maxB = max(self.maxB, sizeB*2)
 
     if globalParameters["PrintConvolutionUsage"] & 0x4:
       for problem in self.problems:

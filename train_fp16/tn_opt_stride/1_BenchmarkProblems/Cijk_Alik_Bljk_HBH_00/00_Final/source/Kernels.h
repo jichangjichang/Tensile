@@ -30,4 +30,14 @@
 #include <hip/hip_ext.h>
 
 #include "KernelHeader.h"
-
+extern "C"
+__global__ void Cijk_AB_Copy_OptStride(
+  tensile_half * dst,
+  const tensile_half * src,
+  unsigned int const strideO1J,
+  unsigned int const strideOK,
+  unsigned int const strideI1J,
+  unsigned int const strideIK,
+  unsigned int const size0I,
+  unsigned int const size1J,
+  unsigned int const sizeK);
