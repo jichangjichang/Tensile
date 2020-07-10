@@ -1,0 +1,108 @@
+/*******************************************************************************
+ * Copyright 2016-2020 Advanced Micro Devices, Inc. All rights reserved.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *******************************************************************************/
+
+#ifndef KERNEL_HEADER
+#define KERNEL_HEADER
+
+#if Tensile_RUNTIME_LANGUAGE_OCL
+#include <string>
+#else
+#include "TensileTypes.h"
+#include <hip/hip_runtime.h>
+
+__device__ inline int GenDot4(int a, int b, int c)
+{
+#if(__hcc_workweek__ >= 19092) || __HIP_CLANG_ONLY__
+    union
+    {
+        int32_t i;
+        char4   z;
+    } va, vb;
+#else
+    typedef struct
+    {
+        int c0 : 8, c1 : 8, c2 : 8, c3 : 8;
+    } C4I8;
+    union
+    {
+        int32_t i;
+        C4I8    z;
+    } va, vb;
+#endif
+    va.i = a;
+    vb.i = b;
+
+#if(__hcc_workweek__ >= 19092) || __HIP_CLANG_ONLY__
+    return amd_mixed_dot(va.z, vb.z, c, true);
+}
+#else
+    return c + (vb.z.c3 * va.z.c3 + vb.z.c2 * va.z.c2 + vb.z.c1 * va.z.c1 + vb.z.c0 * va.z.c0);
+}
+#endif
+
+#endif // HIP
+
+typedef _Float16 tensile_half2 __attribute__((ext_vector_type(2)));
+typedef _Float16 tensile_half;
+
+extern "C" __device__ tensile_half2 llvm_fma_v2f16(tensile_half2,
+                                                   tensile_half2,
+                                                   tensile_half2) __asm("llvm.fma.v2f16");
+
+__device__ inline tensile_half2
+    tensile_fmadd_half2(tensile_half2 multiplier, tensile_half2 multiplicand, tensile_half2 addend)
+{
+    tensile_half2 result;
+    result = llvm_fma_v2f16(multiplier, multiplicand, addend);
+    return result;
+};
+#if 1
+extern "C"
+__global__ void Cijk_AB_Copy_OptStride(
+  tensile_half * dst,
+  tensile_half * src,
+  unsigned int const strideO1J,
+  unsigned int const strideOK,
+  unsigned int const strideI1J,
+  unsigned int const strideIK,
+  unsigned int const size0I,
+  unsigned int const size1J,
+  unsigned int const sizeK)
+{
+/* hard-coded initial strides */
+#define GLOBAL_O(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*strideO1J + (IDXK)*strideOK ))
+#define GLOBAL_I(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*strideI1J + (IDXK)*strideIK ))
+  if ((hc_get_workitem_absolute_id(0) >=  size0I)
+   || (hc_get_workitem_absolute_id(1) >=  size1J)
+   || (hc_get_workitem_absolute_id(2) >=  sizeK))
+    return;
+  unsigned int wgK = ( hc_get_group_id(2));
+  unsigned int global0I = ( hc_get_workitem_absolute_id(0));
+  unsigned int global1J = ( hc_get_workitem_absolute_id(1));
+  uint64_t idxO = GLOBAL_O( (uint64_t)global0I, global1J, wgK);
+  uint64_t idxI = GLOBAL_I( (uint64_t)global0I, global1J, wgK);
+    dst[idxO] =  src[idxI];
+}
+#undef GLOBAL_O
+#undef GLOBAL_I
+#endif
+#endif
