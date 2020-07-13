@@ -28,21 +28,29 @@
 #include "Kernels.h"
 extern "C"
 __global__ void Cijk_AB_Copy_OptStride(
-  tensile_half * dst,
-  const tensile_half * src,
-  unsigned int const strideO1J,
-  unsigned int const strideOK,
-  unsigned int const strideI1J,
-  unsigned int const strideIK,
-  unsigned int const size0I,
-  unsigned int const size1J,
+  tensile_half * A_dst,
+  const tensile_half * A_src,
+  unsigned int const A_strideO1J,
+  unsigned int const A_strideOK,
+  unsigned int const A_strideI1J,
+  unsigned int const A_strideIK,
+  unsigned int const A_size0I,
+  unsigned int const A_size1J,
+  tensile_half * B_dst,
+  const tensile_half * B_src,
+  unsigned int const B_strideO1J,
+  unsigned int const B_strideOK,
+  unsigned int const B_strideI1J,
+  unsigned int const B_strideIK,
+  unsigned int const B_size0I,
+  unsigned int const B_size1J,
   unsigned int const sizeK)
 {
 /* hard-coded initial strides */
-#define GLOBAL_O(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*strideO1J + (IDXK)*strideOK ))
-#define GLOBAL_I(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*strideI1J + (IDXK)*strideIK ))
-  if (hc_get_workitem_absolute_id(1) >=  size1J)
-    return;
+#define A_GLOBAL_O(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*A_strideO1J + (IDXK)*A_strideOK ))
+#define A_GLOBAL_I(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*A_strideI1J + (IDXK)*A_strideIK ))
+#define B_GLOBAL_O(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*B_strideO1J + (IDXK)*B_strideOK ))
+#define B_GLOBAL_I(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*B_strideI1J + (IDXK)*B_strideIK ))
 
   unsigned int wgK = ( hc_get_group_id(2));
   unsigned int numThreads = hc_get_group_size(0);
@@ -50,27 +58,50 @@ __global__ void Cijk_AB_Copy_OptStride(
   unsigned int global1J = ( hc_get_workitem_absolute_id(1));
   unsigned int elementsPerStore = 1;
 
-  if(size0I * sizeof(tensile_half) > numThreads * sizeof(float4)){
+if (hc_get_workitem_absolute_id(1) <  A_size1J){
+  if(A_size0I * sizeof(tensile_half) > numThreads * sizeof(float4)){
     elementsPerStore = sizeof(float4)/sizeof(tensile_half);
 
-    for(int i = 0; (i+1)*numThreads*elementsPerStore <= size0I ; i++){
-      uint64_t idxO = GLOBAL_O( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
-      uint64_t idxI = GLOBAL_I( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
-      *((float4*)(dst+idxO)) = *((const float4*)(src+idxI));
+    for(int i = 0; (i+1)*numThreads*elementsPerStore <= A_size0I ; i++){
+      uint64_t idxO = A_GLOBAL_O( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      uint64_t idxI = A_GLOBAL_I( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      *((float4*)(A_dst+idxO)) = *((const float4*)(A_src+idxI));
     }
   }
-  else if( size0I * sizeof(tensile_half) > numThreads * sizeof(float2)){
+  else if( A_size0I * sizeof(tensile_half) > numThreads * sizeof(float2)){
     elementsPerStore = sizeof(float2)/sizeof(tensile_half);
 
-    for(int i = 0; (i+1)*numThreads*elementsPerStore <= size0I ; i++){
-      uint64_t idxO = GLOBAL_O( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
-      uint64_t idxI = GLOBAL_I( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
-      *((float2*)(dst+idxO)) = *((const float2*)(src+idxI));
+    for(int i = 0; (i+1)*numThreads*elementsPerStore <= A_size0I ; i++){
+      uint64_t idxO = A_GLOBAL_O( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      uint64_t idxI = A_GLOBAL_I( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      *((float2*)(A_dst+idxO)) = *((const float2*)(A_src+idxI));
     }
   }
+}
+if (hc_get_workitem_absolute_id(1) <  B_size1J){
+  if(B_size0I * sizeof(tensile_half) > numThreads * sizeof(float4)){
+    elementsPerStore = sizeof(float4)/sizeof(tensile_half);
 
+    for(int i = 0; (i+1)*numThreads*elementsPerStore <= B_size0I ; i++){
+      uint64_t idxO = B_GLOBAL_O( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      uint64_t idxI = B_GLOBAL_I( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      *((float4*)(B_dst+idxO)) = *((const float4*)(B_src+idxI));
+    }
+  }
+  else if( B_size0I * sizeof(tensile_half) > numThreads * sizeof(float2)){
+    elementsPerStore = sizeof(float2)/sizeof(tensile_half);
+
+    for(int i = 0; (i+1)*numThreads*elementsPerStore <= B_size0I ; i++){
+      uint64_t idxO = B_GLOBAL_O( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      uint64_t idxI = B_GLOBAL_I( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      *((float2*)(B_dst+idxO)) = *((const float2*)(B_src+idxI));
+    }
+  }
+}
   //todo: handle edge
 
 }
-#undef GLOBAL_O
-#undef GLOBAL_I
+#undef A_GLOBAL_O
+#undef A_GLOBAL_I
+#undef B_GLOBAL_O
+#undef B_GLOBAL_I

@@ -179,7 +179,7 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT64x128x32_MI32x32x4x2_SE_1LDSB0_GRVW2_LBSPP12
   // enqueue CopyA kernel
   size_t localWorkSizeTempAB[3] = { 64, 1, 1};
   size_t globalWorkSizeTempAB[3] = { 1, 1, 1};
-  globalWorkSizeTempAB[1] = sizeI / localWorkSizeTempAB[1];
+  globalWorkSizeTempAB[1] = max(sizeI / localWorkSizeTempAB[1],sizeJ / localWorkSizeTempAB[1]);
   globalWorkSizeTempAB[2] = sizeK;
 
   try {
@@ -201,30 +201,6 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT64x128x32_MI32x32x4x2_SE_1LDSB0_GRVW2_LBSPP12
       strideA2K,
       sizeL,
       sizeI,
-      sizeK);
-#endif
-    //hipEventRecord(outputEvent[0], stream );
-  } catch (const std::exception& e) {
-#ifdef DEBUG
-    std::cerr << e.what() << std::endl;
-#endif
-    return tensileStatusFailure;
-  }
-
-  globalWorkSizeTempAB[1] = sizeJ / localWorkSizeTempAB[1];
-  globalWorkSizeTempAB[2] = sizeK;
-
-  try {
-#if 1
-    kernelsLaunched++;
-    //if( inputEvents != NULL )
-    //  hipEventRecord(inputEvents[0], stream );
-    hipLaunchKernelGGL(
-      HIP_KERNEL_NAME(Cijk_AB_Copy_OptStride),
-      dim3(globalWorkSizeTempAB[0], globalWorkSizeTempAB[1], globalWorkSizeTempAB[2]),
-      dim3(localWorkSizeTempAB[0], localWorkSizeTempAB[1], localWorkSizeTempAB[2]),
-      0, // groupMemBytes
-      stream,
       const_cast<TensileHalf *>(dataB+tensor2dSizeB),   //out
       dataB,     //in
       tempStrideB1J, //out
@@ -234,8 +210,8 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT64x128x32_MI32x32x4x2_SE_1LDSB0_GRVW2_LBSPP12
       sizeL,
       sizeJ,
       sizeK);
-    //hipEventRecord(outputEvent[0], stream );
 #endif
+    //hipEventRecord(outputEvent[0], stream );
   } catch (const std::exception& e) {
 #ifdef DEBUG
     std::cerr << e.what() << std::endl;

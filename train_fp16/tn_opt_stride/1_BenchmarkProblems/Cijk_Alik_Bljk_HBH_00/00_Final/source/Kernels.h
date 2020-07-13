@@ -32,12 +32,20 @@
 #include "KernelHeader.h"
 extern "C"
 __global__ void Cijk_AB_Copy_OptStride(
-  tensile_half * dst,
-  const tensile_half * src,
-  unsigned int const strideO1J,
-  unsigned int const strideOK,
-  unsigned int const strideI1J,
-  unsigned int const strideIK,
-  unsigned int const size0I,
-  unsigned int const size1J,
+  tensile_half * A_dst,
+  const tensile_half * A_src,
+  unsigned int const A_strideO1J,
+  unsigned int const A_strideOK,
+  unsigned int const A_strideI1J,
+  unsigned int const A_strideIK,
+  unsigned int const A_size0I,
+  unsigned int const A_size1J,
+  tensile_half * B_dst,
+  const tensile_half * B_src,
+  unsigned int const B_strideO1J,
+  unsigned int const B_strideOK,
+  unsigned int const B_strideI1J,
+  unsigned int const B_strideIK,
+  unsigned int const B_size0I,
+  unsigned int const B_size1J,
   unsigned int const sizeK);
