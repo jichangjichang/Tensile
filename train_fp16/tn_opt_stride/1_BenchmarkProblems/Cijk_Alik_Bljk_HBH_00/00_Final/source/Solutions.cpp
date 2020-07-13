@@ -177,16 +177,10 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT64x128x32_MI32x32x4x2_SE_1LDSB0_GRVW2_LBSPP12
   unsigned int tempStrideB2K = tempStrideB1J * sizeJ;
 
   // enqueue CopyA kernel
-  size_t localWorkSizeTempAB[3] = { 8, 8, 1};
-  size_t globalWorkSizeTempAB[3];
-  size_t totalWorkGroupsTempAB0 = sizeL / localWorkSizeTempAB[0];
-  size_t totalWorkGroupsTempAB1 = sizeI / localWorkSizeTempAB[1];
-  if (totalWorkGroupsTempAB0*localWorkSizeTempAB[0] < sizeL) { totalWorkGroupsTempAB0++; }
-  if (totalWorkGroupsTempAB1*localWorkSizeTempAB[1] < sizeI) { totalWorkGroupsTempAB1++; }
-  globalWorkSizeTempAB[0] = totalWorkGroupsTempAB0;
-  globalWorkSizeTempAB[1] = totalWorkGroupsTempAB1;
-  globalWorkSizeTempAB[2] = 1;
-  globalWorkSizeTempAB[2] *= sizeK;
+  size_t localWorkSizeTempAB[3] = { 64, 1, 1};
+  size_t globalWorkSizeTempAB[3] = { 1, 1, 1};
+  globalWorkSizeTempAB[1] = sizeI / localWorkSizeTempAB[1];
+  globalWorkSizeTempAB[2] = sizeK;
 
   try {
 #if 1
@@ -217,15 +211,8 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT64x128x32_MI32x32x4x2_SE_1LDSB0_GRVW2_LBSPP12
     return tensileStatusFailure;
   }
 
-
-  totalWorkGroupsTempAB0 = sizeL / localWorkSizeTempAB[0];
-  totalWorkGroupsTempAB1 = sizeJ / localWorkSizeTempAB[1];
-  if (totalWorkGroupsTempAB0*localWorkSizeTempAB[0] < sizeL) { totalWorkGroupsTempAB0++; }
-  if (totalWorkGroupsTempAB1*localWorkSizeTempAB[1] < sizeJ) { totalWorkGroupsTempAB1++; }
-  globalWorkSizeTempAB[0] = totalWorkGroupsTempAB0;
-  globalWorkSizeTempAB[1] = totalWorkGroupsTempAB1;
-  globalWorkSizeTempAB[2] = 1;
-  globalWorkSizeTempAB[2] *= sizeK;
+  globalWorkSizeTempAB[1] = sizeJ / localWorkSizeTempAB[1];
+  globalWorkSizeTempAB[2] = sizeK;
 
   try {
 #if 1

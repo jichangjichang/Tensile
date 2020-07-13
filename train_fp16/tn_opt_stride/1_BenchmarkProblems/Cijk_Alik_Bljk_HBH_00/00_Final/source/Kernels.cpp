@@ -41,16 +41,36 @@ __global__ void Cijk_AB_Copy_OptStride(
 /* hard-coded initial strides */
 #define GLOBAL_O(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*strideO1J + (IDXK)*strideOK ))
 #define GLOBAL_I(IDX0I, IDX1J, IDXK) (( IDX0I + (IDX1J)*strideI1J + (IDXK)*strideIK ))
-  if ((hc_get_workitem_absolute_id(0) >=  size0I)
-   || (hc_get_workitem_absolute_id(1) >=  size1J)
-   || (hc_get_workitem_absolute_id(2) >=  sizeK))
+  if (hc_get_workitem_absolute_id(1) >=  size1J)
     return;
+
   unsigned int wgK = ( hc_get_group_id(2));
+  unsigned int numThreads = hc_get_group_size(0);
   unsigned int global0I = ( hc_get_workitem_absolute_id(0));
   unsigned int global1J = ( hc_get_workitem_absolute_id(1));
-  uint64_t idxO = GLOBAL_O( (uint64_t)global0I, global1J, wgK);
-  uint64_t idxI = GLOBAL_I( (uint64_t)global0I, global1J, wgK);
-    dst[idxO] =  src[idxI];
+  unsigned int elementsPerStore = 1;
+
+  if(size0I * sizeof(tensile_half) > numThreads * sizeof(float4)){
+    elementsPerStore = sizeof(float4)/sizeof(tensile_half);
+
+    for(int i = 0; (i+1)*numThreads*elementsPerStore <= size0I ; i++){
+      uint64_t idxO = GLOBAL_O( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      uint64_t idxI = GLOBAL_I( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      *((float4*)(dst+idxO)) = *((const float4*)(src+idxI));
+    }
+  }
+  else if( size0I * sizeof(tensile_half) > numThreads * sizeof(float2)){
+    elementsPerStore = sizeof(float2)/sizeof(tensile_half);
+
+    for(int i = 0; (i+1)*numThreads*elementsPerStore <= size0I ; i++){
+      uint64_t idxO = GLOBAL_O( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      uint64_t idxI = GLOBAL_I( (uint64_t)(global0I+i*numThreads)*elementsPerStore, global1J, wgK);
+      *((float2*)(dst+idxO)) = *((const float2*)(src+idxI));
+    }
+  }
+
+  //todo: handle edge
+
 }
 #undef GLOBAL_O
 #undef GLOBAL_I
