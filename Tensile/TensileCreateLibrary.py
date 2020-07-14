@@ -447,6 +447,7 @@ def writeSolutionsAndKernels(outputPath, CxxCompiler, problemTypes, solutions, k
 
     solutionSourceFile.write("#include \"Solutions.h\"\n")
     solutionSourceFile.write("#include <algorithm>\n")
+    solutionSourceFile.write("#include <math.h>\n")
 
     solutionHeaderFile.write("#include \"TensileTypes.h\"\n")
     solutionHeaderFile.write("#include \"SolutionHelper.h\"\n")

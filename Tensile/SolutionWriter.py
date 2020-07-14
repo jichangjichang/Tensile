@@ -440,6 +440,74 @@ class SolutionWriter:
     s += "\n"
     s += "%sint kernelsLaunched=0;\n" % (t)
 
+    #######################################
+    # Enqueue tempAB copy  Kernel
+    #######################################
+    enableTempAB = 1
+    if enableTempAB:
+      s += "%sunsigned int tempStrideA1I = ((unsigned int)(pow(2, ceil(log2(strideA1I))))) + 32;\n" % (t)
+      s += "%sunsigned int tempStrideA2K = tempStrideA1I * sizeI;\n" % (t)
+      s += "%sunsigned int tempStrideB1J = ((unsigned int)(pow(2, ceil(log2(strideB1J))))) + 32;\n" % (t)
+      s += "%sunsigned int tempStrideB2K = tempStrideB1J * sizeJ;\n" % (t)
+      s += "%s// enqueue CopyA kernel\n" % (t)
+      s += "%ssize_t localWorkSizeTempAB[3] = { 64, 1, 1};\n" % (t)
+      s += "%ssize_t globalWorkSizeTempAB[3] = { 1, 1, 1};\n" % (t)
+      s += "%sglobalWorkSizeTempAB[1] = max(sizeI / localWorkSizeTempAB[1],sizeJ / localWorkSizeTempAB[1]);\n" % (t)
+      s += "%sglobalWorkSizeTempAB[2] = sizeK;\n" % (t)
+
+      s += "%stry {\n" % (t)
+      s += "%s  kernelsLaunched++;\n" % (t)
+      s += "%s  if( inputEvents != NULL )\n" % (t)
+      s += "%s    hipEventRecord(inputEvents[0], stream );\n" % (t)
+      s += "%s  hipLaunchKernelGGL(\n" % (t)
+      s += "%s    HIP_KERNEL_NAME(Cijk_AB_Copy_OptStride),\n" % (t)
+      s += "%s    dim3(globalWorkSizeTempAB[0], globalWorkSizeTempAB[1], globalWorkSizeTempAB[2]),\n" % (t)
+      s += "%s    dim3(localWorkSizeTempAB[0], localWorkSizeTempAB[1], localWorkSizeTempAB[2]),\n" % (t)
+      s += "%s    0, // groupMemBytes\n" % (t)
+      s += "%s    stream,\n" % (t)
+      s += "%s    const_cast<TensileHalf *>(dataA+tensor2dSizeA),   //out\n" % (t)
+      s += "%s    dataA,     //in\n" % (t)
+      s += "%s    tempStrideA1I, //out\n" % (t)
+      s += "%s    tempStrideA2K,\n" % (t)
+      s += "%s    strideA1I, //in\n" % (t)
+      s += "%s    strideA2K,\n" % (t)
+      s += "%s    sizeL,\n" % (t)
+      s += "%s    sizeI,\n" % (t)
+      s += "%s    const_cast<TensileHalf *>(dataB+tensor2dSizeB),   //out\n" % (t)
+      s += "%s    dataB,     //in\n" % (t)
+      s += "%s    tempStrideB1J, //out\n" % (t)
+      s += "%s    tempStrideB2K,\n" % (t)
+      s += "%s    strideB1J, //in\n" % (t)
+      s += "%s    strideB2K,\n" % (t)
+      s += "%s    sizeL,\n" % (t)
+      s += "%s    sizeJ,\n" % (t)
+      s += "%s    sizeK);\n" % (t)
+      s += "%s  //hipEventRecord(outputEvent[0], stream );\n" % (t)
+      s += "%s} catch (const std::exception& e) {\n" % (t)
+      s += "%s  std::cerr << e.what() << std::endl;\n" % (t)
+      s += "%s  return tensileStatusFailure;\n" % (t)
+      s += "%s}\n" % (t)
+      s += "%suint64_t tempTensor2dSizeA = 1;\n" % (t)
+      s += "%suint64_t tempTensor2dSizeAStride = 0;\n" % (t)
+      s += "%suint64_t tempTensor2dSizeAOffset = 0;\n" % (t)
+      s += "%stempTensor2dSizeAStride = std::max(tempTensor2dSizeA*sizeL, (uint64_t)tempStrideA1I);\n" % (t)
+      s += "%stempTensor2dSizeAOffset += tempTensor2dSizeAStride - tempTensor2dSizeA*sizeL;\n" % (t)
+      s += "%stempTensor2dSizeA = tempTensor2dSizeAStride;\n" % (t)
+      s += "%stempTensor2dSizeAStride = std::max(tempTensor2dSizeA*sizeI, (uint64_t)tempStrideA2K);\n" % (t)
+      s += "%stempTensor2dSizeAOffset += tempTensor2dSizeAStride - tempTensor2dSizeA*sizeI;\n" % (t)
+      s += "%stempTensor2dSizeA = tempTensor2dSizeAStride;\n" % (t)
+      s += "%stempTensor2dSizeA -= tempTensor2dSizeAOffset;\n" % (t)
+      s += "%suint64_t tempTensor2dSizeB = 1;\n" % (t)
+      s += "%suint64_t tempTensor2dSizeBStride = 0;\n" % (t)
+      s += "%suint64_t tempTensor2dSizeBOffset = 0;\n" % (t)
+      s += "%stempTensor2dSizeBStride = std::max(tempTensor2dSizeB*sizeL, (uint64_t)tempStrideB1J);\n" % (t)
+      s += "%stempTensor2dSizeBOffset += tempTensor2dSizeBStride - tempTensor2dSizeB*sizeL;\n" % (t)
+      s += "%stempTensor2dSizeB = tempTensor2dSizeBStride;\n" % (t)
+      s += "%stempTensor2dSizeBStride = std::max(tempTensor2dSizeB*sizeJ, (uint64_t)tempStrideB2K);\n" % (t)
+      s += "%stempTensor2dSizeBOffset += tempTensor2dSizeBStride - tempTensor2dSizeB*sizeJ;\n" % (t)
+      s += "%stempTensor2dSizeB = tempTensor2dSizeBStride;\n" % (t)
+      s += "%stempTensor2dSizeB -= tempTensor2dSizeBOffset;\n" % (t)
+
     ########################################
     # Enqueue Beta-Only Kernel
     ########################################
@@ -782,6 +850,19 @@ class SolutionWriter:
           s += "%shipFunctionArgs.numFullBlocks = numFullBlocks;\n" % (t)
           s += "%shipFunctionArgs.wgmRemainder1 = wgmRemainder1;\n" % (t)
           s += "%shipFunctionArgs.magicNumberWgmRemainder1 = magicNumberWgmRemainder1;\n" % (t)
+
+          if enableTempAB:
+            s += "%shipFunctionArgs.tensor2dSizeA = tempTensor2dSizeA;\n" % (t)
+            s += "%shipFunctionArgs.tensor2dSizeB = tempTensor2dSizeB;\n" % (t)
+            s += "%shipFunctionArgs.dataA = dataA+tensor2dSizeA;\n" % (t)
+            s += "%shipFunctionArgs.dataB = dataB+tensor2dSizeB;\n" % (t)
+            s += "%shipFunctionArgs.strideA1I = tempStrideA1I;\n" % (t)
+            s += "%shipFunctionArgs.strideA2K = tempStrideA2K;\n" % (t)
+            s += "%shipFunctionArgs.strideB1J = tempStrideB1J;\n" % (t)
+            s += "%shipFunctionArgs.strideB2K = tempStrideB2K;\n" % (t)
+
+
+
 
           # Magic numbers for packed indices:
           for idxChar in solution["PackedC0IdxChars"][:-1]:
