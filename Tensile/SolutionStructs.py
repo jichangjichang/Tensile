@@ -1542,16 +1542,16 @@ class ProblemSizes:
       sizeLda = problemSize[self.problemType["IndexAssignmentsLD"][2]] \
                 if problemType["OperationType"] == "GEMM" \
                 else problemSize[self.problemType["IndexAssignmentsA"][0]]
-      sizeA = max(self.minStrides[self.problemType["IndexAssignmentsA"][0]], sizeLda)
+      sizeA = max(self.minStrides[self.problemType["IndexAssignmentsA"][0]]+32, sizeLda+32)
       for i in self.problemType["IndexAssignmentsA"][1:]:
-        sizeA *= max(self.minStrides[i] + 32, problemSize[i])
+        sizeA *= max(self.minStrides[i] , problemSize[i])
 
       sizeLdb = problemSize[self.problemType["IndexAssignmentsLD"][3]] \
                 if problemType["OperationType"] == "GEMM" \
                 else problemSize[self.problemType["IndexAssignmentsB"][0]]
-      sizeB = max(self.minStrides[self.problemType["IndexAssignmentsB"][0]], sizeLdb)
+      sizeB = max(self.minStrides[self.problemType["IndexAssignmentsB"][0]]+32, sizeLdb+32)
       for i in self.problemType["IndexAssignmentsB"][1:]:
-        sizeB *= max(self.minStrides[i]+ 32, problemSize[i])
+        sizeB *= max(self.minStrides[i], problemSize[i])
 
       self.maxD = max(self.maxD, sizeD)
       self.maxC = max(self.maxC, sizeC)
