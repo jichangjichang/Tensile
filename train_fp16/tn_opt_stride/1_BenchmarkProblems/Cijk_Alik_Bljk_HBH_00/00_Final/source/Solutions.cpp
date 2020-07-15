@@ -183,10 +183,12 @@ TensileStatus Cijk_Alik_Bljk_HBH_MT64x128x32_MI32x32x4x2_SE_1LDSB0_GRVW2_LBSPP12
   globalWorkSizeTempAB[2] = sizeK;
 
   try {
-#if 1
     kernelsLaunched++;
     if( inputEvents != NULL )
       hipEventRecord(inputEvents[0], stream );
+    hipMemcpy2DAsync(const_cast<TensileHalf *>(dataA+tensor2dSizeA),tempStrideA1I*sizeof(TensileHalf),dataA,strideA1I*sizeof(TensileHalf),sizeL*sizeof(TensileHalf),sizeI*sizeof(TensileHalf),hipMemcpyDeviceToDevice ,stream);
+    hipMemcpy2DAsync(const_cast<TensileHalf *>(dataB+tensor2dSizeB),tempStrideB1J*sizeof(TensileHalf),dataB,strideB1J*sizeof(TensileHalf),sizeL*sizeof(TensileHalf),sizeJ*sizeof(TensileHalf),hipMemcpyDeviceToDevice ,stream);
+#if 0
     hipLaunchKernelGGL(
       HIP_KERNEL_NAME(Cijk_AB_Copy_OptStride),
       dim3(globalWorkSizeTempAB[0], globalWorkSizeTempAB[1], globalWorkSizeTempAB[2]),
