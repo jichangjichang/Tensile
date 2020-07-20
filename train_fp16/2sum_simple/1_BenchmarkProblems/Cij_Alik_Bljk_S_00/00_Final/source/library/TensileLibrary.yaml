@@ -1,0 +1,210 @@
+---
+library:
+  rows:
+  - library: {index: 0, type: Single}
+    predicate:
+      type: And
+      value:
+      - {index: 0, type: StrideAEqual, value: 1}
+      - {index: 0, type: StrideBEqual, value: 1}
+      - {index: 0, type: StrideCEqual, value: 1}
+      - {index: 0, type: StrideDEqual, value: 1}
+      - {type: OperationIdentifierEqual, value: Contraction_kl_Alik_Bljk_Cij_Dij}
+      - {type: BetaZero}
+      - type: TypesEqual
+        value: [Float, Float, Float, Float]
+      - {type: HighPrecisionAccumulate, value: false}
+      - {type: CDStridesEqual, value: true}
+      - {type: KernelLanguageCompatible, value: Source}
+      - {type: ArithmeticUnitCompatible, value: VALU}
+      - type: BufferLoadOffsetLimitCheck
+        value: {DUorMT0: 32, DUorMT1: 32, ShiftPtrElemA: 0, ShiftPtrElemB: 0}
+      - {type: BufferStoreOffsetLimitCheck, value: 32}
+  - library: {index: 1, type: Single}
+    predicate:
+      type: And
+      value:
+      - {index: -1, type: BoundSizeMultiple, value: 8}
+      - {index: 0, type: StrideAEqual, value: 1}
+      - {index: 0, type: StrideBEqual, value: 1}
+      - {index: 0, type: StrideCEqual, value: 1}
+      - {index: 0, type: StrideDEqual, value: 1}
+      - {type: OperationIdentifierEqual, value: Contraction_kl_Alik_Bljk_Cij_Dij}
+      - {type: BetaZero}
+      - type: TypesEqual
+        value: [Float, Float, Float, Float]
+      - {type: HighPrecisionAccumulate, value: false}
+      - {type: CDStridesEqual, value: true}
+      - {type: KernelLanguageCompatible, value: Source}
+      - {type: ArithmeticUnitCompatible, value: VALU}
+      - type: BufferLoadOffsetLimitCheck
+        value: {DUorMT0: 32, DUorMT1: 32, ShiftPtrElemA: 0, ShiftPtrElemB: 0}
+      - {type: BufferStoreOffsetLimitCheck, value: 32}
+  type: Problem
+solutions:
+- debugKernel: false
+  hardwarePredicate: {type: TruePred}
+  ideals: {}
+  index: 0
+  info: {1LDSBuffer: '0', AggressivePerfMode: '1', AssertFree0ElementMultiple: '1',
+    AssertFree1ElementMultiple: '1', AssertMinApproxSize: '0', AssertSizeEqual: '{}',
+    AssertStrideAEqual: '{0: 1}', AssertStrideBEqual: '{0: 1}', AssertStrideCEqual: '{0:
+      1}', AssertStrideDEqual: '{0: 1}', AssertSummationElementMultiple: '1', AssignedDerivedParameters: 'False',
+    AssignedProblemIndependentDerivedParameters: 'True', BufferLoad: 'True', BufferStore: 'True',
+    CheckDimOverflow: '0', CheckTensorDimAsserts: 'False', CodeObjectVersion: V3,
+    DepthU: '8', DirectToLds: 'False', DirectToLdsA: 'False', DirectToLdsB: 'False',
+    DisableAtomicFail: '0', DisableKernelPieces: '0', DisableVgprOverlapping: 'False',
+    EdgeType: ShiftPtr, EnableMatrixInstruction: 'False', ExpandPointerSwap: 'False',
+    FractionalLoad: 'False', GlobalLoadVectorWidthA: '1', GlobalLoadVectorWidthB: '1',
+    GlobalRead2A: 'True', GlobalRead2B: 'True', GlobalReadCoalesceGroupA: 'True',
+    GlobalReadCoalesceGroupB: 'True', GlobalReadCoalesceVectorA: 'True', GlobalReadCoalesceVectorB: 'True',
+    GlobalReadVectorWidth: '1', GlobalSplitU: '1', GlobalSplitUSummationAssignmentRoundRobin: 'True',
+    GlobalSplitUWorkGroupMappingRoundRobin: 'False', GlobalWriteVectorWidth: '1',
+    GuaranteeNoPartialA: 'True', GuaranteeNoPartialB: 'True', ISA: '[0, 0, 0]', InnerUnroll: '1',
+    InterleaveAlpha: '0', KernelLanguage: Source, LSCA: '8', LSCB: '8', LSPA: '8',
+    LSPB: '8', LVCA: '8', LVCB: '8', LVPA: '8', LVPB: '8', LdcEqualsLdd: 'True', LdsBlockSizePerPad: '0',
+    LdsBlockSizePerPadA: '0', LdsBlockSizePerPadB: '0', LdsNumElements: '512', LdsOffsetA: '0',
+    LdsOffsetB: '256', LdsPadA: '0', LdsPadB: '0', LocalDotLayout: '1', LocalRead2A: 'True',
+    LocalRead2B: 'True', LocalReadVectorWidth: '1', LocalSplitU: '1', LocalWrite2A: 'True',
+    LocalWrite2B: 'True', LocalWriteUseSgprA: 'False', LocalWriteUseSgprB: 'False',
+    LoopDoWhile: 'False', LoopIters: '8', LoopTail: 'True', LoopUnroll: '8', MacroTile0: '32',
+    MacroTile1: '32', MacroTileA: '32', MacroTileB: '32', MacroTileShapeMax: '64',
+    MacroTileShapeMin: '1', MagicDivAlg: '2', MatrixInstruction: '[]', MaxOccupancy: '40',
+    MaxVgprNumber: '256', MinVgprNumber: '0', NonTemporalA: '0', NonTemporalB: '0',
+    NonTemporalC: '0', NumElementsPerThread: '16', NumGlobalWriteVectorsPerThread: '16',
+    NumLoadsA: '4', NumLoadsB: '4', NumLoadsCoalescedA: '1', NumLoadsCoalescedB: '1',
+    NumLoadsPerpendicularA: '4', NumLoadsPerpendicularB: '4', NumThreads: '64', OptNoLoadLoop: '1',
+    PackBatchDims: '0', PackFreeDims: '1', PackGranularity: '2', PackSummationDims: '0',
+    PackedC0IdxChars: '[''I'']', PackedC0IndicesX: '[0]', PackedC1IdxChars: '[''J'']',
+    PackedC1IndicesX: '[1]', PerformanceSyncLocation: '-1', PerformanceWaitCount: '-1',
+    PerformanceWaitLocation: '-1', PersistentKernel: '0', PrefetchAcrossPersistent: '0',
+    PrefetchGlobalRead: 'False', PrefetchLocalRead: 'False', ReplacementKernel: 'False',
+    ScheduleGlobalRead: '1', ScheduleIterAlg: '1', ScheduleLocalWrite: '1', StaggerU: '0',
+    StaggerUMapping: '0', StaggerUStride: '256', StoreRemapVectorWidth: '0', StoreVectorWidth: '4',
+    SubGroup0: '8', SubGroup1: '8', SubGroupA: '8', SubGroupB: '8', SuppressNoLoadLoop: 'False',
+    ThreadTile: '[4, 4]', ThreadTile0: '4', ThreadTile1: '4', ThreadTileA: '4', ThreadTileB: '4',
+    TransposeLDS: '0', UnrollIncIsDepthU: '0', UnrollMajorLDSA: '0', UnrollMajorLDSB: '0',
+    UnrollMemFence: 'False', Use64bShadowLimit: '1', UseInstOffsetForGRO: '0', UseSgprForGRO: '-1',
+    Valid: 'True', VectorAtomicWidth: '1', VectorStore: '-1', VectorWidth: '1', WaveSeparateGlobalReadA: '0',
+    WaveSeparateGlobalReadB: '0', WorkGroup: '[8, 8, 1]', WorkGroupMapping: '8', WorkGroupMappingType: B,
+    _UseSgprForGRO: 'False', _VectorStore: '1', _staggerStrideShift: '3'}
+  name: Cij_Alik_Bljk_S_MT32x32x8_SE_ASEM1_K1_PSD0
+  problemPredicate:
+    type: And
+    value:
+    - {index: 0, type: StrideAEqual, value: 1}
+    - {index: 0, type: StrideBEqual, value: 1}
+    - {index: 0, type: StrideCEqual, value: 1}
+    - {index: 0, type: StrideDEqual, value: 1}
+    - {type: OperationIdentifierEqual, value: Contraction_kl_Alik_Bljk_Cij_Dij}
+    - {type: BetaZero}
+    - type: TypesEqual
+      value: [Float, Float, Float, Float]
+    - {type: HighPrecisionAccumulate, value: false}
+    - {type: CDStridesEqual, value: true}
+    - {type: KernelLanguageCompatible, value: Source}
+    - {type: ArithmeticUnitCompatible, value: VALU}
+    - type: BufferLoadOffsetLimitCheck
+      value: {DUorMT0: 32, DUorMT1: 32, ShiftPtrElemA: 0, ShiftPtrElemB: 0}
+    - {type: BufferStoreOffsetLimitCheck, value: 32}
+  problemType: {aType: Float, bType: Float, cType: Float, dType: Float, highPrecisionAccumulate: false,
+    operationIdentifier: Contraction_kl_Alik_Bljk_Cij_Dij, useBeta: false, useInitialStridesAB: false,
+    useInitialStridesCD: false}
+  sizeMapping:
+    depthU: 8
+    globalSplitU: 1
+    macroTile: [32, 32, 1]
+    magicDivAlg: 2
+    packBatchDims: 0
+    packSummationDims: 0
+    persistentKernel: 0
+    sourceKernel: true
+    staggerStrideShift: 3
+    staggerU: 0
+    threadTile: [4, 4]
+    workGroup: [8, 8, 1]
+    workGroupMapping: 8
+- debugKernel: false
+  hardwarePredicate: {type: TruePred}
+  ideals: {}
+  index: 1
+  info: {1LDSBuffer: '0', AggressivePerfMode: '1', AssertFree0ElementMultiple: '1',
+    AssertFree1ElementMultiple: '1', AssertMinApproxSize: '0', AssertSizeEqual: '{}',
+    AssertStrideAEqual: '{0: 1}', AssertStrideBEqual: '{0: 1}', AssertStrideCEqual: '{0:
+      1}', AssertStrideDEqual: '{0: 1}', AssertSummationElementMultiple: '8', AssignedDerivedParameters: 'False',
+    AssignedProblemIndependentDerivedParameters: 'True', BufferLoad: 'True', BufferStore: 'True',
+    CheckDimOverflow: '0', CheckTensorDimAsserts: 'False', CodeObjectVersion: V3,
+    DepthU: '8', DirectToLds: 'False', DirectToLdsA: 'False', DirectToLdsB: 'False',
+    DisableAtomicFail: '0', DisableKernelPieces: '0', DisableVgprOverlapping: 'False',
+    EdgeType: ShiftPtr, EnableMatrixInstruction: 'False', ExpandPointerSwap: 'False',
+    FractionalLoad: 'False', GlobalLoadVectorWidthA: '1', GlobalLoadVectorWidthB: '1',
+    GlobalRead2A: 'True', GlobalRead2B: 'True', GlobalReadCoalesceGroupA: 'True',
+    GlobalReadCoalesceGroupB: 'True', GlobalReadCoalesceVectorA: 'True', GlobalReadCoalesceVectorB: 'True',
+    GlobalReadVectorWidth: '1', GlobalSplitU: '1', GlobalSplitUSummationAssignmentRoundRobin: 'True',
+    GlobalSplitUWorkGroupMappingRoundRobin: 'False', GlobalWriteVectorWidth: '1',
+    GuaranteeNoPartialA: 'True', GuaranteeNoPartialB: 'True', ISA: '[0, 0, 0]', InnerUnroll: '1',
+    InterleaveAlpha: '0', KernelLanguage: Source, LSCA: '8', LSCB: '8', LSPA: '8',
+    LSPB: '8', LVCA: '8', LVCB: '8', LVPA: '8', LVPB: '8', LdcEqualsLdd: 'True', LdsBlockSizePerPad: '0',
+    LdsBlockSizePerPadA: '0', LdsBlockSizePerPadB: '0', LdsNumElements: '512', LdsOffsetA: '0',
+    LdsOffsetB: '256', LdsPadA: '0', LdsPadB: '0', LocalDotLayout: '1', LocalRead2A: 'True',
+    LocalRead2B: 'True', LocalReadVectorWidth: '1', LocalSplitU: '1', LocalWrite2A: 'True',
+    LocalWrite2B: 'True', LocalWriteUseSgprA: 'False', LocalWriteUseSgprB: 'False',
+    LoopDoWhile: 'False', LoopIters: '8', LoopTail: 'True', LoopUnroll: '8', MacroTile0: '32',
+    MacroTile1: '32', MacroTileA: '32', MacroTileB: '32', MacroTileShapeMax: '64',
+    MacroTileShapeMin: '1', MagicDivAlg: '2', MatrixInstruction: '[]', MaxOccupancy: '40',
+    MaxVgprNumber: '256', MinVgprNumber: '0', NonTemporalA: '0', NonTemporalB: '0',
+    NonTemporalC: '0', NumElementsPerThread: '16', NumGlobalWriteVectorsPerThread: '16',
+    NumLoadsA: '4', NumLoadsB: '4', NumLoadsCoalescedA: '1', NumLoadsCoalescedB: '1',
+    NumLoadsPerpendicularA: '4', NumLoadsPerpendicularB: '4', NumThreads: '64', OptNoLoadLoop: '1',
+    PackBatchDims: '0', PackFreeDims: '1', PackGranularity: '2', PackSummationDims: '1',
+    PackedC0IdxChars: '[''I'']', PackedC0IndicesX: '[0]', PackedC1IdxChars: '[''J'']',
+    PackedC1IndicesX: '[1]', PerformanceSyncLocation: '-1', PerformanceWaitCount: '-1',
+    PerformanceWaitLocation: '-1', PersistentKernel: '0', PrefetchAcrossPersistent: '0',
+    PrefetchGlobalRead: 'False', PrefetchLocalRead: 'False', ReplacementKernel: 'False',
+    ScheduleGlobalRead: '1', ScheduleIterAlg: '1', ScheduleLocalWrite: '1', StaggerU: '0',
+    StaggerUMapping: '0', StaggerUStride: '256', StoreRemapVectorWidth: '0', StoreVectorWidth: '4',
+    SubGroup0: '8', SubGroup1: '8', SubGroupA: '8', SubGroupB: '8', SuppressNoLoadLoop: 'False',
+    ThreadTile: '[4, 4]', ThreadTile0: '4', ThreadTile1: '4', ThreadTileA: '4', ThreadTileB: '4',
+    TransposeLDS: '0', UnrollIncIsDepthU: '0', UnrollMajorLDSA: '0', UnrollMajorLDSB: '0',
+    UnrollMemFence: 'False', Use64bShadowLimit: '1', UseInstOffsetForGRO: '0', UseSgprForGRO: '-1',
+    Valid: 'True', VectorAtomicWidth: '1', VectorStore: '-1', VectorWidth: '1', WaveSeparateGlobalReadA: '0',
+    WaveSeparateGlobalReadB: '0', WorkGroup: '[8, 8, 1]', WorkGroupMapping: '8', WorkGroupMappingType: B,
+    _UseSgprForGRO: 'False', _VectorStore: '1', _staggerStrideShift: '3'}
+  name: Cij_Alik_Bljk_S_MT32x32x8_SE_ASEM8_K1_PSD1
+  problemPredicate:
+    type: And
+    value:
+    - {index: -1, type: BoundSizeMultiple, value: 8}
+    - {index: 0, type: StrideAEqual, value: 1}
+    - {index: 0, type: StrideBEqual, value: 1}
+    - {index: 0, type: StrideCEqual, value: 1}
+    - {index: 0, type: StrideDEqual, value: 1}
+    - {type: OperationIdentifierEqual, value: Contraction_kl_Alik_Bljk_Cij_Dij}
+    - {type: BetaZero}
+    - type: TypesEqual
+      value: [Float, Float, Float, Float]
+    - {type: HighPrecisionAccumulate, value: false}
+    - {type: CDStridesEqual, value: true}
+    - {type: KernelLanguageCompatible, value: Source}
+    - {type: ArithmeticUnitCompatible, value: VALU}
+    - type: BufferLoadOffsetLimitCheck
+      value: {DUorMT0: 32, DUorMT1: 32, ShiftPtrElemA: 0, ShiftPtrElemB: 0}
+    - {type: BufferStoreOffsetLimitCheck, value: 32}
+  problemType: {aType: Float, bType: Float, cType: Float, dType: Float, highPrecisionAccumulate: false,
+    operationIdentifier: Contraction_kl_Alik_Bljk_Cij_Dij, useBeta: false, useInitialStridesAB: false,
+    useInitialStridesCD: false}
+  sizeMapping:
+    depthU: 8
+    globalSplitU: 1
+    macroTile: [32, 32, 1]
+    magicDivAlg: 2
+    packBatchDims: 0
+    packSummationDims: 1
+    persistentKernel: 0
+    sourceKernel: true
+    staggerStrideShift: 3
+    staggerU: 0
+    threadTile: [4, 4]
+    workGroup: [8, 8, 1]
+    workGroupMapping: 8
+...
