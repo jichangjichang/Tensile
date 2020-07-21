@@ -386,7 +386,7 @@ namespace Tensile
             {
                 auto numIter  = problem.boundSize(si);
                 bool isUnroll = si == problem.boundIndices().size() - 1;
-                if(isUnroll)
+                if(0)//isUnroll)
                 {
                     numIter = numIter / sizeMapping.depthU / sizeMapping.globalSplitU
                               * sizeMapping.depthU;

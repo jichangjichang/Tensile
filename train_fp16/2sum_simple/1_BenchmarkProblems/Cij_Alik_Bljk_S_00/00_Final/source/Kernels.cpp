@@ -1303,18 +1303,15 @@ const unsigned MAGIC_STRUCT_A = 0x80000000; // for extracting a-bit from shift k
 
   /* global read addresses: unroll assignment a */
 
-  unsigned int globalReadOffsetAL = (serial%LVCA)*GLOBAL_LOAD_VECTOR_WIDTH_A;
+  unsigned int globalReadOffsetA = (serial%LVCA)*GLOBAL_LOAD_VECTOR_WIDTH_A;
 
 
   /* global read addresses: unroll assignment b */
 
-  unsigned int globalReadOffsetBL = (serial%LVCB)*GLOBAL_LOAD_VECTOR_WIDTH_B;
+  unsigned int globalReadOffsetB = (serial%LVCB)*GLOBAL_LOAD_VECTOR_WIDTH_B;
 
 
   /* global read addresses: other summation assignments */
-
-#define globalReadOffsetAK 0
-#define globalReadOffsetBK 0
 
 
   /* global read addresses: tile offsets a */
@@ -1348,61 +1345,20 @@ const unsigned MAGIC_STRUCT_A = 0x80000000; // for extracting a-bit from shift k
   flattenedOffsetB_3_0 = (flattenedOffsetB_3_0 > (size1J-1)) ? (size1J-1):flattenedOffsetB_3_0;
   unsigned int globalReadOffsetB1J_3_0 = flattenedOffsetB_3_0;
 
-
-  /* global read addresses: unroll offsets a */
-
-  unsigned int globalReadOffsetAL_0_0 = globalReadOffsetAL + 0 + 0*LSCA;
-
-
-  /* global read addresses: unroll offsets b */
-
-  unsigned int globalReadOffsetBL_0_0 = globalReadOffsetBL + 0 + 0*LSCB;
-
-
-  /* global read addresses: final offsets a */
-
-  int64_t globalReadOffsetA_0_0_0_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_0_0), (globalReadOffsetAK) );
-  int64_t globalReadOffsetA_0_0_1_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_1_0), (globalReadOffsetAK) );
-  int64_t globalReadOffsetA_0_0_2_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_2_0), (globalReadOffsetAK) );
-  int64_t globalReadOffsetA_0_0_3_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_3_0), (globalReadOffsetAK) );
-
-
-  /* global read addresses: final offsets b */
-
-  int64_t globalReadOffsetB_0_0_0_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_0_0), (globalReadOffsetBK) );
-  int64_t globalReadOffsetB_0_0_1_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_1_0), (globalReadOffsetBK) );
-  int64_t globalReadOffsetB_0_0_2_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_2_0), (globalReadOffsetBK) );
-  int64_t globalReadOffsetB_0_0_3_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_3_0), (globalReadOffsetBK) );
-
-
   /* global read addresses: addresses a */
 
-  DATA_TYPE const *globalReadA_0_0_0_0 = A + globalReadOffsetA_0_0_0_0;
-  DATA_TYPE const *globalReadA_0_0_1_0 = A + globalReadOffsetA_0_0_1_0;
-  DATA_TYPE const *globalReadA_0_0_2_0 = A + globalReadOffsetA_0_0_2_0;
-  DATA_TYPE const *globalReadA_0_0_3_0 = A + globalReadOffsetA_0_0_3_0;
+  DATA_TYPE const *globalReadA_0_0_0_0;
+  DATA_TYPE const *globalReadA_0_0_1_0;
+  DATA_TYPE const *globalReadA_0_0_2_0;
+  DATA_TYPE const *globalReadA_0_0_3_0;
 
 
   /* global read addresses: addresses b */
 
-  DATA_TYPE const *globalReadB_0_0_0_0 = B + globalReadOffsetB_0_0_0_0;
-  DATA_TYPE const *globalReadB_0_0_1_0 = B + globalReadOffsetB_0_0_1_0;
-  DATA_TYPE const *globalReadB_0_0_2_0 = B + globalReadOffsetB_0_0_2_0;
-  DATA_TYPE const *globalReadB_0_0_3_0 = B + globalReadOffsetB_0_0_3_0;
-
-
-  /* global read addresses: increments a */
-
-  int64_t globalReadIncAL = (int64_t)strideAL;
-
-  int64_t globalReadIncAK = (int64_t)strideAK;
-
-
-  /* global read addresses: increments b */
-
-  int64_t globalReadIncBL = (int64_t)strideBL;
-
-  int64_t globalReadIncBK = (int64_t)strideBK;
+  DATA_TYPE const *globalReadB_0_0_0_0;
+  DATA_TYPE const *globalReadB_0_0_1_0;
+  DATA_TYPE const *globalReadB_0_0_2_0;
+  DATA_TYPE const *globalReadB_0_0_3_0;
 
 
   /******************************************/
@@ -1530,14 +1486,54 @@ const unsigned MAGIC_STRUCT_A = 0x80000000; // for extracting a-bit from shift k
   /* Unrolled Loop(s) - Begin               */
   /******************************************/
 
-  while (psdIter < (numIterK*numIterL)) {
-
+  while (psdIter + LOCAL_DEPTHU <= (numIterK*numIterL)) {
 
     /******************************************/
     /* Unroll Loop 1/1 - Begin                */
     /******************************************/
 
+    /* global read addresses: unroll offsets a */
+    unsigned int globalReadOffsetA_0_0 = globalReadOffsetA + 0 + 0*LSCA + psdIter;
 
+    /* global read addresses: unroll offsets b */
+    unsigned int globalReadOffsetB_0_0 = globalReadOffsetB + 0 + 0*LSCB + psdIter;
+
+    unsigned int tmpBits = 0;
+    tmpBits = MAGIC_DIV2((globalReadOffsetA_0_0), magicStructL);
+    unsigned int globalReadOffsetAL_0_0 = (globalReadOffsetA_0_0) - tmpBits*numIterL;
+    unsigned int psdPackedBits = 0;
+    psdPackedBits = tmpBits;
+
+    unsigned int globalReadOffsetAK_0_0 = psdPackedBits;
+
+    tmpBits = MAGIC_DIV2((globalReadOffsetB_0_0), magicStructL);
+    unsigned int globalReadOffsetBL_0_0 = (globalReadOffsetB_0_0) - tmpBits*numIterL;
+    psdPackedBits = tmpBits;
+    unsigned int globalReadOffsetBK_0_0 = psdPackedBits;
+
+    /* global read addresses: final offsets a */
+    int64_t globalReadOffsetA_0_0_0_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_0_0), (globalReadOffsetAK_0_0) );
+    int64_t globalReadOffsetA_0_0_1_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_1_0), (globalReadOffsetAK_0_0) );
+    int64_t globalReadOffsetA_0_0_2_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_2_0), (globalReadOffsetAK_0_0) );
+    int64_t globalReadOffsetA_0_0_3_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_3_0), (globalReadOffsetAK_0_0) );
+
+    /* global read addresses: final offsets b */
+    int64_t globalReadOffsetB_0_0_0_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_0_0), (globalReadOffsetBK_0_0) );
+    int64_t globalReadOffsetB_0_0_1_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_1_0), (globalReadOffsetBK_0_0) );
+    int64_t globalReadOffsetB_0_0_2_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_2_0), (globalReadOffsetBK_0_0) );
+    int64_t globalReadOffsetB_0_0_3_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_3_0), (globalReadOffsetBK_0_0) );
+
+    /* global read inc A from base */
+    globalReadA_0_0_0_0 = A + globalReadOffsetA_0_0_0_0;
+    globalReadA_0_0_1_0 = A + globalReadOffsetA_0_0_1_0;
+    globalReadA_0_0_2_0 = A + globalReadOffsetA_0_0_2_0;
+    globalReadA_0_0_3_0 = A + globalReadOffsetA_0_0_3_0;
+
+    /* global read inc B from base */
+    globalReadB_0_0_0_0 = B + globalReadOffsetB_0_0_0_0;
+    globalReadB_0_0_1_0 = B + globalReadOffsetB_0_0_1_0;
+    globalReadB_0_0_2_0 = B + globalReadOffsetB_0_0_2_0;
+    globalReadB_0_0_3_0 = B + globalReadOffsetB_0_0_3_0;
 
     /* global read A */
     a_0_0_0_0 = *(globalReadA_0_0_0_0 + 0);
@@ -1553,30 +1549,7 @@ const unsigned MAGIC_STRUCT_A = 0x80000000; // for extracting a-bit from shift k
 
     psdIter += LOCAL_DEPTHU;
 
-    //unsigned int iterL = (psdIter) % numIterL;
-    //unsigned int psdPackedBits = (psdIter) / numIterL;
-    unsigned int tmpBits = MAGIC_DIV2((psdIter), magicStructL);
-    unsigned int iterL = (psdIter) - tmpBits*numIterL;
-    unsigned int psdPackedBits = tmpBits;
-    int64_t psdOffsetA = iterL*globalReadIncAL;
-    int64_t psdOffsetB = iterL*globalReadIncBL;
-
-    unsigned int iterK = psdPackedBits;
-    psdOffsetA += iterK*globalReadIncAK;
-    psdOffsetB += iterK*globalReadIncBK;
     
-    /* global read inc A from base */
-    globalReadA_0_0_0_0 = A + globalReadOffsetA_0_0_0_0 + psdOffsetA;
-    globalReadA_0_0_1_0 = A + globalReadOffsetA_0_0_1_0 + psdOffsetA;
-    globalReadA_0_0_2_0 = A + globalReadOffsetA_0_0_2_0 + psdOffsetA;
-    globalReadA_0_0_3_0 = A + globalReadOffsetA_0_0_3_0 + psdOffsetA;
-    
-    /* global read inc B from base */
-    globalReadB_0_0_0_0 = B + globalReadOffsetB_0_0_0_0 + psdOffsetB;
-    globalReadB_0_0_1_0 = B + globalReadOffsetB_0_0_1_0 + psdOffsetB;
-    globalReadB_0_0_2_0 = B + globalReadOffsetB_0_0_2_0 + psdOffsetB;
-    globalReadB_0_0_3_0 = B + globalReadOffsetB_0_0_3_0 + psdOffsetB;
-
 
     __syncthreads(); //PGR=0, prior iter done reading lds
 
@@ -1799,8 +1772,147 @@ const unsigned MAGIC_STRUCT_A = 0x80000000; // for extracting a-bit from shift k
     /******************************************/
 
   }
+#if 1
+  /******************************************/
+  /* Tail Loop                              */
+  /******************************************/
 
 
+  /* global read addresses: unroll offsets a */
+  unsigned int globalReadOffsetA_0_0 = globalReadOffsetA + 0 + 0*LSCA + psdIter;
+
+  /* global read addresses: unroll offsets b */
+  unsigned int globalReadOffsetB_0_0 = globalReadOffsetB + 0 + 0*LSCB + psdIter;
+
+  unsigned int tmpBits = 0;
+  tmpBits = MAGIC_DIV2((globalReadOffsetA_0_0), magicStructL);
+  unsigned int globalReadOffsetAL_0_0 = (globalReadOffsetA_0_0) - tmpBits*numIterL;
+  unsigned int psdPackedBits = 0;
+  psdPackedBits = tmpBits;
+
+  unsigned int globalReadOffsetAK_0_0 = psdPackedBits;
+
+  tmpBits = MAGIC_DIV2((globalReadOffsetB_0_0), magicStructL);
+  unsigned int globalReadOffsetBL_0_0 = (globalReadOffsetB_0_0) - tmpBits*numIterL;
+  psdPackedBits = tmpBits;
+  unsigned int globalReadOffsetBK_0_0 = psdPackedBits;
+
+  /* global read addresses: final offsets a */
+  int64_t globalReadOffsetA_0_0_0_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_0_0), (globalReadOffsetAK_0_0) );
+  int64_t globalReadOffsetA_0_0_1_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_1_0), (globalReadOffsetAK_0_0) );
+  int64_t globalReadOffsetA_0_0_2_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_2_0), (globalReadOffsetAK_0_0) );
+  int64_t globalReadOffsetA_0_0_3_0 = GLOBAL_OFFSET_A( (globalReadOffsetAL_0_0), (globalReadOffsetA0I_3_0), (globalReadOffsetAK_0_0) );
+
+  /* global read addresses: final offsets b */
+  int64_t globalReadOffsetB_0_0_0_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_0_0), (globalReadOffsetBK_0_0) );
+  int64_t globalReadOffsetB_0_0_1_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_1_0), (globalReadOffsetBK_0_0) );
+  int64_t globalReadOffsetB_0_0_2_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_2_0), (globalReadOffsetBK_0_0) );
+  int64_t globalReadOffsetB_0_0_3_0 = GLOBAL_OFFSET_B( (globalReadOffsetBL_0_0), (globalReadOffsetB1J_3_0), (globalReadOffsetBK_0_0) );
+
+  /* global read inc A from base */
+  globalReadA_0_0_0_0 = A + globalReadOffsetA_0_0_0_0;
+  globalReadA_0_0_1_0 = A + globalReadOffsetA_0_0_1_0;
+  globalReadA_0_0_2_0 = A + globalReadOffsetA_0_0_2_0;
+  globalReadA_0_0_3_0 = A + globalReadOffsetA_0_0_3_0;
+
+  /* global read inc B from base */
+  globalReadB_0_0_0_0 = B + globalReadOffsetB_0_0_0_0;
+  globalReadB_0_0_1_0 = B + globalReadOffsetB_0_0_1_0;
+  globalReadB_0_0_2_0 = B + globalReadOffsetB_0_0_2_0;
+  globalReadB_0_0_3_0 = B + globalReadOffsetB_0_0_3_0;
+
+
+  /* global read A */
+  a_0_0_0_0 = ( (globalReadOffsetAL_0_0 + 0) >= (sizeL ) || (globalReadOffsetAK_0_0 + 0) >= (sizeK )) ? SCALAR_OOB_DATA : *(globalReadA_0_0_0_0 + 0);
+  a_0_0_1_0 = ( (globalReadOffsetAL_0_0 + 0) >= (sizeL ) || (globalReadOffsetAK_0_0 + 0) >= (sizeK )) ? SCALAR_OOB_DATA : *(globalReadA_0_0_1_0 + 0);
+  a_0_0_2_0 = ( (globalReadOffsetAL_0_0 + 0) >= (sizeL ) || (globalReadOffsetAK_0_0 + 0) >= (sizeK )) ? SCALAR_OOB_DATA : *(globalReadA_0_0_2_0 + 0);
+  a_0_0_3_0 = ( (globalReadOffsetAL_0_0 + 0) >= (sizeL ) || (globalReadOffsetAK_0_0 + 0) >= (sizeK )) ? SCALAR_OOB_DATA : *(globalReadA_0_0_3_0 + 0);
+
+  /* global read B */
+  b_0_0_0_0 = ( (globalReadOffsetBL_0_0 + 0) >= (sizeL ) || (globalReadOffsetBK_0_0 + 0) >= (sizeK )) ? SCALAR_OOB_DATA : *(globalReadB_0_0_0_0 + 0);
+  b_0_0_1_0 = ( (globalReadOffsetBL_0_0 + 0) >= (sizeL ) || (globalReadOffsetBK_0_0 + 0) >= (sizeK )) ? SCALAR_OOB_DATA : *(globalReadB_0_0_1_0 + 0);
+  b_0_0_2_0 = ( (globalReadOffsetBL_0_0 + 0) >= (sizeL ) || (globalReadOffsetBK_0_0 + 0) >= (sizeK )) ? SCALAR_OOB_DATA : *(globalReadB_0_0_2_0 + 0);
+  b_0_0_3_0 = ( (globalReadOffsetBL_0_0 + 0) >= (sizeL ) || (globalReadOffsetBK_0_0 + 0) >= (sizeK )) ? SCALAR_OOB_DATA : *(globalReadB_0_0_3_0 + 0);
+
+
+  __syncthreads(); //
+
+
+  /* local write init pointers A */
+  localWriteA_0_0_0_0 = (DATA_TYPE *)(localMemory + localWriteOffsetA_0_0_0_0);
+  localWriteA_0_0_1_0 = (DATA_TYPE *)(localMemory + localWriteOffsetA_0_0_1_0);
+  localWriteA_0_0_2_0 = (DATA_TYPE *)(localMemory + localWriteOffsetA_0_0_2_0);
+  localWriteA_0_0_3_0 = (DATA_TYPE *)(localMemory + localWriteOffsetA_0_0_3_0);
+
+
+  /* local write init pointers B */
+  localWriteB_0_0_0_0 = (DATA_TYPE *)(localMemory + localWriteOffsetB_0_0_0_0);
+  localWriteB_0_0_1_0 = (DATA_TYPE *)(localMemory + localWriteOffsetB_0_0_1_0);
+  localWriteB_0_0_2_0 = (DATA_TYPE *)(localMemory + localWriteOffsetB_0_0_2_0);
+  localWriteB_0_0_3_0 = (DATA_TYPE *)(localMemory + localWriteOffsetB_0_0_3_0);
+
+
+  /* local write a */
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconditional-uninitialized"
+    *(localWriteA_0_0_0_0 + 0) = a_0_0_0_0;
+    *(localWriteA_0_0_1_0 + 0) = a_0_0_1_0;
+    *(localWriteA_0_0_2_0 + 0) = a_0_0_2_0;
+    *(localWriteA_0_0_3_0 + 0) = a_0_0_3_0;
+#pragma clang diagnostic pop
+
+
+    /* local write b */
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconditional-uninitialized"
+    *(localWriteB_0_0_0_0 + 0) = b_0_0_0_0;
+    *(localWriteB_0_0_1_0 + 0) = b_0_0_1_0;
+    *(localWriteB_0_0_2_0 + 0) = b_0_0_2_0;
+    *(localWriteB_0_0_3_0 + 0) = b_0_0_3_0;
+#pragma clang diagnostic pop
+
+
+    __syncthreads(); //
+
+
+    /* tail loop: macs */
+
+    while ( psdIter < (numIterK*numIterL)) {
+
+
+      /* local read a */
+
+      rA[0*VECTOR_WIDTH+0] = localReadA[0*SG0I*VECTOR_WIDTH + 0];
+      rA[1*VECTOR_WIDTH+0] = localReadA[1*SG0I*VECTOR_WIDTH + 0];
+      rA[2*VECTOR_WIDTH+0] = localReadA[2*SG0I*VECTOR_WIDTH + 0];
+      rA[3*VECTOR_WIDTH+0] = localReadA[3*SG0I*VECTOR_WIDTH + 0];
+
+
+      /* local read b */
+
+      rB[0*VECTOR_WIDTH+0] = localReadB[0*SG1J*VECTOR_WIDTH + 0];
+      rB[1*VECTOR_WIDTH+0] = localReadB[1*SG1J*VECTOR_WIDTH + 0];
+      rB[2*VECTOR_WIDTH+0] = localReadB[2*SG1J*VECTOR_WIDTH + 0];
+      rB[3*VECTOR_WIDTH+0] = localReadB[3*SG1J*VECTOR_WIDTH + 0];
+
+
+      /* local read inc a */
+
+      localReadA += LOCAL_SPLITU*(MT0I+PAD);
+
+
+      /* local read inc b */
+
+      localReadB += LOCAL_SPLITU*(MT1J+PAD);
+
+      psdIter++;
+
+      MAC_4x4
+
+    }
+#endif //tail loop end
 
 
 

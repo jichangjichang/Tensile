@@ -24,7 +24,7 @@ library:
     predicate:
       type: And
       value:
-      - {index: -1, type: BoundSizeMultiple, value: 8}
+      - {index: -1, type: BoundSizeMultiple, value: 1}
       - {index: 0, type: StrideAEqual, value: 1}
       - {index: 0, type: StrideBEqual, value: 1}
       - {index: 0, type: StrideCEqual, value: 1}
@@ -174,7 +174,7 @@ solutions:
   problemPredicate:
     type: And
     value:
-    - {index: -1, type: BoundSizeMultiple, value: 8}
+    - {index: -1, type: BoundSizeMultiple, value: 1}
     - {index: 0, type: StrideAEqual, value: 1}
     - {index: 0, type: StrideBEqual, value: 1}
     - {index: 0, type: StrideCEqual, value: 1}
