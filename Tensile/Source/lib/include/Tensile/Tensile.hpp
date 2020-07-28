@@ -126,6 +126,7 @@ namespace Tensile
         size_t sharedMemBytes = 0;
 
         KernelArguments args;
+        KernelArguments argsMemoryCheck;
     };
 
     /**

@@ -51,6 +51,9 @@ namespace Tensile
         template <typename T>
         void bind(std::string const& name, T value);
 
+        template <typename T>
+        void findAndReplace(std::string const& name, T value);
+
         bool isFullyBound() const;
 
         void const* data() const;
@@ -130,6 +133,36 @@ namespace Tensile
         if(sizeof(T) != std::get<ArgSize>(record))
         {
             throw std::runtime_error("Size mismatch in binding argument " + name);
+        }
+
+        size_t offset = std::get<ArgOffset>(record);
+
+        if(offset % alignof(T) != 0)
+        {
+            throw std::runtime_error("Alignment error in argument " + name + ": type mismatch?");
+        }
+
+        writeValue(offset, value);
+
+        std::get<ArgString>(record) = stringForValue(value, true);
+        std::get<ArgBound>(record)  = true;
+    }
+
+    template <typename T>
+    inline void KernelArguments::findAndReplace(std::string const& name, T value)
+    {
+        auto it = m_argRecords.find(name);
+
+        if(it == m_argRecords.end())
+        {
+            throw std::runtime_error("Attempt to find unknown argument " + name);
+        }
+
+        auto& record = it->second;
+
+        if(sizeof(T) != std::get<ArgSize>(record))
+        {
+            throw std::runtime_error("Size mismatch in argument " + name);
         }
 
         size_t offset = std::get<ArgOffset>(record);

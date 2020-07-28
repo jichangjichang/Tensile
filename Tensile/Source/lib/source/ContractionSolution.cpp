@@ -497,6 +497,22 @@ namespace Tensile
             rv.args.append<uint32_t>("pad", 0);
         }
 
+        if(1){
+          uint64_t tensor2dSizeC = c.totalAllocatedElements();
+          uint64_t tensor2dSizeA = (sizeMapping.packBatchDims & 0x1)
+                                       ? a.totalAllocatedElements()
+                                       : problem.allocatedElementsNonBatchA();
+          uint64_t tensor2dSizeB = (sizeMapping.packBatchDims & 0x2)
+                                       ? b.totalAllocatedElements()
+                                       : problem.allocatedElementsNonBatchB();
+          std::cout<< "aElements = " << inputs.aElements << std::endl;
+          rv.argsMemoryCheck = rv.args;
+          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::DType const*>("d", inputs.d+inputs.dElements-tensor2dSizeC);
+          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::CType const*>("c", inputs.c+inputs.cElements-tensor2dSizeC);
+          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::AType const*>("a", inputs.a+inputs.aElements-tensor2dSizeA);
+          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::BType const*>("b", inputs.b+inputs.bElements-tensor2dSizeB);
+
+        }
         return rv;
     }
 
@@ -589,7 +605,7 @@ namespace Tensile
                                                                   TypedInputs const& inputs,
                                                                   Hardware const&    hardware) const
     {
-        bool debug = Debug::Instance().printKernelArguments();
+        bool debug = Debug::Instance().printKernelArguments()|| 1;
 
         std::vector<KernelInvocation> rv;
 

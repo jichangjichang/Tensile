@@ -262,6 +262,16 @@ namespace Tensile
                 m_dMaxElements += 1024;
             }
 
+            if(1){
+               unsigned int roundUpElements = PAGE_SIZE / DataTypeInfo::Get(args["a-type"].as<DataType>()).elementSize;
+               m_aMaxElements = RoundUpToMultiple<unsigned int>(m_aMaxElements,roundUpElements);
+               roundUpElements = PAGE_SIZE / DataTypeInfo::Get(args["b-type"].as<DataType>()).elementSize;
+               m_bMaxElements = RoundUpToMultiple<unsigned int>(m_bMaxElements,roundUpElements);
+               roundUpElements = PAGE_SIZE / DataTypeInfo::Get(args["c-type"].as<DataType>()).elementSize;
+               m_cMaxElements = RoundUpToMultiple<unsigned int>(m_cMaxElements,roundUpElements);
+               roundUpElements = PAGE_SIZE / DataTypeInfo::Get(args["d-type"].as<DataType>()).elementSize;
+               m_dMaxElements = RoundUpToMultiple<unsigned int>(m_dMaxElements,roundUpElements);
+            }
             m_problemDependentData = IsProblemDependent(m_aInit) || IsProblemDependent(m_bInit)
                                      || IsProblemDependent(m_cInit) || IsProblemDependent(m_dInit);
         }

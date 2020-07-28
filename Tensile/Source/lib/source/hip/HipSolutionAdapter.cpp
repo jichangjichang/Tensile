@@ -248,10 +248,38 @@ namespace Tensile
                 std::cout << "Kernel " << kernel.kernelName << std::endl;
                 std::cout << " l" << kernel.workGroupSize << " x g" << kernel.numWorkGroups << " = "
                           << kernel.numWorkItems << std::endl;
+                if(1) //if boundCheck
+                  std::cout << kernel.argsMemoryCheck;
                 std::cout << kernel.args;
             }
 
             hipFunction_t function = getKernel(kernel.kernelName);
+
+            if(1){  //if boundCheck
+              void* kernelArgsMemoryCheck = const_cast<void*>(kernel.argsMemoryCheck.data());
+              size_t argsSize   = kernel.args.size();
+
+              void* hipLaunchParamsMemoryCheck[] = {HIP_LAUNCH_PARAM_BUFFER_POINTER,
+                                       kernelArgsMemoryCheck,
+                                       HIP_LAUNCH_PARAM_BUFFER_SIZE,
+                                       &argsSize,
+                                       HIP_LAUNCH_PARAM_END};
+
+              HIP_CHECK_EXC(hipExtModuleLaunchKernel(function,
+                                                   kernel.numWorkItems.x,
+                                                   kernel.numWorkItems.y,
+                                                   kernel.numWorkItems.z,
+                                                   kernel.workGroupSize.x,
+                                                   kernel.workGroupSize.y,
+                                                   kernel.workGroupSize.z,
+                                                   kernel.sharedMemBytes, // sharedMem
+                                                   stream, // stream
+                                                   nullptr,
+                                                   (void**)&hipLaunchParamsMemoryCheck,
+                                                   nullptr,
+                                                   nullptr
+                                                   ));
+            }
 
             void*  kernelArgs = const_cast<void*>(kernel.args.data());
             size_t argsSize   = kernel.args.size();

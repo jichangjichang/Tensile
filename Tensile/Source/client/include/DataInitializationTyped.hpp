@@ -65,15 +65,12 @@ namespace Tensile
                                      Alpha              _alpha,
                                      Beta               _beta,
                                      bool               _gpu)
-                : Base(_a.get(), _b.get(), _c.get(), _d.get(), _alpha, _beta)
+                : Base(_a.get(), _b.get(), _c.get(), _d.get(), _alpha, _beta,
+                       _aElements, _bElements ,_cElements, _dElements)
                 , managedA(_a)
                 , managedB(_b)
                 , managedC(_c)
                 , managedD(_d)
-                , aElements(_aElements)
-                , bElements(_bElements)
-                , cElements(_cElements)
-                , dElements(_dElements)
                 , gpu(_gpu)
             {
             }
@@ -84,11 +81,6 @@ namespace Tensile
             std::shared_ptr<B> managedB;
             std::shared_ptr<C> managedC;
             std::shared_ptr<D> managedD;
-
-            size_t aElements;
-            size_t bElements;
-            size_t cElements;
-            size_t dElements;
 
             bool gpu;
         };

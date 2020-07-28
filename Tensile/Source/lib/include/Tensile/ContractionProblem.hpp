@@ -589,7 +589,11 @@ namespace Tensile
 
         TypedContractionInputs();
         TypedContractionInputs(
-            A const* _a, B const* _b, C const* _c, D* _d, Alpha _alpha, Beta _beta);
+            A const* _a, B const* _b, C const* _c, D* _d, Alpha _alpha, Beta _beta,
+                                     size_t             _aElements,
+                                     size_t             _bElements,
+                                     size_t             _cElements,
+                                     size_t             _dElements);
         ~TypedContractionInputs();
 
         A const* a = nullptr;
@@ -599,6 +603,12 @@ namespace Tensile
 
         Alpha alpha = static_cast<Alpha>(0);
         Beta  beta  = static_cast<Beta>(0);
+
+        size_t aElements;
+        size_t bElements;
+        size_t cElements;
+        size_t dElements;
+        //add elements size here
     };
 
     using BFloat16ContractionInputs

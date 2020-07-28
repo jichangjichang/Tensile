@@ -33,7 +33,7 @@
 #include <mutex>
 #include <sstream>
 #include <type_traits>
-
+#define PAGE_SIZE (2097152)
 namespace Tensile
 {
 
