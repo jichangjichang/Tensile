@@ -237,11 +237,8 @@ namespace Tensile
             , m_cEqualsD(args["c-equal-d"].as<bool>())
             , m_elementsToValidate(args["num-elements-to-validate"].as<int>())
             , m_keepPristineCopyOnGPU(args["pristine-on-gpu"].as<bool>())
-        //, m_boundsCheck(args["bounds-check"].as<bool>())
         {
-            auto x        = args.find("bounds-check");
-            auto arg      = args["bounds-check"];
-            m_boundsCheck = arg.as<bool>();
+            m_boundsCheck = args["bounds-check"].as<int>();
 
             if(args.count("convolution-vs-contraction"))
                 m_convolutionVsContraction = args["convolution-vs-contraction"].as<bool>();
@@ -254,15 +251,15 @@ namespace Tensile
                 m_dMaxElements = std::max(m_dMaxElements, problem.d().totalAllocatedElements());
             }
 
-            if(m_boundsCheck)
+            if(m_boundsCheck == 1)
             {
                 m_aMaxElements += 1024;
                 m_bMaxElements += 1024;
                 m_cMaxElements += 1024;
                 m_dMaxElements += 1024;
             }
-
-            if(1){
+            else if(m_boundsCheck == 2)
+            {
                unsigned int roundUpElements = PAGE_SIZE / DataTypeInfo::Get(args["a-type"].as<DataType>()).elementSize;
                m_aMaxElements = RoundUpToMultiple<unsigned int>(m_aMaxElements,roundUpElements);
                roundUpElements = PAGE_SIZE / DataTypeInfo::Get(args["b-type"].as<DataType>()).elementSize;

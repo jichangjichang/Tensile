@@ -247,7 +247,8 @@ namespace Tensile
     KernelInvocation
         ContractionSolution::generateSingleCall(ContractionSolution::Problem const& problem,
                                                 TypedInputs const&                  inputs,
-                                                Hardware const&                     hardware) const
+                                                Hardware const&                     hardware,
+                                                po::variables_map const&            args) const
     {
         TENSILE_ASSERT_EXC(sizeMapping.workGroupMapping >= 0);
 
@@ -497,22 +498,18 @@ namespace Tensile
             rv.args.append<uint32_t>("pad", 0);
         }
 
-        if(1){
-          uint64_t tensor2dSizeC = c.totalAllocatedElements();
-          uint64_t tensor2dSizeA = (sizeMapping.packBatchDims & 0x1)
-                                       ? a.totalAllocatedElements()
-                                       : problem.allocatedElementsNonBatchA();
-          uint64_t tensor2dSizeB = (sizeMapping.packBatchDims & 0x2)
-                                       ? b.totalAllocatedElements()
-                                       : problem.allocatedElementsNonBatchB();
-          std::cout<< "aElements = " << inputs.aElements << std::endl;
+        if(args["bounds-check"].as<int>() == 2){
+          uint64_t tensorSizeD = d.totalAllocatedElements();
+          uint64_t tensorSizeC = c.totalAllocatedElements();
+          uint64_t tensorSizeA = a.totalAllocatedElements();
+          uint64_t tensorSizeB = b.totalAllocatedElements();
           rv.argsMemoryCheck = rv.args;
-          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::DType const*>("d", inputs.d+inputs.dElements-tensor2dSizeC);
-          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::CType const*>("c", inputs.c+inputs.cElements-tensor2dSizeC);
-          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::AType const*>("a", inputs.a+inputs.aElements-tensor2dSizeA);
-          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::BType const*>("b", inputs.b+inputs.bElements-tensor2dSizeB);
-
+          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::DType const*>("d", inputs.d+inputs.dElements-tensorSizeD);
+          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::CType const*>("c", inputs.c+inputs.cElements-tensorSizeC);
+          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::AType const*>("a", inputs.a+inputs.aElements-tensorSizeA);
+          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::BType const*>("b", inputs.b+inputs.bElements-tensorSizeB);
         }
+
         return rv;
     }
 
@@ -603,9 +600,11 @@ namespace Tensile
     template <typename TypedInputs>
     std::vector<KernelInvocation> ContractionSolution::solveTyped(Problem const&     problem,
                                                                   TypedInputs const& inputs,
-                                                                  Hardware const&    hardware) const
+                                                                  Hardware const&    hardware,
+                                                                  po::variables_map const& args) const
     {
-        bool debug = Debug::Instance().printKernelArguments()|| 1;
+        bool debug = Debug::Instance().printKernelArguments();
+        int boundsCheck = args["bounds-check"].as<int>();
 
         std::vector<KernelInvocation> rv;
 
@@ -622,10 +621,10 @@ namespace Tensile
                 rv.push_back(generateBetaOnlyCall<TypedInputs, false>(problem, inputs, hardware));
         }
 
-        if(debug)
-            rv.push_back(generateSingleCall<TypedInputs, true>(problem, inputs, hardware));
+        if(debug || boundsCheck == 2)
+            rv.push_back(generateSingleCall<TypedInputs, true>(problem, inputs, hardware, args));
         else
-            rv.push_back(generateSingleCall<TypedInputs, false>(problem, inputs, hardware));
+            rv.push_back(generateSingleCall<TypedInputs, false>(problem, inputs, hardware, args));
 
         return rv;
     }
@@ -633,19 +632,20 @@ namespace Tensile
     std::vector<KernelInvocation>
         ContractionSolution::solve(ContractionSolution::Problem const& problem,
                                    ContractionSolution::Inputs const&  inputs,
-                                   Hardware const&                     hardware) const
+                                   Hardware const&                     hardware,
+                                   po::variables_map const&            args) const
     {
         if(problemType.aType == DataType::Float && problemType.bType == DataType::Float
            && problemType.cType == DataType::Float && problemType.dType == DataType::Float)
         {
             auto const& typedInputs = dynamic_cast<TypedContractionInputs<float> const&>(inputs);
-            return solveTyped(problem, typedInputs, hardware);
+            return solveTyped(problem, typedInputs, hardware, args);
         }
         else if(problemType.aType == DataType::Double && problemType.bType == DataType::Double
                 && problemType.cType == DataType::Double && problemType.dType == DataType::Double)
         {
             auto const& typedInputs = dynamic_cast<TypedContractionInputs<double> const&>(inputs);
-            return solveTyped(problem, typedInputs, hardware);
+            return solveTyped(problem, typedInputs, hardware, args);
         }
         else if(problemType.aType == DataType::ComplexFloat
                 && problemType.bType == DataType::ComplexFloat
@@ -654,7 +654,7 @@ namespace Tensile
         {
             auto const& typedInputs
                 = dynamic_cast<TypedContractionInputs<std::complex<float>> const&>(inputs);
-            return solveTyped(problem, typedInputs, hardware);
+            return solveTyped(problem, typedInputs, hardware, args);
         }
         else if(problemType.aType == DataType::ComplexDouble
                 && problemType.bType == DataType::ComplexDouble
@@ -663,14 +663,14 @@ namespace Tensile
         {
             auto const& typedInputs
                 = dynamic_cast<TypedContractionInputs<std::complex<double>> const&>(inputs);
-            return solveTyped(problem, typedInputs, hardware);
+            return solveTyped(problem, typedInputs, hardware, args);
         }
 #ifdef TENSILE_USE_HALF
         else if(problemType.aType == DataType::Half && problemType.bType == DataType::Half
                 && problemType.cType == DataType::Half && problemType.dType == DataType::Half)
         {
             auto const& typedInputs = dynamic_cast<TypedContractionInputs<Half> const&>(inputs);
-            return solveTyped(problem, typedInputs, hardware);
+            return solveTyped(problem, typedInputs, hardware, args);
         }
 #endif
         else if(problemType.aType == DataType::Int8x4 && problemType.bType == DataType::Int8x4
@@ -679,13 +679,13 @@ namespace Tensile
             auto const& typedInputs
                 = dynamic_cast<TypedContractionInputs<Int8x4, Int8x4, int32_t, int32_t> const&>(
                     inputs);
-            return solveTyped(problem, typedInputs, hardware);
+            return solveTyped(problem, typedInputs, hardware, args);
         }
         else if(problemType.aType == DataType::Int32 && problemType.bType == DataType::Int32
                 && problemType.cType == DataType::Int32 && problemType.dType == DataType::Int32)
         {
             auto const& typedInputs = dynamic_cast<TypedContractionInputs<int32_t> const&>(inputs);
-            return solveTyped(problem, typedInputs, hardware);
+            return solveTyped(problem, typedInputs, hardware, args);
         }
 #ifdef TENSILE_USE_BF16
         else if(problemType.aType == DataType::BFloat16 && problemType.bType == DataType::BFloat16
@@ -693,7 +693,7 @@ namespace Tensile
                 && problemType.dType == DataType::BFloat16)
         {
             auto const& typedInputs = dynamic_cast<BFloat16ContractionInputs const&>(inputs);
-            return solveTyped(problem, typedInputs, hardware);
+            return solveTyped(problem, typedInputs, hardware, args);
         }
 #endif
         else

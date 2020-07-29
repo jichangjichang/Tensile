@@ -34,6 +34,10 @@
 #include <Tensile/DataTypes.hpp>
 #include <Tensile/Predicates.hpp>
 
+#include <boost/program_options.hpp>
+
+namespace po = boost::program_options;
+
 namespace Tensile
 {
     struct PerfModel
@@ -148,18 +152,22 @@ namespace Tensile
         /**
    * Generate a set of kernel calls to solve a particular problem.
    */
-        virtual std::vector<KernelInvocation>
-            solve(Problem const& problem, Inputs const& inputs, Hardware const& hardware) const;
+        virtual std::vector<KernelInvocation> solve(Problem const&           problem,
+                                                    Inputs const&            inputs,
+                                                    Hardware const&          hardware,
+                                                    po::variables_map const& args) const;
 
         template <typename TypedInputs>
-        std::vector<KernelInvocation> solveTyped(Problem const&     problem,
-                                                 TypedInputs const& inputs,
-                                                 Hardware const&    hardware) const;
+        std::vector<KernelInvocation> solveTyped(Problem const&           problem,
+                                                 TypedInputs const&       inputs,
+                                                 Hardware const&          hardware,
+                                                 po::variables_map const& args) const;
 
         template <typename TypedInputs, bool T_Debug>
-        KernelInvocation generateSingleCall(Problem const&     problem,
-                                            TypedInputs const& inputs,
-                                            Hardware const&    hardware) const;
+        KernelInvocation generateSingleCall(Problem const&           problem,
+                                            TypedInputs const&       inputs,
+                                            Hardware const&          hardware,
+                                            po::variables_map const& args) const;
 
         template <typename TypedInputs, bool T_Debug>
         KernelInvocation generateBetaOnlyCall(Problem const&     problem,

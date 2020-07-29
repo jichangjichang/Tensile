@@ -308,7 +308,7 @@ namespace Tensile
             /// If true, we will initialize all out-of-bounds inputs to NaN, and
             /// all out-of-bounds outputs to a known value. This allows us to
             /// verify that out-of-bounds values are not used or written to.
-            bool m_boundsCheck = false;
+            int m_boundsCheck = 0;
 
             /// If true, the data is dependent on the problem size (e.g. serial)
             /// and must be reinitialized for each problem. Pristine copy on GPU

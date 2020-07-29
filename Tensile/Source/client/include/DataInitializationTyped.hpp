@@ -133,7 +133,7 @@ namespace Tensile
                     if(m_problemDependentData)
                         initializeCPUInputs(*m_cpuInputsPristine, problem);
 
-                    if(m_boundsCheck && !m_cpuBadInputs)
+                    if(m_boundsCheck == 1 && !m_cpuBadInputs)
                     {
                         m_cpuBadInputs = createNewCPUBadInputs();
                     }
@@ -150,7 +150,7 @@ namespace Tensile
                         m_cpuConvInputs = allocNewCPUInputs();
                     }
 
-                    if(allocated || m_boundsCheck)
+                    if(allocated || m_boundsCheck == 1)
                         copyInputs(m_cpuConvInputs, m_cpuInputsPristine, m_cpuBadInputs, problem);
                 }
 
@@ -174,7 +174,7 @@ namespace Tensile
 
                     pristine = m_gpuInputsPristine;
 
-                    if(m_boundsCheck)
+                    if(m_boundsCheck == 1)
                     {
                         if(!m_gpuBadInputs)
                             m_gpuBadInputs = createNewGPUBadInputs();
@@ -189,7 +189,7 @@ namespace Tensile
 
                     pristine = m_cpuInputsPristine;
 
-                    if(m_boundsCheck)
+                    if(m_boundsCheck == 1)
                     {
                         if(!m_cpuBadInputs)
                             m_cpuBadInputs = createNewCPUBadInputs();
@@ -331,7 +331,7 @@ namespace Tensile
             std::shared_ptr<ManagedInputs> allocNewGPUInputs(std::shared_ptr<ManagedInputs> pristine
                                                              = nullptr)
             {
-                if(m_boundsCheck || (pristine && !pristine->gpu))
+                if(m_boundsCheck == 1 || (pristine && !pristine->gpu))
                     pristine = nullptr;
 
                 std::shared_ptr<AType> a;
@@ -525,7 +525,7 @@ namespace Tensile
             {
                 hipMemcpyKind kind = getCopyKind(dst, src);
 
-                if(m_boundsCheck)
+                if(m_boundsCheck == 1)
                 {
                     if(!bad)
                         throw std::runtime_error(

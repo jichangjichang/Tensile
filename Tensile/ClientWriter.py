@@ -618,8 +618,7 @@ def writeClientConfig(forBenchmark, solutions, problemSizes, stepName, stepBaseD
         if globalParameters["PrintTensorRef"]:
           param("print-tensor-ref",         1)
 
-        if globalParameters["BoundsCheck"]:
-          param("bounds-check", 1)
+        param("bounds-check", int(globalParameters["BoundsCheck"]))
 
         param("print-valids",             globalParameters["ValidationPrintValids"])
         param("print-max",                globalParameters["ValidationMaxToPrint"])

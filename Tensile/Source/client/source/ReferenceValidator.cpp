@@ -48,7 +48,7 @@ namespace Tensile
             m_printValids        = args["print-valids"].as<bool>();
             m_printMax           = args["print-max"].as<int>();
 
-            m_boundsCheck = args["bounds-check"].as<bool>();
+            m_boundsCheck = args["bounds-check"].as<int>();
 
             m_printTensorA   = args["print-tensor-a"].as<bool>();
             m_printTensorB   = args["print-tensor-b"].as<bool>();
@@ -392,7 +392,7 @@ namespace Tensile
             auto const& tensor = m_problem.d();
 
             size_t elementsToCopy = tensor.totalAllocatedElements();
-            if(m_boundsCheck)
+            if(m_boundsCheck == 1)
                 elementsToCopy = result.dElements;
             size_t bytesToCopy = elementsToCopy * sizeof(Type);
 
@@ -478,7 +478,7 @@ namespace Tensile
                                   tensor.sizes().end());
                     size_t baseElemIndex = tensor.index(coord);
 
-                    if(m_boundsCheck && baseElemIndex != 0
+                    if(m_boundsCheck == 1 && baseElemIndex != 0
                        && baseElemIndex != prevBaseIndex + innerDimSize)
                     {
                         for(auto innerIndex = prevBaseIndex + innerDimSize;
