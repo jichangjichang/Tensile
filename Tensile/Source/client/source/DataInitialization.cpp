@@ -261,13 +261,15 @@ namespace Tensile
             else if(m_boundsCheck == 2)
             {
                unsigned int roundUpElements = PAGE_SIZE / DataTypeInfo::Get(args["a-type"].as<DataType>()).elementSize;
+               int cdScale = m_cEqualsD ? 2:1;
+
                m_aMaxElements = RoundUpToMultiple<unsigned int>(m_aMaxElements,roundUpElements);
                roundUpElements = PAGE_SIZE / DataTypeInfo::Get(args["b-type"].as<DataType>()).elementSize;
                m_bMaxElements = RoundUpToMultiple<unsigned int>(m_bMaxElements,roundUpElements);
                roundUpElements = PAGE_SIZE / DataTypeInfo::Get(args["c-type"].as<DataType>()).elementSize;
-               m_cMaxElements = RoundUpToMultiple<unsigned int>(m_cMaxElements,roundUpElements);
+               m_cMaxElements = RoundUpToMultiple<unsigned int>(m_cMaxElements*cdScale,roundUpElements);
                roundUpElements = PAGE_SIZE / DataTypeInfo::Get(args["d-type"].as<DataType>()).elementSize;
-               m_dMaxElements = RoundUpToMultiple<unsigned int>(m_dMaxElements,roundUpElements);
+               m_dMaxElements = RoundUpToMultiple<unsigned int>(m_dMaxElements*cdScale,roundUpElements);
             }
             m_problemDependentData = IsProblemDependent(m_aInit) || IsProblemDependent(m_bInit)
                                      || IsProblemDependent(m_cInit) || IsProblemDependent(m_dInit);
