@@ -52,7 +52,7 @@ namespace Tensile
         void bind(std::string const& name, T value);
 
         template <typename T>
-        void findAndReplace(std::string const& name, T value);
+        void replace(std::string const& name, T value);
 
         bool isFullyBound() const;
 
@@ -149,7 +149,7 @@ namespace Tensile
     }
 
     template <typename T>
-    inline void KernelArguments::findAndReplace(std::string const& name, T value)
+    inline void KernelArguments::replace(std::string const& name, T value)
     {
         auto it = m_argRecords.find(name);
 

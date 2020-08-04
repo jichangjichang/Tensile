@@ -504,10 +504,10 @@ namespace Tensile
           uint64_t tensorSizeA = a.totalAllocatedElements();
           uint64_t tensorSizeB = b.totalAllocatedElements();
           rv.argsMemoryCheck = rv.args;
-          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::DType const*>("d", inputs.d+inputs.dElements-tensorSizeD);
-          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::CType const*>("c", inputs.c+inputs.cElements-tensorSizeC);
-          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::AType const*>("a", inputs.a+inputs.aElements-tensorSizeA);
-          rv.argsMemoryCheck.findAndReplace<typename TypedInputs::BType const*>("b", inputs.b+inputs.bElements-tensorSizeB);
+          rv.argsMemoryCheck.replace<typename TypedInputs::DType const*>("d", inputs.d+inputs.dElements-tensorSizeD);
+          rv.argsMemoryCheck.replace<typename TypedInputs::CType const*>("c", inputs.c+inputs.cElements-tensorSizeC);
+          rv.argsMemoryCheck.replace<typename TypedInputs::AType const*>("a", inputs.a+inputs.aElements-tensorSizeA);
+          rv.argsMemoryCheck.replace<typename TypedInputs::BType const*>("b", inputs.b+inputs.bElements-tensorSizeB);
         }
 
         return rv;
