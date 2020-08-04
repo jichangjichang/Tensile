@@ -331,7 +331,7 @@ namespace Tensile
             std::shared_ptr<ManagedInputs> allocNewGPUInputs(std::shared_ptr<ManagedInputs> pristine
                                                              = nullptr)
             {
-                if(m_boundsCheck == 1 || (pristine && !pristine->gpu))
+                if(m_boundsCheck || (pristine && !pristine->gpu))
                     pristine = nullptr;
 
                 std::shared_ptr<AType> a;
@@ -340,6 +340,9 @@ namespace Tensile
                 std::shared_ptr<DType> d;
                 static const int       sizew = 10;
 
+                std::vector<std::shared_ptr<void>> guardPage;
+                void* guardPagePtr;
+
                 if(pristine)
                 {
                     a = pristine->managedA;
@@ -347,6 +350,12 @@ namespace Tensile
                 }
                 else
                 {
+                    if( m_boundsCheck == 2)
+                    {
+                        HIP_CHECK_EXC(hipMalloc(&guardPagePtr, PAGE_SIZE));
+                        guardPage.push_back(std::shared_ptr<void>(guardPagePtr, hipFree));
+                    }
+
                     AType* aPtr = nullptr;
                     HIP_CHECK_EXC(hipMalloc(&aPtr, TypeInfo<AType>::ElementSize * m_aMaxElements));
                     a = std::shared_ptr<AType>(aPtr, hipFree);
@@ -354,6 +363,12 @@ namespace Tensile
                         std::cout << "info: allocate a " << std::setw(sizew)
                                   << TypeInfo<AType>::ElementSize * m_aMaxElements << " bytes at "
                                   << aPtr << "\n";
+
+                    if( m_boundsCheck == 2)
+                    {
+                        HIP_CHECK_EXC(hipMalloc(&guardPagePtr, PAGE_SIZE));
+                        guardPage.push_back(std::shared_ptr<void>(guardPagePtr, hipFree));
+                    }
 
                     BType* bPtr = nullptr;
                     HIP_CHECK_EXC(hipMalloc(&bPtr, TypeInfo<BType>::ElementSize * m_bMaxElements));
@@ -366,6 +381,12 @@ namespace Tensile
 
                 if(m_cEqualsD || !pristine)
                 {
+                    if( m_boundsCheck == 2)
+                    {
+                        HIP_CHECK_EXC(hipMalloc(&guardPagePtr, PAGE_SIZE));
+                        guardPage.push_back(std::shared_ptr<void>(guardPagePtr, hipFree));
+                    }
+
                     CType* cPtr = nullptr;
                     HIP_CHECK_EXC(hipMalloc(&cPtr, TypeInfo<CType>::ElementSize * m_cMaxElements));
                     c = std::shared_ptr<CType>(cPtr, hipFree);
@@ -389,6 +410,12 @@ namespace Tensile
                 }
                 else
                 {
+                    if( m_boundsCheck == 2)
+                    {
+                        HIP_CHECK_EXC(hipMalloc(&guardPagePtr, PAGE_SIZE));
+                        guardPage.push_back(std::shared_ptr<void>(guardPagePtr, hipFree));
+                    }
+
                     DType* dPtr = nullptr;
                     HIP_CHECK_EXC(hipMalloc(&dPtr, TypeInfo<DType>::ElementSize * m_dMaxElements));
                     d = std::shared_ptr<DType>(dPtr, hipFree);
