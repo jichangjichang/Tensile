@@ -69,7 +69,7 @@ ContractionSolution::SizeMapping makeSizeMapping(Tensile::dim3 workGroupSize,
     sizeMapping.staggerStrideShift = 4;
     sizeMapping.workGroupMapping   = 8;
 
-    sizeMapping.globalAccumulation    = false;
+    sizeMapping.globalAccumulation    = 0;
     sizeMapping.workspaceSizePerElemC = 0;
 
     return sizeMapping;
