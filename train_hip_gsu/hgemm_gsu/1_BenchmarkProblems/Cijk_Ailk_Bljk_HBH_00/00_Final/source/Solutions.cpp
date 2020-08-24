@@ -565,8 +565,8 @@ TensileStatus Cijk_Ailk_Bljk_HBH_MT32x16x4_SE_GSU3_VAW1(SolutionLock*      solut
                                dim3(localWorkSize[0], localWorkSize[1], localWorkSize[2]),
                                0, // groupMemBytes
                                stream,
-                               dataD,
-                               dataC,
+                               workspace,
+                               workspace,
                                dataA,
                                dataB,
                                alpha,

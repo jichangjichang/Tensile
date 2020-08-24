@@ -929,7 +929,7 @@ __device__ inline void atomicAddType(T* fPtr, T operand)
     do
     {
         newValue = oldValue + operand;
-    } while(0);
+    } while(!std::atomic_compare_exchange_weak_explicit(aPtr, &oldValue, newValue, std::memory_order_relaxed, std::memory_order_release));
 }
 #endif
 #define MAGIC_DIV1(dividend, magicNumber, magicShift) \
@@ -990,8 +990,8 @@ __device__ inline void atomicAddType(T* fPtr, T operand)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 extern "C" __global__ void
-                         Cijk_Ailk_Bljk_HBH_MT32x16x4_SE_GSU3_K1_VAW1(tensile_half* D,
-                                                                      tensile_half const* __restrict__ C,
+                         Cijk_Ailk_Bljk_HBH_MT32x16x4_SE_GSU3_K1_VAW1(float* D,
+                                                                      float const* __restrict__ C,
                                                                       tensile_half const* __restrict__ A,
                                                                       tensile_half const* __restrict__ B,
                                                                       tensile_half const alpha,

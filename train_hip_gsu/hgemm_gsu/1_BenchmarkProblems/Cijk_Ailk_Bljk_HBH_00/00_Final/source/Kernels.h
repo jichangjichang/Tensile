@@ -54,8 +54,8 @@ extern "C" __global__ void
                                                  unsigned int       problemNumGroupTiles1,
                                                  unsigned int magicNumberProblemNumGroupTiles0);
 extern "C" __global__ void
-    Cijk_Ailk_Bljk_HBH_MT32x16x4_SE_GSU3_K1_VAW1(tensile_half* D,
-                                                 tensile_half const* __restrict__ C,
+    Cijk_Ailk_Bljk_HBH_MT32x16x4_SE_GSU3_K1_VAW1(float* D,
+                                                 float const* __restrict__ C,
                                                  tensile_half const* __restrict__ A,
                                                  tensile_half const* __restrict__ B,
                                                  tensile_half const alpha,
