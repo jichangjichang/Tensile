@@ -2209,8 +2209,8 @@ class Solution:
     dataType = state["ProblemType"]["DataType"]
     state["_GlobalAccumulation"] = (dataType.isBFloat16() or dataType.isHalf()) \
                                  and state["ProblemType"]["HighPrecisionAccumulate"] \
-                                 and state["GlobalSplitU"] > 1 \
-                                 and state["EnableMatrixInstruction"]
+                                 and state["GlobalSplitU"] > 1 #\
+                                 #and state["EnableMatrixInstruction"]
 
     state["_WorkspaceSizePerElemC"] = 4 if state["_GlobalAccumulation"] else 0
 
@@ -2487,9 +2487,10 @@ class Solution:
         state["ProblemType"]["DataType"].isSingle() or \
         (state["ProblemType"]["DataType"].isDouble() and state["BufferStore"]) or \
         state["ProblemType"]["DestDataType"].isInt32() or \
-        (state["KernelLanguage"] == "Assembly" and \
-         (state["ProblemType"]["DataType"].isHalf() and not state["ProblemType"]["HighPrecisionAccumulate"]) or \
-         state["_GlobalAccumulation"])
+         (state["ProblemType"]["DataType"].isHalf() and state["ProblemType"]["HighPrecisionAccumulate"]) or \
+         (state["ProblemType"]["DataType"].isBFloat16() and state["ProblemType"]["HighPrecisionAccumulate"]) or \
+         state["_GlobalAccumulation"]
+        #(state["KernelLanguage"] == "Assembly" and \
       if not supported:
         reject(state, "GlobalSplitU only compatible with single or asm and (half or mixed) precision")
         return

@@ -174,7 +174,7 @@ class KernelWriterBetaOnly(KernelWriterBase):
     if globalAccum:
       ptrStr = "float"
     else:
-      ptrStr = problemType["DataType"].toDevice(self.language)
+      ptrStr = problemType["ComputeDataType"].toDevice(self.language)
     kStr += "#define SCALAR_ZERO ((%s)(0))%s" % (ptrStr, self.endLine )
 
     ########################################

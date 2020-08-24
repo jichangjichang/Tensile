@@ -501,7 +501,8 @@ class KernelWriterSource(KernelWriter):
           #kStr += "    prevReturn = %s(uPtr, prevVal.ui, newVal.ui);%s" \
           #    % (self.atomicCasStr, self.endLine)
           #kStr += "  } while ( !std::atomic_compare_exchange_weak_explicit(aPtr, &oldValue, newValue, std::memory_order_acq_rel, std::memory_order_release) );%s" % (self.endLine)
-          kStr += "  } while ( !std::atomic_compare_exchange_weak_explicit(aPtr, &oldValue, newValue, std::memory_order_relaxed, std::memory_order_release) );%s" % (self.endLine)
+          #kStr += "  } while ( !std::atomic_compare_exchange_weak_explicit(aPtr, &oldValue, newValue, std::memory_order_relaxed, std::memory_order_release) );%s" % (self.endLine)
+          kStr += "  } while ( 0 );%s" % (self.endLine)
           kStr += "}%s" % (self.endLine)
 
       kStr += "#endif%s" % self.endLine
@@ -554,8 +555,11 @@ class KernelWriterSource(KernelWriter):
 
       # GSU
       if kernel["GlobalSplitU"] > 1: # 1st kernel will have taken care of B
+        storeTypeStr = ""
+        if kernel["ProblemType"]["HighPrecisionAccumulate"] and (kernel["ProblemType"]["DataType"].isBFloat16() or kernel["ProblemType"]["DataType"].isHalf()):
+          storeTypeStr = "static_cast<float>"
         if kernel["ProblemType"]["UseBeta"]:
-          kStr += "#define TYPE_MAC_WRITE(DST,SRC,ALPHA,REG,BETA) atomicAddType(&(DST), (ALPHA)*(REG));"
+          kStr += "#define TYPE_MAC_WRITE(DST,SRC,ALPHA,REG,BETA) atomicAddType((float*)&(DST), %s(ALPHA)*%s(REG));" % (storeTypeStr,storeTypeStr)
         else:
           kStr += "#define TYPE_MAC_WRITE(DST,ALPHA,REG) atomicAddType(&(DST), (ALPHA)*(REG));"
 

@@ -1,0 +1,2 @@
+GFlops, SizeI, SizeJ, SizeK, SizeL, LDD, LDC, LDA, LDB, TotalFlops, Cijk_Ailk_Bljk_HBH_MT32x16x4_SE_GSU1_VAW2, Cijk_Ailk_Bljk_HBH_MT32x16x4_SE_GSU3_VAW1
+0, 128, 1, 1, 32, 128, 128, 128, 32, 8192, 0.176552, -1
