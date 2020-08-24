@@ -501,8 +501,7 @@ class KernelWriterSource(KernelWriter):
           #kStr += "    prevReturn = %s(uPtr, prevVal.ui, newVal.ui);%s" \
           #    % (self.atomicCasStr, self.endLine)
           #kStr += "  } while ( !std::atomic_compare_exchange_weak_explicit(aPtr, &oldValue, newValue, std::memory_order_acq_rel, std::memory_order_release) );%s" % (self.endLine)
-          #kStr += "  } while ( !std::atomic_compare_exchange_weak_explicit(aPtr, &oldValue, newValue, std::memory_order_relaxed, std::memory_order_release) );%s" % (self.endLine)
-          kStr += "  } while ( 0 );%s" % (self.endLine)
+          kStr += "  } while ( !std::atomic_compare_exchange_weak_explicit(aPtr, &oldValue, newValue, std::memory_order_relaxed, std::memory_order_release) );%s" % (self.endLine)
           kStr += "}%s" % (self.endLine)
 
       kStr += "#endif%s" % self.endLine
@@ -830,11 +829,10 @@ class KernelWriterSource(KernelWriter):
     restrictStr = "restrict"
     if self.language == "HIP":
       restrictStr = "__restrict__"
-    ptrStr = kernel["ProblemType"]["DestDataType"].toDevice(self.language)
+    ptrStr = kernel["ProblemType"]["DestDataType"].toDevice(self.language) if not kernel["_GlobalAccumulation"] else "float"
     s += "  " + globalStr + ptrStr \
         + " *D,"
     s += self.endLine
-    ptrStr = kernel["ProblemType"]["DestDataType"].toDevice(self.language)
     s += "  " + globalStr + ptrStr \
         + " const * " + restrictStr + " C,"
     s += self.endLine
