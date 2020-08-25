@@ -10,7 +10,7 @@ GlobalParameters:
   LibraryPrintDebug: False
   NumElementsToValidate: -1
   ValidationMaxToPrint: 4
-  ValidationPrintValids: False
+  ValidationPrintValids: True
   PrintSolutionRejectionReason: True
   ShortNames: False
   MergeFiles: True
@@ -21,9 +21,11 @@ GlobalParameters:
   SleepPercent: 200
   DataInitTypeA : 3
   DataInitTypeB : 3
-  DataInitTypeC : 3
+  DataInitTypeC : 0
   DataInitTypeBeta : 0
-  NewClient: 0
+  DataInitTypeAlpha : 1
+  NewClient: 2
+  #PrintCodeCommands: True
 
 BenchmarkProblems:
 
@@ -147,14 +149,14 @@ BenchmarkProblems:
         - EdgeType: ["ShiftPtr"]
         - KernelLanguage: ["Source"]
       ForkParameters:
-        - GlobalSplitU: [1,30,60,120]
+        - GlobalSplitU: [3]
         - PrefetchLocalRead: [True,False]
-        - PrefetchGlobalRead: [True,False]
+        - PrefetchGlobalRead: [True]
         - ThreadTile:
           - [ 1, 1 ]
         - WorkGroup:
           - [ 64, 1,  1 ]
-        - DepthU: [16,32,64]
+        - DepthU: [64]
         - VectorWidth: [1]
         - GlobalReadVectorWidth: [1]
         - WorkGroupMapping: [1]
@@ -163,7 +165,11 @@ BenchmarkProblems:
       BenchmarkJoinParameters:
       BenchmarkFinalParameters:
         - ProblemSizes:
-          - Exact: [ 256, 1, 1, 32768 ] #gemm
+          #- Exact: [ 256, 1, 1, 32768 ] #gemm
+          #- Exact: [ 64, 1, 1, 192] #gemm
+          - Exact: [ 1, 1, 1, 256] #gemm
+          #- Range: [ [1,1,64], [1], [1], [256]] #gemm
+          #- Range: [ [64], [1], [1], [64,32,960]] #gemm
 #
 #    - # BenchmarkProblemSizeGroup - Source
 #      InitialSolutionParameters:

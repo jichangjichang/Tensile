@@ -555,10 +555,11 @@ class KernelWriterSource(KernelWriter):
       # GSU
       if kernel["GlobalSplitU"] > 1: # 1st kernel will have taken care of B
         storeTypeStr = ""
-        if kernel["ProblemType"]["HighPrecisionAccumulate"] and (kernel["ProblemType"]["DataType"].isBFloat16() or kernel["ProblemType"]["DataType"].isHalf()):
-          storeTypeStr = "static_cast<float>"
+        #if kernel["ProblemType"]["HighPrecisionAccumulate"] and (kernel["ProblemType"]["DataType"].isBFloat16() or kernel["ProblemType"]["DataType"].isHalf()):
+        #  storeTypeStr = "static_cast<float>"
         if kernel["ProblemType"]["UseBeta"]:
-          kStr += "#define TYPE_MAC_WRITE(DST,SRC,ALPHA,REG,BETA) atomicAddType((float*)&(DST), %s(ALPHA)*%s(REG));" % (storeTypeStr,storeTypeStr)
+          #kStr += "#define TYPE_MAC_WRITE(DST,SRC,ALPHA,REG,BETA) atomicAddType(&(DST), %s(%s(ALPHA)*(REG)));" % (storeTypeStr,storeTypeStr)
+          kStr += "#define TYPE_MAC_WRITE(DST,SRC,ALPHA,REG,BETA) atomicAddType(&(DST), (REG));"
         else:
           kStr += "#define TYPE_MAC_WRITE(DST,ALPHA,REG) atomicAddType(&(DST), (ALPHA)*(REG));"
 
@@ -1131,6 +1132,7 @@ class KernelWriterSource(KernelWriter):
             % (wg1, self.endLine)
         kStr += "  %s = %s / GLOBAL_SPLITU;%s" \
             % (wg1, wg1, self.endLine)
+      #kStr += "  if(gsuSumIdx != 0) return ;%s" % self.endLine
 
       ########################################
       # Blocked rows or columns
