@@ -1,0 +1,98 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_ef74a/fast"
+/usr/bin/make -f CMakeFiles/cmTC_ef74a.dir/build.make CMakeFiles/cmTC_ef74a.dir/build
+make[1]: Entering directory '/workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_ef74a.dir/CheckSymbolExists.c.o
+/usr/bin/cc    -o CMakeFiles/cmTC_ef74a.dir/CheckSymbolExists.c.o   -c /workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_ef74a
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ef74a.dir/link.txt --verbose=1
+/usr/bin/cc      CMakeFiles/cmTC_ef74a.dir/CheckSymbolExists.c.o  -o cmTC_ef74a 
+CMakeFiles/cmTC_ef74a.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x1b): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_ef74a.dir/build.make:97: recipe for target 'cmTC_ef74a' failed
+make[1]: *** [cmTC_ef74a] Error 1
+make[1]: Leaving directory '/workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_ef74a/fast' failed
+make: *** [cmTC_ef74a/fast] Error 2
+
+File /workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_8dc1e/fast"
+/usr/bin/make -f CMakeFiles/cmTC_8dc1e.dir/build.make CMakeFiles/cmTC_8dc1e.dir/build
+make[1]: Entering directory '/workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_8dc1e.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_8dc1e.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.10/Modules/CheckFunctionExists.c
+Linking C executable cmTC_8dc1e
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8dc1e.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_8dc1e.dir/CheckFunctionExists.c.o  -o cmTC_8dc1e -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_8dc1e.dir/build.make:97: recipe for target 'cmTC_8dc1e' failed
+make[1]: *** [cmTC_8dc1e] Error 1
+make[1]: Leaving directory '/workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_8dc1e/fast' failed
+make: *** [cmTC_8dc1e/fast] Error 2
+
+
+Performing C SOURCE FILE Test CMAKE_HAVE_LIBC_PTHREAD failed with the following output:
+Change Dir: /workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_d7b82/fast && /usr/bin/make  -f CMakeFiles/cmTC_d7b82.dir/build.make CMakeFiles/cmTC_d7b82.dir/build
+make[1]: Entering directory '/workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_d7b82.dir/src.c.o
+/usr/bin/cc   -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_d7b82.dir/src.c.o   -c /workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_d7b82
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d7b82.dir/link.txt --verbose=1
+/usr/bin/cc  -DCMAKE_HAVE_LIBC_PTHREAD    CMakeFiles/cmTC_d7b82.dir/src.c.o  -o cmTC_d7b82 
+CMakeFiles/cmTC_d7b82.dir/src.c.o: In function `main':
+src.c:(.text+0x3e): undefined reference to `pthread_create'
+src.c:(.text+0x4a): undefined reference to `pthread_detach'
+src.c:(.text+0x5b): undefined reference to `pthread_join'
+src.c:(.text+0x6f): undefined reference to `pthread_atfork'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_d7b82.dir/build.make:89: recipe for target 'cmTC_d7b82' failed
+make[1]: *** [cmTC_d7b82] Error 1
+make[1]: Leaving directory '/workspace/fp16_kgen/Tensile/train_hip_gsu/hgemm_gsu_hipcc/0_Build/CMakeFiles/CMakeTmp'
+Makefile:124: recipe for target 'cmTC_d7b82/fast' failed
+make: *** [cmTC_d7b82/fast] Error 2
+
+
+Source file was:
+#include <pthread.h>
+
+void* test_func(void* data)
+{
+  return data;
+}
+
+int main(void)
+{
+  pthread_t thread;
+  pthread_create(&thread, NULL, test_func, NULL);
+  pthread_detach(thread);
+  pthread_join(thread, NULL);
+  pthread_atfork(NULL, NULL, NULL);
+  pthread_exit(NULL);
+
+  return 0;
+}
+

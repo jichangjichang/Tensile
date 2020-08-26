@@ -1,0 +1,2 @@
+GFlops, SizeI, SizeJ, SizeK, SizeL, LDD, LDC, LDA, LDB, TotalFlops, Cijk_Ailk_Bjlk_HBH_MT64x1x64_SE_K1_WGM1, Cijk_Ailk_Bjlk_HBH_MT64x1x64_SE_K1_WGM4
+0, 1, 1, 1, 256, 1, 1, 1, 1, 512, -1, 0.0060377360264488589

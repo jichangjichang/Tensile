@@ -1,0 +1,9 @@
+BASEDIR=$(dirname "$0")
+
+/opt/rocm/bin/hipcc $1 --genco -D__HIP_HCC_COMPAT_MODE__=1 -I $BASEDIR/../source --amdgpu-target=gfx803 --amdgpu-target=gfx900 --amdgpu-target=gfx906 --amdgpu-target=gfx908 --amdgpu-target=gfx1010 --amdgpu-target=gfx1011 $BASEDIR/../source/Kernels.cpp -c -o $BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.o
+/opt/rocm/llvm/bin/clang-offload-bundler -type=o -targets=hip-amdgcn-amd-amdhsa-gfx803 -inputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.o -outputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.so-000-gfx803.hsaco -unbundle
+/opt/rocm/llvm/bin/clang-offload-bundler -type=o -targets=hip-amdgcn-amd-amdhsa-gfx900 -inputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.o -outputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.so-000-gfx900.hsaco -unbundle
+/opt/rocm/llvm/bin/clang-offload-bundler -type=o -targets=hip-amdgcn-amd-amdhsa-gfx906 -inputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.o -outputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.so-000-gfx906.hsaco -unbundle
+/opt/rocm/llvm/bin/clang-offload-bundler -type=o -targets=hip-amdgcn-amd-amdhsa-gfx908 -inputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.o -outputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.so-000-gfx908.hsaco -unbundle
+/opt/rocm/llvm/bin/clang-offload-bundler -type=o -targets=hip-amdgcn-amd-amdhsa-gfx1010 -inputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.o -outputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.so-000-gfx1010.hsaco -unbundle
+/opt/rocm/llvm/bin/clang-offload-bundler -type=o -targets=hip-amdgcn-amd-amdhsa-gfx1011 -inputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.o -outputs=$BASEDIR/../source/build_tmp/SOURCETMP/code_object_tmp/Kernels.so-000-gfx1011.hsaco -unbundle

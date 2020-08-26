@@ -25,7 +25,7 @@ GlobalParameters:
   DataInitTypeBeta : 0
   DataInitTypeAlpha : 1
   NewClient: 2
-  #PrintCodeCommands: True
+  PrintCodeCommands: True
 
 BenchmarkProblems:
 
@@ -150,7 +150,7 @@ BenchmarkProblems:
         - KernelLanguage: ["Source"]
       ForkParameters:
         - GlobalSplitU: [3]
-        - PrefetchLocalRead: [True,False]
+        - PrefetchLocalRead: [True]
         - PrefetchGlobalRead: [True]
         - ThreadTile:
           - [ 1, 1 ]
@@ -159,14 +159,14 @@ BenchmarkProblems:
         - DepthU: [64]
         - VectorWidth: [1]
         - GlobalReadVectorWidth: [1]
-        - WorkGroupMapping: [1]
+        - WorkGroupMapping: [1,4]
       BenchmarkForkParameters:
       JoinParameters:
       BenchmarkJoinParameters:
       BenchmarkFinalParameters:
         - ProblemSizes:
           #- Exact: [ 256, 1, 1, 32768 ] #gemm
-          #- Exact: [ 64, 1, 1, 192] #gemm
+          #- Exact: [ 64, 1, 1, 256] #gemm
           - Exact: [ 1, 1, 1, 256] #gemm
           #- Range: [ [1,1,64], [1], [1], [256]] #gemm
           #- Range: [ [64], [1], [1], [64,32,960]] #gemm

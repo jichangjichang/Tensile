@@ -452,7 +452,7 @@ namespace Tensile
             {
                 if(inputs.gpu)
                     throw std::runtime_error("Initializing GPU inputs as CPU.");
-
+                srand(0x1000);
                 if(m_problemDependentData)
                 {
                     initArray(m_aInit, inputs.managedA.get(), problem.a());
