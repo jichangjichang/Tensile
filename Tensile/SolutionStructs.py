@@ -2221,7 +2221,7 @@ class Solution:
     if ((dataType.isBFloat16() or dataType.isHalf())
       and state["ProblemType"]["HighPrecisionAccumulate"] \
       and state["GlobalSplitU"] > 1 \
-      and state["EnableMatrixInstruction"]):
+      and (state["EnableMatrixInstruction"] or state["KernelLanguage"] == "Source")):
       state["_GlobalAccumulation"] = state["GlobalSplitUAlgorithm"]
 
     if state["_GlobalAccumulation"] == 1:
