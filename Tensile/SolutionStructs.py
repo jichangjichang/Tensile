@@ -2577,18 +2577,18 @@ class Solution:
 
       # how many elements to load
       if state["ProblemType"]["TLUA"]:
-        totalElementsCoalescedA = state["MacroTile0"]
+        totalElementsCoalescedA = state["MacroTileA"]
         totalElementsPerpA = depthU
       else:
         totalElementsCoalescedA = depthU
-        totalElementsPerpA = state["MacroTile0"]
+        totalElementsPerpA = state["MacroTileA"]
 
       if state["ProblemType"]["TLUB"]:
-        totalElementsCoalescedB = state["MacroTile1"]
+        totalElementsCoalescedB = state["MacroTileB"]
         totalElementsPerpB = depthU
       else:
         totalElementsCoalescedB = depthU
-        totalElementsPerpB = state["MacroTile1"]
+        totalElementsPerpB = state["MacroTileB"]
 
       totalElementsA = totalElementsCoalescedA * totalElementsPerpA
       totalElementsB = totalElementsCoalescedB * totalElementsPerpB
@@ -2814,23 +2814,23 @@ class Solution:
     ldsAlign = int(64 / state["ProblemType"]["DataType"].numRegisters())
 
     if state["UnrollMajorLDSA"]:
-      ldsNumElementsA = (state["DepthU"] + state["LdsPadA"]) * state["MacroTile0"]
+      ldsNumElementsA = (state["DepthU"] + state["LdsPadA"]) * state["MacroTileA"]
       padInterval = state["LdsBlockSizePerPadA"] // bpeAB
       if padInterval != 0:
-        ldsNumElementsA = int((state["DepthU"] * state["MacroTile0"]) / padInterval * (padInterval + state["LdsPadA"]))
+        ldsNumElementsA = int((state["DepthU"] * state["MacroTileA"]) / padInterval * (padInterval + state["LdsPadA"]))
       ldsNumElementsAlignedA = roundUpToNearestMultiple(ldsNumElementsA, ldsAlign)
     else:
-      ldsNumElementsA = state["DepthU"] * (state["MacroTile0"] + state["LdsPadA"])
+      ldsNumElementsA = state["DepthU"] * (state["MacroTileA"] + state["LdsPadA"])
       ldsNumElementsAlignedA = roundUpToNearestMultiple(ldsNumElementsA, ldsAlign)
 
     if state["UnrollMajorLDSB"]:
-      ldsNumElementsB = (state["DepthU"] + state["LdsPadB"]) * state["MacroTile1"]
+      ldsNumElementsB = (state["DepthU"] + state["LdsPadB"]) * state["MacroTileB"]
       padInterval = state["LdsBlockSizePerPadB"] // bpeAB
       if padInterval != 0:
-        ldsNumElementsB = int((state["DepthU"] * state["MacroTile1"]) / padInterval * (padInterval + state["LdsPadB"]))
+        ldsNumElementsB = int((state["DepthU"] * state["MacroTileB"]) / padInterval * (padInterval + state["LdsPadB"]))
       ldsNumElementsAlignedB = roundUpToNearestMultiple(ldsNumElementsB, ldsAlign)
     else:
-      ldsNumElementsB = state["DepthU"] * (state["MacroTile1"] + state["LdsPadB"])
+      ldsNumElementsB = state["DepthU"] * (state["MacroTileB"] + state["LdsPadB"])
       ldsNumElementsAlignedB = roundUpToNearestMultiple(ldsNumElementsB, ldsAlign)
 
     # todo, can the alignment be a power of 2?

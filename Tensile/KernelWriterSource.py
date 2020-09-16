@@ -692,12 +692,12 @@ class KernelWriterSource(KernelWriter):
             self.endLinePP)
       """
 
-      for b in range(0, kernel["ThreadTileB"]):
-        for a in range(0, kernel["ThreadTileA"]):
-          strC = "rC[%d+%d*TT%s]" % (a, b, self.tileChar0 )
-          strA = "rA[%d%s]" % (a, ("+TT%s"%self.tileCharA) if m>0 else "")
-          strB = "rB[%d%s]" % (b, ("+TT%s"%self.tileCharB) if m>0 else "")
-          if ((kernel["ThreadTileA"] % 2 == 0) and (kernel["ProblemType"]["DataType"].isHalf())):
+      for idx1 in range(0, kernel["ThreadTile1"]):
+        for idx0 in range(0, kernel["ThreadTile0"]):
+          strC = "rC[%d+%d*TT%s]" % (idx0, idx1, self.tileChar0 )
+          strA = "rA[%d%s]" % (idx0 if self.tPA["tileIdx"] == 0 else idx1, ("+TT%s"%self.tileCharA) if m>0 else "")
+          strB = "rB[%d%s]" % (idx1 if self.tPB["tileIdx"] == 1 else idx0, ("+TT%s"%self.tileCharB) if m>0 else "")
+          if ((kernel["ThreadTile0"] % 2 == 0) and (kernel["ProblemType"]["DataType"].isHalf())):
             if a % 2 == 0:
               kStr += "  TYPE_MAC(%s,%s,%s , " % (strA, strB, strC)
             else:
@@ -964,10 +964,10 @@ class KernelWriterSource(KernelWriter):
 
     # registers for valuAB
     kStr += "  DATA_TYPE rA[TT%s%s];%s" \
-        % (self.tileChar0, ("*2" if kernel["PrefetchLocalRead"] else ""), \
+        % (self.tPA["tileChar"], ("*2" if kernel["PrefetchLocalRead"] else ""), \
         self.endLine)
     kStr += "  DATA_TYPE rB[TT%s%s];%s" \
-        % (self.tileChar1, ("*2" if kernel["PrefetchLocalRead"] else ""), \
+        % (self.tPB["tileChar"], ("*2" if kernel["PrefetchLocalRead"] else ""), \
         self.endLine)
 
     ####################################
@@ -1282,7 +1282,7 @@ class KernelWriterSource(KernelWriter):
             self.endLine)
 
         # clip to edge if the flattened offset is OOB:
-        tP["packedSizeList"] = ["size%s"%self.indexChars[idx] for idx in kernel["PackedC%dIndicesX"%tP["tensorIdx"]]]
+        tP["packedSizeList"] = ["size%s"%self.indexChars[idx] for idx in kernel["PackedC%dIndicesX"%tP["tileIdx"]]]
         sizeStr = " * ".join(tP["packedSizeList"])
 
         kStr += "  %s = (%s > (%s-1)) ? (%s-1):%s;%s" \
@@ -1643,8 +1643,12 @@ class KernelWriterSource(KernelWriter):
   ##############################################################################
   def lraTileAssignmentA(self, kernel, tP):
     kStr = ""
-    kStr += "  unsigned int lr%s = (serial %% SG%s);%s" \
-        % (tP["tileChar"], self.tileChar0, self.endLine)
+    if tP["tileIdx"] == 0:
+      kStr += "  unsigned int lr%s = (serial %% SG%s);%s" \
+          % (tP["tileChar"], self.tileChar0, self.endLine)
+    else:
+      kStr += "  unsigned int lr%s = (serial / SG%s) %% SG%s;%s" \
+          % (tP["tileChar"], self.tileChar0, self.tileChar1, self.endLine)
     return kStr
 
   ##############################################################################
@@ -1652,8 +1656,12 @@ class KernelWriterSource(KernelWriter):
   ##############################################################################
   def lraTileAssignmentB(self, kernel, tP):
     kStr = ""
-    kStr += "  unsigned int lr%s = (serial / SG%s) %% SG%s;%s" \
-        % (tP["tileChar"], self.tileChar0, self.tileChar1, self.endLine)
+    if tP["tileIdx"] == 0:
+      kStr += "  unsigned int lr%s = (serial %% SG%s);%s" \
+          % (tP["tileChar"], self.tileChar0, self.endLine)
+    else:
+      kStr += "  unsigned int lr%s = (serial / SG%s) %% SG%s;%s" \
+          % (tP["tileChar"], self.tileChar0, self.tileChar1, self.endLine)
     return kStr
 
   ##############################################################################
@@ -2900,6 +2908,14 @@ class KernelWriterSource(KernelWriter):
                 kStr += self.extractGlobalCDims(kernel, base1, 1)
                 addTensorDimCheck1 = 0
 
+
+              if self.tPA["tileIdx"] == 0:
+                tP0 = self.tPA
+                tP1 = self.tPB
+              else:
+                tP0 = self.tPB
+                tP1 = self.tPA
+
               ### Bounds checks:
               # if packed, check flattened against product of all packed sizes
               # The flattened base never changes so add all address offsets before comparison
@@ -2907,7 +2923,7 @@ class KernelWriterSource(KernelWriter):
                 # base contains some addressing components, so just offset here:
                 offset0 = offsetS0
               globalC0ForCheck = "flattenedGlobalC0"
-              size0ForCheck = " * ".join(self.tPA["packedSizeList"])
+              size0ForCheck = " * ".join(tP0["packedSizeList"])
 
               # Check 0 dimension against appropriate size limit
               kStr += "  if (%s%s + %u*SG%s*VECTOR_WIDTH < %s) {" \
@@ -2918,7 +2934,7 @@ class KernelWriterSource(KernelWriter):
               if packGranularity == 2:
                 offset1 = offsetS1
               globalC1ForCheck = "flattenedGlobalC1"
-              size1ForCheck = " * ".join(self.tPB["packedSizeList"])
+              size1ForCheck = " * ".join(tP1["packedSizeList"])
 
               kStr += "  if (%s%s + %u*SG%s*VECTOR_WIDTH < %s) {" \
                   % (globalC1ForCheck,
