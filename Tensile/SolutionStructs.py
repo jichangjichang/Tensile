@@ -2347,15 +2347,19 @@ class Solution:
     if problemType["Index0"] in problemType["IndexAssignmentsA"]:
       tc0 = 'A'
       tc1 = 'B'
+      batch0Mask = 0x1
+      batch1Mask = 0x2
     else:
       tc0 = 'B'
       tc1 = 'A'
+      batch0Mask = 0x2
+      batch1Mask = 0x1
     assert(isPackedIndex(state, problemType["Index01A"], 0x1))
     assert(isPackedIndex(state, problemType["Index01B"], 0x2))
 
     # Pack all the dimensions (batch and free) of A into grid[0]
     for idx in problemType["IndexAssignments%s"%tc0]:
-      if isPackedIndex(state, idx, 0x1):
+      if isPackedIndex(state, idx, batch0Mask):
         assert (idx < problemType["NumIndicesC"])
         state["PackedC0IdxChars"].append("%s" % indexChars[idx])
         state["PackedC0IndicesX"].append(idx)
@@ -2363,7 +2367,7 @@ class Solution:
     state["PackedC1IdxChars"] = []
     state["PackedC1IndicesX"] = []
     for idx in problemType["IndexAssignments%s"%tc1]:
-      if isPackedIndex(state, idx, 0x2):
+      if isPackedIndex(state, idx, batch1Mask):
         assert (idx < problemType["NumIndicesC"])
         state["PackedC1IdxChars"].append("%s" % indexChars[idx])
         state["PackedC1IndicesX"].append(idx)
