@@ -2472,7 +2472,8 @@ class KernelWriter(metaclass=abc.ABCMeta):
       tP["tensorChar"] = "A"                                # tensor character A/B
       tP["tensorIdx"] = 0                                   # tensor index A=0, B=1
       tP["tileChar"] = self.tileCharA                       # tile char I0 or J1
-      tP["tileIdx"] = kernel["ProblemType"]["Index01A"]     # is the tile dimension of A the 0th or 1th index, i.e. Aki, tileIdx=0
+      tP["tileIdx"] = 1 \
+          if kernel["ProblemType"]["Index01A"] else 0       # is the tile dimension of A the 0th or 1th index, i.e. Aki, tileIdx=0
       tP["lsc"] = "LSCA"                                    # load size coalesced A, number of elements that get loaded along coalesced dimension with each load
       tP["lsp"] = "LSPA"                                    # load size perpendicular A, number of elements that get loaded along non-coalesced dimension with each load
       tP["lvc"] = "LVCA"                                    # "load size" in terms of number of short-vectors and not elements
@@ -2526,7 +2527,7 @@ class KernelWriter(metaclass=abc.ABCMeta):
       tP["tensorChar"] = "B"
       tP["tensorIdx"] = 1
       tP["tileChar"] = self.tileCharB
-      tP["tileIdx"] = kernel["ProblemType"]["Index01B"]
+      tP["tileIdx"] = 1 if kernel["ProblemType"]["Index01B"] else 0
       tP["lsc"] = "LSCB"
       tP["lsp"] = "LSPB"
       tP["lvc"] = "LVCB"
