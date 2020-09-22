@@ -4539,98 +4539,85 @@ class KernelWriterAssembly(KernelWriter):
 
     return kStr
 
-
   ##############################################################################
-  # Local Read Addresses: Tile Assignment A
+  # Local Read Addresses: Tile Assignment A/B
   ##############################################################################
-  def lraTileAssignmentVALUA(self, kernel, tP):
+  def lraTileAssignmentVALU(self, kernel, tP):
     kStr = ""
 
-    # allocate resource
-    qReg = self.vgprPool.checkOut(1,"qReg") # quotient
-    rReg = self.vgprPool.checkOut(1,"rReg") # remainder
-    tmpVgpr = self.vgprPool.checkOut(2,"tmpVgpr")
-    tmpSgpr = self.getTmpSgpr(1).idx()
+    if tP["tileIdx"] == 0:
+      # allocate resource
+      qReg = self.vgprPool.checkOut(1,"qReg") # quotient
+      rReg = self.vgprPool.checkOut(1,"rReg") # remainder
+      tmpVgpr = self.vgprPool.checkOut(2,"tmpVgpr")
+      tmpSgpr = self.getTmpSgpr(1).idx()
 
-    # constant
-    dividendReg = "Serial" # local serial
-    divisor = kernel["SubGroup0"]
+      # constant
+      dividendReg = "Serial" # local serial
+      divisor = kernel["SubGroup0"]
 
-    # generate instruction
-    kStr += vectorStaticDivideAndRemainder(qReg, rReg, dividendReg, divisor, tmpVgpr, tmpSgpr)
+      # generate instruction
+      kStr += vectorStaticDivideAndRemainder(qReg, rReg, dividendReg, divisor, tmpVgpr, tmpSgpr)
 
-    # release and return resource
-    tP["gpr"]["lro"] = rReg
-    self.tmplroB = qReg
-    self.vgprPool.checkIn(tmpVgpr)
+      # release and return resource
+      tP["gpr"]["lro"] = rReg
+      self.tmplro = qReg
+      self.vgprPool.checkIn(tmpVgpr)
+    else:
+      # allocate resources
+      qReg    = self.vgprPool.checkOut(1,"qReg") # quotient
+      rReg    = self.vgprPool.checkOut(1,"rReg") # remainder
+      tmpVgpr = self.vgprPool.checkOut(2,"tmpVgpr")
+      tmpSgpr = self.getTmpSgpr(1).idx()
+
+      # constant
+      divisor = kernel["SubGroup1"]
+      dividendReg = self.tmplro
+
+      # generate instruction
+      kStr += vectorStaticDivideAndRemainder(qReg, rReg, dividendReg, divisor, tmpVgpr, tmpSgpr)
+
+      # release and return resource
+      tP["gpr"]["lro"] = rReg
+
+      self.vgprPool.checkIn(self.tmplro) # old
+      self.vgprPool.checkIn(qReg)
+      self.vgprPool.checkIn(tmpVgpr)
 
     return kStr
 
-
   ##############################################################################
   # Local Read Addresses: Tile Assignment A
   ##############################################################################
-  def lraTileAssignmentA(self, kernel, tP):
+  def lraTileAssignment(self, kernel, tPA, tPB):
     kStr = ""
 
+    if tPA["tileIdx"] == 0:
+      tP0 = tPA
+      tP1 = tPB
+    else:
+      tP0 = tPB
+      tP1 = tPA
+
     kStr += "%slr%s = serial %% SG%s%s%s" \
-        % (self.commentPrefix, tP["tileChar"], tP["tileChar"], \
+        % (self.commentPrefix, tP0["tileChar"], tP0["tileChar"], \
         self.commentSuffix, self.endLine)
 
     if kernel["EnableMatrixInstruction"]:
-      kStr += self.lraTileAssignmentMFMA(kernel, tP)
+      kStr += self.lraTileAssignmentMFMA(kernel, tP0)
     else:
-      kStr += self.lraTileAssignmentVALUA(kernel, tP)
-
-    return kStr
-
-
-  ##############################################################################
-  # Local Read Addresses: Tile Assignment B
-  ##############################################################################
-  def lraTileAssignmentVALUB(self, kernel, tP):
-    kStr = ""
-
-    # allocate resources
-    qReg    = self.vgprPool.checkOut(1,"qReg") # quotient
-    rReg    = self.vgprPool.checkOut(1,"rReg") # remainder
-    tmpVgpr = self.vgprPool.checkOut(2,"tmpVgpr")
-    tmpSgpr = self.getTmpSgpr(1).idx()
-
-    # constant
-    divisor = kernel["SubGroup1"]
-    dividendReg = self.tmplroB
-
-    # generate instruction
-    kStr += vectorStaticDivideAndRemainder(qReg, rReg, dividendReg, divisor, tmpVgpr, tmpSgpr)
-
-    # release and return resource
-    tP["gpr"]["lro"] = rReg
-
-    self.vgprPool.checkIn(self.tmplroB) # old
-    self.vgprPool.checkIn(qReg)
-    self.vgprPool.checkIn(tmpVgpr)
-
-    return kStr
-
-
-  ##############################################################################
-  # Local Read Addresses: Tile Assignment B
-  ##############################################################################
-  def lraTileAssignmentB(self, kernel, tP):
-    kStr = ""
+      kStr += self.lraTileAssignmentVALU(kernel, tP0)
 
     kStr += "%slr%s = (serial / SG%s) %% SG%s%s%s" \
-        % (self.commentPrefix, tP["tileChar"], tP["tileChar"], \
-        tP["tileChar"], self.commentSuffix, self.endLine)
+        % (self.commentPrefix, tP1["tileChar"], tP1["tileChar"], \
+        tP1["tileChar"], self.commentSuffix, self.endLine)
 
     if kernel["EnableMatrixInstruction"]:
-      kStr += self.lraTileAssignmentMFMA(kernel, tP)
+      kStr += self.lraTileAssignmentMFMA(kernel, tP1)
     else:
-      kStr += self.lraTileAssignmentVALUB(kernel, tP)
+      kStr += self.lraTileAssignmentVALU(kernel, tP1)
 
     return kStr
-
 
   ##############################################################################
   # Local Read Addresses: Final Offset A/B

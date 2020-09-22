@@ -1639,29 +1639,21 @@ class KernelWriterSource(KernelWriter):
     return kStr
 
   ##############################################################################
-  # Local Read Addresses: Tile Assignment A
+  # Local Read Addresses: Tile Assignment A/B
   ##############################################################################
-  def lraTileAssignmentA(self, kernel, tP):
+  def lraTileAssignment(self, kernel, tPA, tPB):
     kStr = ""
-    if tP["tileIdx"] == 0:
-      kStr += "  unsigned int lr%s = (serial %% SG%s);%s" \
-          % (tP["tileChar"], self.tileChar0, self.endLine)
+    if tPA["tileIdx"] == 0:
+      tP0 = tPA
+      tP1 = tPB
     else:
-      kStr += "  unsigned int lr%s = (serial / SG%s) %% SG%s;%s" \
-          % (tP["tileChar"], self.tileChar0, self.tileChar1, self.endLine)
-    return kStr
+      tP0 = tPB
+      tP1 = tPA
 
-  ##############################################################################
-  # Local Read Addresses: Tile Assignment B
-  ##############################################################################
-  def lraTileAssignmentB(self, kernel, tP):
-    kStr = ""
-    if tP["tileIdx"] == 0:
-      kStr += "  unsigned int lr%s = (serial %% SG%s);%s" \
-          % (tP["tileChar"], self.tileChar0, self.endLine)
-    else:
-      kStr += "  unsigned int lr%s = (serial / SG%s) %% SG%s;%s" \
-          % (tP["tileChar"], self.tileChar0, self.tileChar1, self.endLine)
+    kStr += "  unsigned int lr%s = (serial %% SG%s);%s" \
+        % (tP0["tileChar"], self.tileChar0, self.endLine)
+    kStr += "  unsigned int lr%s = (serial / SG%s) %% SG%s;%s" \
+        % (tP1["tileChar"], self.tileChar0, self.tileChar1, self.endLine)
     return kStr
 
   ##############################################################################
