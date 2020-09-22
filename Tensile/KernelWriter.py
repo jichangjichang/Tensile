@@ -2379,8 +2379,8 @@ class KernelWriter(metaclass=abc.ABCMeta):
 
     tensorParametersA["PackBatchDims"] = kernel["PackBatchDims"] if kernel["PackBatchDims"] & 0x1 else 0
     tensorParametersB["PackBatchDims"] = kernel["PackBatchDims"] if kernel["PackBatchDims"] & 0x2 else 0
-    tensorParametersA["PackedIndices"] = kernel["PackedC0IndicesX"]
-    tensorParametersB["PackedIndices"] = kernel["PackedC1IndicesX"]
+    tensorParametersA["PackedIndices"] = kernel["PackedC0IndicesX"] if self.tPA["tileIdx"] == 0 else kernel["PackedC1IndicesX"]
+    tensorParametersB["PackedIndices"] = kernel["PackedC1IndicesX"] if self.tPB["tileIdx"] != 0 else kernel["PackedC0IndicesX"]
 
   @staticmethod
   def zpForSumIdx(sumIdx, zeroPad):
