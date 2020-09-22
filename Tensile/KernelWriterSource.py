@@ -696,7 +696,7 @@ class KernelWriterSource(KernelWriter):
         for idx0 in range(0, kernel["ThreadTile0"]):
           strC = "rC[%d+%d*TT%s]" % (idx0, idx1, self.tileChar0 )
           strA = "rA[%d%s]" % (idx0 if self.tPA["tileIdx"] == 0 else idx1, ("+TT%s"%self.tileCharA) if m>0 else "")
-          strB = "rB[%d%s]" % (idx1 if self.tPB["tileIdx"] == 1 else idx0, ("+TT%s"%self.tileCharB) if m>0 else "")
+          strB = "rB[%d%s]" % (idx1 if self.tPB["tileIdx"] != 0 else idx0, ("+TT%s"%self.tileCharB) if m>0 else "")
           if ((kernel["ThreadTile0"] % 2 == 0) and (kernel["ProblemType"]["DataType"].isHalf())):
             if a % 2 == 0:
               kStr += "  TYPE_MAC(%s,%s,%s , " % (strA, strB, strC)
@@ -1282,7 +1282,7 @@ class KernelWriterSource(KernelWriter):
             self.endLine)
 
         # clip to edge if the flattened offset is OOB:
-        tP["packedSizeList"] = ["size%s"%self.indexChars[idx] for idx in kernel["PackedC%dIndicesX"%tP["tileIdx"]]]
+        tP["packedSizeList"] = ["size%s"%self.indexChars[idx] for idx in kernel["PackedC%dIndicesX"%(1 if tP["tileIdx"] else 0)]]
         sizeStr = " * ".join(tP["packedSizeList"])
 
         kStr += "  %s = (%s > (%s-1)) ? (%s-1):%s;%s" \
@@ -2518,7 +2518,7 @@ class KernelWriterSource(KernelWriter):
 
     for r in range(1, tP["glvw"]):
       kStr += "    if (r%s == %u) {%s" % (tP["tileChar"], r, self.endLine)
-      numVectors = kernel["ThreadTile%s"%tP["tileIdx"]]//tP["glvw"]
+      numVectors = kernel["ThreadTile%s"%(1 if tP["tileIdx"] else 0)]//tP["glvw"]
       for vIdx in range(0, numVectors):
         if vIdx == 0:
           kStr += "      "
@@ -2527,7 +2527,7 @@ class KernelWriterSource(KernelWriter):
         if vIdx < numVectors-1:
           kStr += "if (s%s == %u) " % (tP["tileChar"], vIdx)
         kStr += "{%s" % self.endLine
-        for tt in range(0, kernel["ThreadTile%u"%((tP["tileIdx"]+1)%2)]):
+        for tt in range(0, kernel["ThreadTile%u"%(((1 if tP["tileIdx"] else 0)+1)%2)]):
           for s in range(0, r):
             if tP["isA"]:
               kStr += "        rC[%u + %u*GLOBAL_LOAD_VECTOR_WIDTH_A + %u*TT%s] = rC[%u + %u*GLOBAL_LOAD_VECTOR_WIDTH_A + %u*TT%s];%s" \
