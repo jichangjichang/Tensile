@@ -8202,10 +8202,10 @@ class KernelWriterAssembly(KernelWriter):
       if i == kernel["ProblemType"]["Index0"]:
         # Used if the output is transposed?
         addToSrd = False
-      elif i == kernel["ProblemType"]["Index1"]:
+      elif i == kernel["ProblemType"]["Index1"]:# and not isPackedIndex(kernel, i):
         coord = sgpr(wgMT1)
         addToSrd = True
-      elif not isPackedIndex(kernel, i):
+      elif i != kernel["ProblemType"]["Index0"] and i != kernel["ProblemType"]["Index1"] and not isPackedIndex(kernel, i):
         # group index, this is higher-order Tensor dimension, just add to SRD base:
         coord = sgpr("WorkGroup2")
         addToSrd = True
@@ -8304,7 +8304,6 @@ class KernelWriterAssembly(KernelWriter):
       # Eventually need to modify if supporting packed coord1, to start just assert if that case is detected
       #--
       packedC1 = kernel["PackedC1IndicesX"]
-      assert (len(packedC1) == 1) # would need to extract/scale indices from coord1
       strideC1 = "StrideC%s" % (self.indexChars[packedC1[0]])
       kStr += inst("v_mul_lo_u32", vgpr(self.cinRowPtr),
                   vgpr(tid1), sgpr(strideC1), \
@@ -8347,6 +8346,85 @@ class KernelWriterAssembly(KernelWriter):
         sgpr(wgMT1), \
         vgpr(tid1), \
         "coord1 = tid1*VW + wg1*MT1")
+
+    if len(packedC1) > 1:
+      # calculate unpacked rowStart vgpr
+      # vgprTmp assignments:
+      #   - tmp+0 may be the incoming packed coordinate 1, used on replay too
+      #   - tmp+1 is DIV output
+      #   - tmp+2 is scratch
+      #   - tmp+3 holds thread rowStart free1 offset
+      #   - tmp+4 holds WorkGroup rowStart free1 offset
+      kStr += "\n"
+      tmpV0 = self.vgprPool.checkOut(5)
+      tmpV1 = tmpV0 + 1
+      tmpV2 = tmpV0 + 2
+      tmpV3 = tmpV0 + 3
+      tmpV4 = tmpV0 + 4
+      kStr += inst("v_mov_b32", vgpr(tmpV0), sgpr(wgMT1),  "Copy packed wg coord1")
+      storeChar = 'C'
+      for i,idx in enumerate(packedC1[:-1]):
+        idxChar= globalParameters["IndexChars"][idx]
+        kStr += self.comment1("extract %s"%self.sizeRef(idx))
+        kStr += "V_MAGIC_DIV %s, %s, %s, %s, %s\n" % \
+                 (tmpV1, vgpr(tmpV0), sgpr("MagicNumberSize%s"%idxChar), \
+                  sgpr("MagicShiftSize%s"%idxChar), sgpr("MagicAbitSize%s"%idxChar) if kernel["MagicDivAlg"]==2 else "0")
+        kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), self.sizeRef(idx), "remainder part 1")
+        kStr += inst("_v_sub_u32", vgpr(tmpV2), vgpr(tmpV0), vgpr(tmpV2), "remainder part 2")
+        if i==0:
+          kStr += inst("v_mul_lo_u32", vgpr(tmpV3), vgpr(tmpV2), \
+                    self.strideRef(storeChar, idx), "addrCalc <- scaled extracted dim")
+        else:
+          kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV2), \
+                    self.strideRef(storeChar, idx), "scale extracted dim")
+          kStr += inst("_v_add_u32", vgpr(tmpV3), vgpr(tmpV3), \
+                    vgpr(tmpV2), "addrCalc += scaled extracted dim ")
+
+        if i < len(packedC1)-2:
+          kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tmpV1), \
+                    "Copy remaining bits for next divide")
+
+      if len(packedC1)>1:
+        kStr += self.comment1("extract final %s"%self.sizeRef(packedC1[-1]))
+        kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), \
+                  self.strideRef(storeChar, packedC1[-1]), "scale final extracted dim")
+        kStr += inst("_v_add_u32", vgpr(tmpV4), vgpr(tmpV3), \
+                  vgpr(tmpV2), "addrCalc += scaled extracted dim ")
+      kStr += "\n"
+
+      kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tid1),  "Copy packed thread coord1")
+      for i,idx in enumerate(packedC1[:-1]):
+        idxChar= globalParameters["IndexChars"][idx]
+        kStr += self.comment1("extract %s"%self.sizeRef(idx))
+        kStr += "V_MAGIC_DIV %s, %s, %s, %s, %s\n" % \
+                 (tmpV1, vgpr(tmpV0), sgpr("MagicNumberSize%s"%idxChar), \
+                  sgpr("MagicShiftSize%s"%idxChar), sgpr("MagicAbitSize%s"%idxChar) if kernel["MagicDivAlg"]==2 else "0")
+        kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), self.sizeRef(idx), "remainder part 1")
+        kStr += inst("_v_sub_u32", vgpr(tmpV2), vgpr(tmpV0), vgpr(tmpV2), "remainder part 2")
+        if i==0:
+          kStr += inst("v_mul_lo_u32", vgpr(tmpV3), vgpr(tmpV2), \
+                    self.strideRef(storeChar, idx), "addrCalc <- scaled extracted dim")
+        else:
+          kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV2), \
+                    self.strideRef(storeChar, idx), "scale extracted dim")
+          kStr += inst("_v_add_u32", vgpr(tmpV3), vgpr(tmpV3), \
+                    vgpr(tmpV2), "addrCalc += scaled extracted dim ")
+
+        if i < len(packedC1)-2:
+          kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tmpV1), \
+                    "Copy remaining bits for next divide")
+
+      if len(packedC1)>1:
+        kStr += self.comment1("extract final %s"%self.sizeRef(packedC1[-1]))
+        kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), \
+                  self.strideRef(storeChar, packedC1[-1]), "scale final extracted dim")
+        kStr += inst("_v_add_u32", vgpr(tmpV3), vgpr(tmpV3), \
+                  vgpr(tmpV2), "addrCalc += scaled extracted dim ")
+
+      kStr += inst("_v_sub_u32", vgpr(self.cinRowPtr), vgpr(tmpV3), vgpr(tmpV4), \
+                  "rowStart offset = thread rowStart - wg rowStart")
+
+      self.vgprPool.checkIn(tmpV0)
 
     self.coord0 = tid0
     self.coord1 = tid1
@@ -9192,10 +9270,6 @@ class KernelWriterAssembly(KernelWriter):
 
       # need another set of col VGPR to preserve scaled LDD
       assert (not (self.optSharedColVgpr and not kernel["LdcEqualsLdd"]))
-
-      # packed1 not yet supported.  Would need to:
-      # - extract packed dimensions from coord1 into
-      assert( len(kernel["PackedC1IndicesX"]) == 1)
 
       self.cfg = self.StoreConstConfig(kernelWriter, kernel, self, gwvw, edge, beta, atomic)
 
