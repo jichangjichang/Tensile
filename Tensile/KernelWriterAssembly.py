@@ -8202,7 +8202,7 @@ class KernelWriterAssembly(KernelWriter):
       if i == kernel["ProblemType"]["Index0"]:
         # Used if the output is transposed?
         addToSrd = False
-      elif i == kernel["ProblemType"]["Index1"]:# and not isPackedIndex(kernel, i):
+      elif i == kernel["ProblemType"]["Index1"] and not isPackedIndex(kernel, i):
         coord = sgpr(wgMT1)
         addToSrd = True
       elif i != kernel["ProblemType"]["Index0"] and i != kernel["ProblemType"]["Index1"] and not isPackedIndex(kernel, i):
@@ -8354,15 +8354,15 @@ class KernelWriterAssembly(KernelWriter):
       #   - tmp+1 is DIV output
       #   - tmp+2 is scratch
       #   - tmp+3 holds thread rowStart free1 offset
-      #   - tmp+4 holds WorkGroup rowStart free1 offset
       kStr += "\n"
-      tmpV0 = self.vgprPool.checkOut(5)
+      tmpV0 = self.vgprPool.checkOut(4)
       tmpV1 = tmpV0 + 1
       tmpV2 = tmpV0 + 2
       tmpV3 = tmpV0 + 3
-      tmpV4 = tmpV0 + 4
-      kStr += inst("v_mov_b32", vgpr(tmpV0), sgpr(wgMT1),  "Copy packed wg coord1")
       storeChar = 'C'
+
+      assert(kernel["LdcEqualsLdd"])
+      kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tid1),  "copy then unpack coord1")
       for i,idx in enumerate(packedC1[:-1]):
         idxChar= globalParameters["IndexChars"][idx]
         kStr += self.comment1("extract %s"%self.sizeRef(idx))
@@ -8384,45 +8384,11 @@ class KernelWriterAssembly(KernelWriter):
           kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tmpV1), \
                     "Copy remaining bits for next divide")
 
-      if len(packedC1)>1:
-        kStr += self.comment1("extract final %s"%self.sizeRef(packedC1[-1]))
-        kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), \
-                  self.strideRef(storeChar, packedC1[-1]), "scale final extracted dim")
-        kStr += inst("_v_add_u32", vgpr(tmpV4), vgpr(tmpV3), \
-                  vgpr(tmpV2), "addrCalc += scaled extracted dim ")
-      kStr += "\n"
-
-      kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tid1),  "Copy packed thread coord1")
-      for i,idx in enumerate(packedC1[:-1]):
-        idxChar= globalParameters["IndexChars"][idx]
-        kStr += self.comment1("extract %s"%self.sizeRef(idx))
-        kStr += "V_MAGIC_DIV %s, %s, %s, %s, %s\n" % \
-                 (tmpV1, vgpr(tmpV0), sgpr("MagicNumberSize%s"%idxChar), \
-                  sgpr("MagicShiftSize%s"%idxChar), sgpr("MagicAbitSize%s"%idxChar) if kernel["MagicDivAlg"]==2 else "0")
-        kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), self.sizeRef(idx), "remainder part 1")
-        kStr += inst("_v_sub_u32", vgpr(tmpV2), vgpr(tmpV0), vgpr(tmpV2), "remainder part 2")
-        if i==0:
-          kStr += inst("v_mul_lo_u32", vgpr(tmpV3), vgpr(tmpV2), \
-                    self.strideRef(storeChar, idx), "addrCalc <- scaled extracted dim")
-        else:
-          kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV2), \
-                    self.strideRef(storeChar, idx), "scale extracted dim")
-          kStr += inst("_v_add_u32", vgpr(tmpV3), vgpr(tmpV3), \
-                    vgpr(tmpV2), "addrCalc += scaled extracted dim ")
-
-        if i < len(packedC1)-2:
-          kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tmpV1), \
-                    "Copy remaining bits for next divide")
-
-      if len(packedC1)>1:
-        kStr += self.comment1("extract final %s"%self.sizeRef(packedC1[-1]))
-        kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), \
-                  self.strideRef(storeChar, packedC1[-1]), "scale final extracted dim")
-        kStr += inst("_v_add_u32", vgpr(tmpV3), vgpr(tmpV3), \
-                  vgpr(tmpV2), "addrCalc += scaled extracted dim ")
-
-      kStr += inst("_v_sub_u32", vgpr(self.cinRowPtr), vgpr(tmpV3), vgpr(tmpV4), \
-                  "rowStart offset = thread rowStart - wg rowStart")
+      kStr += self.comment1("extract final %s"%self.sizeRef(packedC1[-1]))
+      kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), \
+                self.strideRef(storeChar, packedC1[-1]), "scale final extracted dim")
+      kStr += inst("_v_add_u32", vgpr(self.cinRowPtr), vgpr(tmpV3), \
+                vgpr(tmpV2), "addrCalc += scaled extracted dim ")
 
       self.vgprPool.checkIn(tmpV0)
 
