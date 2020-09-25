@@ -8362,7 +8362,7 @@ class KernelWriterAssembly(KernelWriter):
       storeChar = 'C'
 
       assert(kernel["LdcEqualsLdd"])
-      kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tid1),  "copy then unpack coord1")
+      kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tid1),  "copy coord1 then unpack")
       for i,idx in enumerate(packedC1[:-1]):
         idxChar= globalParameters["IndexChars"][idx]
         kStr += self.comment1("extract %s"%self.sizeRef(idx))
@@ -8388,7 +8388,7 @@ class KernelWriterAssembly(KernelWriter):
       kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), \
                 self.strideRef(storeChar, packedC1[-1]), "scale final extracted dim")
       kStr += inst("_v_add_u32", vgpr(self.cinRowPtr), vgpr(tmpV3), \
-                vgpr(tmpV2), "addrCalc += scaled extracted dim ")
+                vgpr(tmpV2), "rowStart += scaled extracted dim ")
 
       self.vgprPool.checkIn(tmpV0)
 
@@ -9215,6 +9215,9 @@ class KernelWriterAssembly(KernelWriter):
         if len(kernel["PackedC0IndicesX"]) > 1:
           # packed mode needs a unique VGPR address calc for each column.
           self.optSharedColVgpr = 1
+        elif len(kernel["PackedC1IndicesX"]) > 1:
+          self.optSharedColVgpr = 0
+          self.optSingleColVgpr = 0
         else:
           self.optSingleColVgpr = 1
 
@@ -9485,7 +9488,7 @@ class KernelWriterAssembly(KernelWriter):
         If LdcEqualsLdd we could re-use addrVgpr here and perhaps save the temp.
 
     """
-    def emitAddressCoordIncrement(self, kernel, ss, tmpVgpr, tmpS01, edge):
+    def emitAddressCoordIncrement(self, kernel, ss, tmpVgpr, tmpS01, updateCoord1):
       kStr = ""
       kw = self.kernelWriter
       (d1,d0,vc1,vc0) = self.element
@@ -9513,7 +9516,7 @@ class KernelWriterAssembly(KernelWriter):
                     "coord0.2: coord0 += d0*sg0*VW + vc0")
 
         if self.newCoord1:
-          if not kernel["BufferStore"] or edge: #TODO, do we need edge?
+          if not kernel["BufferStore"] or updateCoord1:
             if self.rowInc== 0:
               None
             elif self.rowInc <= 64:
@@ -9688,7 +9691,8 @@ class KernelWriterAssembly(KernelWriter):
       kStr = ""
       kw = self.kernelWriter
 
-      kStr += self.emitAddressCoordIncrement(kernel, ss, tmpVgpr01, tmpS01, edge)
+      updateCoord1 = (edge or len(kernel["PackedC1IndicesX"]) > 1)
+      kStr += self.emitAddressCoordIncrement(kernel, ss, tmpVgpr01, tmpS01, updateCoord1)
 
       # Move the row ptr VGPR
       # optSrdIncForRow moves the SRD so don't move here
@@ -9696,15 +9700,49 @@ class KernelWriterAssembly(KernelWriter):
         if self.rowInc > 0:
           self.rowIncDirtyRowPtr = 1
           #assert (not kernel["ProblemType"]["UseInitialStridesCD"])
-          kStr += kw.comment("Fix for UseInitialStridesCD, emitAddressSetupCode")
-          assert (len(kernel["PackedC1IndicesX"])==1)
+          #kStr += kw.comment("Fix for UseInitialStridesCD, emitAddressSetupCode")
+          #assert (len(kernel["PackedC1IndicesX"])==1)
+          if len(kernel["PackedC1IndicesX"]) == 1:
+            strideChar = self.kernelWriter.indexChars[kernel["PackedC1IndicesX"][0]]
+            kStr += self.addScaled(vgpr(kw.cinRowPtr),  vgpr(kw.cinRowPtr),  \
+                      sgpr("StrideC%s"%strideChar), self.rowInc, tmpS01, "ROWINC- Move cinRowPtr to next row")
+            if not kernel["LdcEqualsLdd"]:
+              kStr += self.addScaled(vgpr(kw.coutRowPtr), vgpr(kw.coutRowPtr), \
+                        sgpr("StrideD%s"%strideChar), self.rowInc, tmpS01, "Move coutRowPtr to next row")
+          else:
+            tmpV0 = kw.vgprPool.checkOut(3)
+            tmpV1 = tmpV0+1
+            tmpV2 = tmpV0+2
+            kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(self.coord1Vgpr),  "copy inc-coord1 then unpack")
+            packedC1 = kernel["PackedC1IndicesX"]
+            storeChar = 'C'
+            for i,idx in enumerate(packedC1[:-1]):
+              idxChar= globalParameters["IndexChars"][idx]
+              kStr += kw.comment1("extract %s"%kw.sizeRef(idx))
+              kStr += "V_MAGIC_DIV %s, %s, %s, %s, %s\n" % \
+                       (tmpV1, vgpr(tmpV0), sgpr("MagicNumberSize%s"%idxChar), \
+                        sgpr("MagicShiftSize%s"%idxChar), sgpr("MagicAbitSize%s"%idxChar) if kernel["MagicDivAlg"]==2 else "0")
+              kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), kw.sizeRef(idx), "remainder part 1")
+              kStr += inst("_v_sub_u32", vgpr(tmpV2), vgpr(tmpV0), vgpr(tmpV2), "remainder part 2")
+              if i==0:
+                kStr += inst("v_mul_lo_u32", vgpr(kw.cinRowPtr), vgpr(tmpV2), \
+                          kw.strideRef(storeChar, idx), "addrCalc <- scaled extracted dim")
+              else:
+                kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV2), \
+                          kw.strideRef(storeChar, idx), "scale extracted dim")
+                kStr += inst("_v_add_u32", vgpr(kw.cinRowPtr), vgpr(kw.cinRowPtr), \
+                          vgpr(tmpV2), "addrCalc += scaled extracted dim ")
 
-          strideChar = self.kernelWriter.indexChars[kernel["PackedC1IndicesX"][0]]
-          kStr += self.addScaled(vgpr(kw.cinRowPtr),  vgpr(kw.cinRowPtr),  \
-                    sgpr("StrideC%s"%strideChar), self.rowInc, tmpS01, "ROWINC- Move cinRowPtr to next row")
-          if not kernel["LdcEqualsLdd"]:
-            kStr += self.addScaled(vgpr(kw.coutRowPtr), vgpr(kw.coutRowPtr), \
-                      sgpr("StrideD%s"%strideChar), self.rowInc, tmpS01, "Move coutRowPtr to next row")
+              if i < len(packedC1)-2:
+                kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tmpV1), \
+                          "Copy remaining bits for next divide")
+
+            kStr += kw.comment1("extract final %s"%kw.sizeRef(packedC1[-1]))
+            kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), \
+                      kw.strideRef(storeChar, packedC1[-1]), "scale final extracted dim")
+            kStr += inst("_v_add_u32", vgpr(kw.cinRowPtr), vgpr(kw.cinRowPtr), \
+                      vgpr(tmpV2), "rowStart += scaled extracted dim ")
+            kw.vgprPool.checkIn(tmpV0)
 
       # Shift Pointer for MFMA:
       #   For MFMA shift pointer, correct data is stored in another thread.
