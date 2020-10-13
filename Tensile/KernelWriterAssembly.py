@@ -4473,21 +4473,21 @@ class KernelWriterAssembly(KernelWriter):
 
     # get constant parameter
     tc               = tP["tensorChar"]
-    tIdx             = tP["tensorIdx"]
+    tile01           = 1 if tP["tileIdx"] else 0
     waveWidth        = globalParameters["WavefrontWidth"]
     inputPerThread   = max(self.lrvwA,self.lrvwB)
     LdsPad           = kernel["LdsPad%s" % tc] if kernel["LdsBlockSizePerPad%s" % tc] == 0 else 0
 
     # parameter for get each type index
     dividendForKId   = kernel["MatrixInstM"] * kernel["MatrixInstB"]
-    num1DBlocks      = kernel["MatrixInstBM"]   if (tc == 'A') else kernel["MatrixInstBN"]
-    num1DWaves       = kernel["MIWaveGroup"][0] if (tc == 'A') else kernel["MIWaveGroup"][1]
-    dividedForBlkId  = kernel["MatrixInstM"]    if (tc == 'A') else (kernel["MatrixInstM"] * kernel["MatrixInstBM"])
-    dividedForWaveId = waveWidth                if (tc == 'A') else (waveWidth * kernel["MIWaveGroup"][0])
+    num1DBlocks      = kernel["MatrixInstBM"]   if (tile01 == 0) else kernel["MatrixInstBN"]
+    num1DWaves       = kernel["MIWaveGroup"][0] if (tile01 == 0) else kernel["MIWaveGroup"][1]
+    dividedForBlkId  = kernel["MatrixInstM"]    if (tile01 == 0) else (kernel["MatrixInstM"] * kernel["MatrixInstBM"])
+    dividedForWaveId = waveWidth                if (tile01 == 0) else (waveWidth * kernel["MIWaveGroup"][0])
 
     # strider for each type of index
     umlds            = kernel["UnrollMajorLDS%s" % tP["tensorChar"]]
-    mt               = kernel["MacroTile%u" % tIdx]
+    mt               = kernel["MacroTile%u" % tile01]
     strideTile       = kernel["DepthU"] + LdsPad if umlds else 1
     strideK          = inputPerThread            if umlds else (mt + LdsPad) * inputPerThread
     strideBlock      = kernel["MatrixInstM"] * strideTile
@@ -5592,15 +5592,19 @@ class KernelWriterAssembly(KernelWriter):
       iuiA_new_offset = iui%self.numReadsIterCoalescedA*vgprPerInput
       iuiB_new = (iui//self.numReadsIterCoalescedB)*self.numReadsIterCoalescedB
       iuiB_new_offset = iui%self.numReadsIterCoalescedB*vgprPerInput
-      for b in range(0, kernel["MIWaveTile"][1]):
-        for a in range(0, kernel["MIWaveTile"][0]):
-          accIdx   = b * kernel["MIWaveTile"][0] + a
+      for idx1 in range(0, kernel["MIWaveTile"][1]):
+        for idx0 in range(0, kernel["MIWaveTile"][0]):
+          accIdx   = idx1 * kernel["MIWaveTile"][0] + idx0
           accStart = accIdx * accs_per_wave
           accEnd   = accStart + accs_per_wave - 1
-          a_new = a*vgprPerInput*self.numReadsIterCoalescedA
-          b_new = b*vgprPerInput*self.numReadsIterCoalescedB
+          idxA = idx0 if self.tPA["tileIdx"] == 0 else idx1
+          idxB = idx1 if self.tPA["tileIdx"] == 0 else idx0
+          a_new = idxA*vgprPerInput*self.numReadsIterCoalescedA
+          b_new = idxB*vgprPerInput*self.numReadsIterCoalescedB
           aStr     = vgpr("ValuA_X%u_I%u+%u+%u+%u" % (vgprBufferA_new, iuiA_new, a_new, vgprBufferA_new_offset, iuiA_new_offset), vgprPerInput)
           bStr     = vgpr("ValuB_X%u_I%u+%u+%u+%u" % (vgprBufferB_new, iuiB_new, b_new, vgprBufferB_new_offset, iuiB_new_offset), vgprPerInput)
+          Str0 = aStr if self.tPA["tileIdx"] == 0 else bStr
+          Str1 = bStr if self.tPA["tileIdx"] == 0 else aStr
           if kernel["ProblemType"]["DataType"].isSingleComplex():
             # override because complex mul is emulated by 4 mfma insts
             # TODO: adopt component system
@@ -5634,7 +5638,7 @@ class KernelWriterAssembly(KernelWriter):
           else:
             imod.addCode("v_mfma_f32_%ux%ux%u%s a[%u:%u], %s, %s, a[%u:%u]%s" \
                       % (kernel["MatrixInstM"], kernel["MatrixInstN"], kernel["MatrixInstK"], kernel["ProblemType"]["DataType"].toNameAbbrev(),
-                          accStart, accEnd, aStr, bStr, accStart, accEnd, self.endLine))
+                          accStart, accEnd, Str0, Str1, accStart, accEnd, self.endLine))
 
     # release register
     if kReg is not None: self.vgprPool.checkIn(kReg)
@@ -7306,7 +7310,7 @@ class KernelWriterAssembly(KernelWriter):
       self.localReadDoCntA += 1
     else:
       self.localReadDoCntB += 1
-    tIdx             = tP["tensorIdx"]
+    tile01           = 1 if tP["tileIdx"] else 0
     instruction      = tP["localReadInstruction"]
 
     numOffsets       = instruction.numOffsets
@@ -7321,7 +7325,7 @@ class KernelWriterAssembly(KernelWriter):
       tileStride     = kernel["DepthU"] + LdsPad
       UnrollStride   = 1
 
-    numVectorsPerTile = kernel["MIWaveTile"][tIdx]
+    numVectorsPerTile = kernel["MIWaveTile"][tile01]
     if tc == "A":
       numReadsPerVector = tP["bpe"] * self.lrvwA // int(blockWidth * 4) # bytes/register
     else:
@@ -7361,7 +7365,7 @@ class KernelWriterAssembly(KernelWriter):
         paramList.append(vgpr("LocalReadAddr%s"%tc))
 
         for oIdx in range(0, numOffsets):
-          offset_val = (vIdx * numOffsets+oIdx) * MIWaveGropuShape[tIdx] * tileStride
+          offset_val = (vIdx * numOffsets+oIdx) * MIWaveGropuShape[tile01] * tileStride
           offset_val = (rIdx * UnrollStride + offset_val + tP["localReadOffset"]) * tP["bpe"]
           if kernel["LdsBlockSizePerPad%s"%tc] != 0:
             offset_val = offset_val + (offset_val // kernel["LdsBlockSizePerPad%s"%tc]) * kernel["LdsPad%s"%tc] * tP["bpe"]
@@ -7370,7 +7374,7 @@ class KernelWriterAssembly(KernelWriter):
 
         paramTuple = tuple(paramList)
         comment = "L -> Reg lro=%d swapByteOffset=%u ti=%u vIdx=%u rIdx=%u oIdx=%u buffer=%u iui=%u" \
-            % (tP["localReadOffset"], tP["localReadSwapByteOffset"], MIWaveGropuShape[tIdx], vIdx, rIdx, oIdx, bufferIdx, iui)
+            % (tP["localReadOffset"], tP["localReadSwapByteOffset"], MIWaveGropuShape[tile01], vIdx, rIdx, oIdx, bufferIdx, iui)
 
         localReadCode.addCode(Code.LocalReadInst(instruction.IssueLatency,instruction.toCodeInst(paramTuple, 0, highBits), comment))
 
@@ -8474,6 +8478,51 @@ class KernelWriterAssembly(KernelWriter):
     # macro tile 1 part
     kStr += inst("s_mul_i32", sgpr(tmpSgpr), kernel["MacroTile1"], sgpr("WorkGroup1"), "wgp1 * MT1")
     kStr += inst("v_add_u32", vgpr(tid1), sgpr(tmpSgpr), vgpr(tid1), "coord 1 = (tid0%MI_m) + waveG1*MIB_n + MT1*SG1")
+
+    # calculate unpacked rowStart vgpr
+    if len(packedC1) > 1:
+      # vgprTmp assignments:
+      #   - tmp+0 may be the incoming packed coordinate 1, used on replay too
+      #   - tmp+1 is DIV output
+      #   - tmp+2 is scratch
+      #   - tmp+3 holds thread rowStart free1 offset
+      kStr += "\n"
+      tmpV0 = self.vgprPool.checkOut(4)
+      tmpV1 = tmpV0 + 1
+      tmpV2 = tmpV0 + 2
+      tmpV3 = tmpV0 + 3
+      storeChar = 'C'
+
+      assert(kernel["LdcEqualsLdd"])
+      kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tid1),  "copy coord1 then unpack")
+      for i,idx in enumerate(packedC1[:-1]):
+        idxChar= globalParameters["IndexChars"][idx]
+        kStr += self.comment1("extract %s"%self.sizeRef(idx))
+        kStr += "V_MAGIC_DIV %s, %s, %s, %s, %s\n" % \
+                 (tmpV1, vgpr(tmpV0), sgpr("MagicNumberSize%s"%idxChar), \
+                  sgpr("MagicShiftSize%s"%idxChar), sgpr("MagicAbitSize%s"%idxChar) if kernel["MagicDivAlg"]==2 else "0")
+        kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), self.sizeRef(idx), "remainder part 1")
+        kStr += inst("_v_sub_u32", vgpr(tmpV2), vgpr(tmpV0), vgpr(tmpV2), "remainder part 2")
+        if i==0:
+          kStr += inst("v_mul_lo_u32", vgpr(tmpV3), vgpr(tmpV2), \
+                    self.strideRef(storeChar, idx), "addrCalc <- scaled extracted dim")
+        else:
+          kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV2), \
+                    self.strideRef(storeChar, idx), "scale extracted dim")
+          kStr += inst("_v_add_u32", vgpr(tmpV3), vgpr(tmpV3), \
+                    vgpr(tmpV2), "addrCalc += scaled extracted dim ")
+
+        if i < len(packedC1)-2:
+          kStr += inst("v_mov_b32", vgpr(tmpV0), vgpr(tmpV1), \
+                    "Copy remaining bits for next divide")
+
+      kStr += self.comment1("extract final %s"%self.sizeRef(packedC1[-1]))
+      kStr += inst("v_mul_lo_u32", vgpr(tmpV2), vgpr(tmpV1), \
+                self.strideRef(storeChar, packedC1[-1]), "scale final extracted dim")
+      kStr += inst("_v_add_u32", vgpr(self.cinRowPtr), vgpr(tmpV3), \
+                vgpr(tmpV2), "rowStart += scaled extracted dim ")
+
+      self.vgprPool.checkIn(tmpV0)
 
     # release resource
     self.vgprPool.checkIn(dummy)
