@@ -1349,8 +1349,8 @@ class KernelWriterAssembly(KernelWriter):
     PLR = kernel["PrefetchLocalRead"] if kernel["PrefetchLocalRead"] < kernel["LoopIters"] else kernel["LoopIters"] - 1
     valuBlocks = (1+PLR) * kernel["InnerUnroll"]
     if kernel["EnableMatrixInstruction"]:
-      self.numVgprValuAPerBlock = kernel["MIWaveTile"][0] * kernel["ProblemType"]["DataType"].numMIInput() * tPA["bpe"] // self.bpr
-      self.numVgprValuBPerBlock = kernel["MIWaveTile"][1] * kernel["ProblemType"]["DataType"].numMIInput() * tPA["bpe"] // self.bpr
+      self.numVgprValuAPerBlock = kernel["MIWaveTileA"] * kernel["ProblemType"]["DataType"].numMIInput() * tPA["bpe"] // self.bpr
+      self.numVgprValuBPerBlock = kernel["MIWaveTileB"] * kernel["ProblemType"]["DataType"].numMIInput() * tPA["bpe"] // self.bpr
     else:
       self.numVgprValuAPerBlock = kernel["ThreadTileA"]*tPA["bpe"]//self.bpr
       self.numVgprValuBPerBlock = kernel["ThreadTileB"]*tPB["bpe"]//self.bpr
@@ -1950,8 +1950,8 @@ class KernelWriterAssembly(KernelWriter):
     if kernel["EnableMatrixInstruction"]:
       self.numReadPerVectorA = tPA["bpe"] * self.lrvwA // int(tPA["localReadInstruction"].blockWidth * 4)
       self.numReadPerVectorB = tPB["bpe"] * self.lrvwB // int(tPB["localReadInstruction"].blockWidth * 4)
-      numA = kernel["InnerUnroll"]*(kernel["MIWaveTile"][0] * self.numReadPerVectorA) // tPA["localReadInstruction"].numOffsets
-      numB = kernel["InnerUnroll"]*(kernel["MIWaveTile"][1] * self.numReadPerVectorB) // tPB["localReadInstruction"].numOffsets
+      numA = kernel["InnerUnroll"]*(kernel["MIWaveTileA"] * self.numReadPerVectorA) // tPA["localReadInstruction"].numOffsets
+      numB = kernel["InnerUnroll"]*(kernel["MIWaveTileB"] * self.numReadPerVectorB) // tPB["localReadInstruction"].numOffsets
       # wider localread has 2 mode
       # 1. using larger IU to coalesced localread, only half of local reads in 1 iteration
       # 2. using larger PLR to read more iterations, same number local reads in 1 iteration
@@ -5540,11 +5540,11 @@ class KernelWriterAssembly(KernelWriter):
       # replace 0 for differnet thread
       shiftK.addCode(inst("v_cmp_ge_i32", sgpr(tmpSgpr, 2), vgpr(kReg), sgpr(loopCounterName), "check K index >= Size L"))
       for bk in range(0, vgprPerInput):
-        for a in range(0, kernel["MIWaveTile"][0]):
+        for a in range(0, kernel["MIWaveTileA"]):
           for iui in range(0, innerUnroll):
             aStr = vgpr("ValuA_X%u_I%u+%u+%u" % (m, iui, a*vgprPerInput, bk), 1)
             shiftK.addCode(inst("v_cndmask_b32", aStr, aStr, hex(0), sgpr(tmpSgpr, 2), "set 0 if K_idx >= sizeL"))
-        for b in range(0, kernel["MIWaveTile"][1]):
+        for b in range(0, kernel["MIWaveTileB"]):
           for iui in range(0, innerUnroll):
             bStr = vgpr("ValuB_X%u_I%u+%u+%u" % (m, iui, b*vgprPerInput, bk), 1)
             shiftK.addCode(inst("v_cndmask_b32", bStr, bStr, hex(0), sgpr(tmpSgpr, 2), "set 0 if K_idx >= sizeL"))
@@ -5559,7 +5559,7 @@ class KernelWriterAssembly(KernelWriter):
         shiftK.addCode(inst("s_and_b32",    sgpr(tmpSgpr+2), sgpr(loopCounterName), numMIInput-1, "get inputs for edge thread"))
         shiftK.addCode(inst("s_sub_u32",    sgpr(tmpSgpr+2), numMIInput, sgpr(tmpSgpr+2), "use shift to fill 0 for outside element"))
         shiftK.addCode(inst("s_lshl_b32",   sgpr(tmpSgpr+2), sgpr(tmpSgpr+2), log2(shiftPerElement), "use shift to fill 0 for outside element"))
-        for a in range(0, kernel["MIWaveTile"][0]):
+        for a in range(0, kernel["MIWaveTileA"]):
           for iui in range(0, innerUnroll):
             iuiA_new = (iui//self.numReadsIterCoalescedA)*self.numReadsIterCoalescedA
             iuiA_new_offset = iui%self.numReadsIterCoalescedA*vgprPerInput
@@ -5569,7 +5569,7 @@ class KernelWriterAssembly(KernelWriter):
             for bk in range(0, vgprPerInput):
               aStr  = vgpr("ValuA_X%u_I%u+%u+%u+%u+%u" % (vgprBufferA_new, iuiA_new, a_new, vgprBufferA_new_offset, iuiA_new_offset, bk), 1)
               shiftK.addCode(inst("v_cndmask_b32", aStr, aStr, vgpr(abReg+bk), sgpr(tmpSgpr, 2), ""))
-        for b in range(0, kernel["MIWaveTile"][1]):
+        for b in range(0, kernel["MIWaveTileB"]):
           for iui in range(0, innerUnroll):
             iuiB_new = (iui//self.numReadsIterCoalescedB)*self.numReadsIterCoalescedB
             iuiB_new_offset = iui%self.numReadsIterCoalescedB*vgprPerInput

@@ -2293,6 +2293,9 @@ class Solution:
       state["SubGroupB"] = state["SubGroup1"]
       state["MacroTileA"] = state["MacroTile0"]
       state["MacroTileB"] = state["MacroTile1"]
+      if state["EnableMatrixInstruction"]:
+        state["MIWaveTileA"] = state["MIWaveTile"][0]
+        state["MIWaveTileB"] = state["MIWaveTile"][1]
     else:
       state["ThreadTileB"] = state["ThreadTile0"]
       state["ThreadTileA"] = state["ThreadTile1"]
@@ -2300,6 +2303,9 @@ class Solution:
       state["SubGroupA"] = state["SubGroup1"]
       state["MacroTileB"] = state["MacroTile0"]
       state["MacroTileA"] = state["MacroTile1"]
+      if state["EnableMatrixInstruction"]:
+        state["MIWaveTileA"] = state["MIWaveTile"][1]
+        state["MIWaveTileB"] = state["MIWaveTile"][0]
 
     Solution.checkAndAssignWaveSeparateGlobalRead(state, 'A')
     Solution.checkAndAssignWaveSeparateGlobalRead(state, 'B')
