@@ -219,6 +219,12 @@ class Convolution:
       nidx = i ; i+=1
       kidx = i ; i+=1
       sumIdx = i
+    elif formatD in ("CHWN", "CDHWN"):
+      i = 0
+      nidx = i ; i+=1
+      sidx = i ; i+=len(sdims)
+      kidx = i ; i+=1
+      sumIdx = i
     else:
       raise RuntimeError ("unknown formatD '%s'"%formatD)
 
@@ -251,6 +257,8 @@ class Convolution:
       self.registerA( [RegDim(nidx,Fbs.Batch,ndim)] + self.spatialRegDims + self.filterRegDims + chinRegDim )
     elif formatA in ("CNHW", "CNDHW"):
       self.registerA( chinRegDim + [RegDim(nidx,Fbs.Batch,ndim)] + self.spatialRegDims + self.filterRegDims )
+    elif formatA in ("CHWN", "CDHWN"):
+      self.registerA( chinRegDim + self.spatialRegDims + self.filterRegDims + [RegDim(nidx,Fbs.Batch,ndim)] )
     else:
       raise RuntimeError ("unknown formatA '%s'"%formatA)
 
@@ -279,6 +287,9 @@ class Convolution:
     elif nonFilterDims[-1].dim==cdim:
       setStride = True
       cdim.strideA = 1
+    elif nonFilterDims[-1].dim==ndim:
+      setStride = True
+      ndim.strideA = 1
 
     if self.filterRegDims and self.regDimsA[-1].dim == self.filterRegDims[-1].dim:
       if self.filterRegDims[-1].dim.shortChar in self.ValidLowestFilterDim:
