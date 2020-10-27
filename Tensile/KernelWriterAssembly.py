@@ -8252,7 +8252,7 @@ class KernelWriterAssembly(KernelWriter):
       if i == kernel["ProblemType"]["Index0"]:
         # Used if the output is transposed?
         addToSrd = False
-      elif i == kernel["ProblemType"]["Index1"] and not isPackedIndex(kernel, i):
+      elif i == kernel["ProblemType"]["Index1"] and len(kernel["PackedC1IndicesX"]) == 1:
         coord = sgpr(wgMT1)
         addToSrd = True
       elif i != kernel["ProblemType"]["Index0"] and i != kernel["ProblemType"]["Index1"] and not isPackedIndex(kernel, i):
