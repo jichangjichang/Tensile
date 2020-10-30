@@ -1458,10 +1458,10 @@ class ExactDict(Problem):
           except AttributeError:
             None
 
-      for (tc) in ("A", "B"):
-        for p in zp[tc]:
-          if p[2] == -1 or p[3]==-1:
-            raise RuntimeError ("padStart/padEnd for %s must be specified in problem-type or problem - can't be left -1/TBD" % zp[tc])
+      #for (tc) in ("A", "B"):
+      #  for p in zp[tc]:
+      #    if p[2] == -1 or p[3]==-1:
+      #      raise RuntimeError ("padStart/padEnd for %s must be specified in problem-type or problem - can't be left -1/TBD" % zp[tc])
 
       self.zeroPadA = zp['A']
       self.zeroPadB = zp['B']
@@ -3251,8 +3251,8 @@ class Solution:
     # likely have more performant options.
     for tc in ('A', 'B'):
       if problemType["ZeroPad%s"%tc] and state["KernelLanguage"] == "Assembly":
-        if state["GlobalLoadVectorWidth%s"%tc] != 1:
-          reject(state, "asm ZeroPad requires GlobalLoadVectorWidth==1")
+        #if state["GlobalLoadVectorWidth%s"%tc] != 1:
+        #  reject(state, "asm ZeroPad requires GlobalLoadVectorWidth==1")
         if not bufferLoad:
           reject(state, "asm ZeroPad requires BufferLoad")
 
