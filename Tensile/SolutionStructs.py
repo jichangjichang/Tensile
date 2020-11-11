@@ -604,7 +604,10 @@ class Convolution:
       try:
         pos = self.convolutionDims[chr(ord('X')+fi)].idx
         sizes[pos] = filterValue
-        astrides[pos] = pcc.dilation[0] if fi==0 else pcc.spatial[fi-1]*pcc.dilation[fi]
+        if self.regDimsA[0].dim.shortChar == 'C':
+          astrides[pos] = pcc.dilation[0]*c if fi==0 else pcc.spatial[fi-1]*pcc.dilation[fi]*c
+        else:
+          astrides[pos] = pcc.dilation[0] if fi==0 else pcc.spatial[fi-1]*pcc.dilation[fi]
       except KeyError:
         None
 
@@ -619,7 +622,10 @@ class Convolution:
         pos = self.convolutionDims[spatialChars[si]].idx
         sizes[pos] = sout
 
-        astrides[pos]=pcc.stride[0] if si==0 else pcc.spatial[si-1]*pcc.stride[si]
+        if self.regDimsA[0].dim.shortChar == 'C':
+          astrides[pos]=pcc.stride[0]*c if si==0 else pcc.spatial[si-1]*pcc.stride[si]*c
+        else:
+          astrides[pos]=pcc.stride[0] if si==0 else pcc.spatial[si-1]*pcc.stride[si]
 
     assert all(i!=-1 for i in sizes)
 
