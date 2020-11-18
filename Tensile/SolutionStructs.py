@@ -600,14 +600,16 @@ class Convolution:
 
     #print ("spatialOut=", spatialOut, "padStart=", pcc.padStart, "padEnd=", pcc.padEnd)
 
+    if self.regDimsA[0].dim.shortChar == 'C':
+      cScalar = c
+    else:
+      cScalar = 1
+
     for fi,filterValue in enumerate(pcc.fil):
       try:
         pos = self.convolutionDims[chr(ord('X')+fi)].idx
         sizes[pos] = filterValue
-        if self.regDimsA[0].dim.shortChar == 'C':
-          astrides[pos] = pcc.dilation[0]*c if fi==0 else pcc.spatial[fi-1]*pcc.dilation[fi]*c
-        else:
-          astrides[pos] = pcc.dilation[0] if fi==0 else pcc.spatial[fi-1]*pcc.dilation[fi]
+        astrides[pos] = pcc.dilation[0]*cScalar if fi==0 else pcc.spatial[fi-1]*pcc.dilation[fi]*cScalar
       except KeyError:
         None
 
@@ -615,17 +617,13 @@ class Convolution:
       spatialName="DHW"[3-self.formatNumSpatialDims:]
       pos=self.convolutionDims[spatialName].idx
       sizes[pos] = reduce((lambda x, y: x * y), spatialOut) # product of all spatial dimes
-      astrides[pos] = pcc.stride[0]
+      astrides[pos] = pcc.stride[0]*cScalar
     else:
       for si,sout in enumerate(spatialOut):
         spatialChars=['W','H','D']
         pos = self.convolutionDims[spatialChars[si]].idx
         sizes[pos] = sout
-
-        if self.regDimsA[0].dim.shortChar == 'C':
-          astrides[pos]=pcc.stride[0]*c if si==0 else pcc.spatial[si-1]*pcc.stride[si]*c
-        else:
-          astrides[pos]=pcc.stride[0] if si==0 else pcc.spatial[si-1]*pcc.stride[si]
+        astrides[pos]=pcc.stride[0]*cScalar if si==0 else pcc.spatial[si-1]*pcc.stride[si]*cScalar
 
     assert all(i!=-1 for i in sizes)
 
