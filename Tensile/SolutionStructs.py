@@ -333,10 +333,15 @@ class Convolution:
           rv.append([anchorIdx, sumIdx, -1, -1])
     return rv
 
-  def makeZeroPadProblemType(self, zps, padStart, padEnd, cc):
+  def makeZeroPadProblemType(self, zps, padStart, padEnd, c, cc):
     """ Convert padStart/padEnd into the format expected by ProblemType ZeroPad* """
     rv = []
-    ss = 1
+
+    if self.regDimsA[0].dim.shortChar == 'C':
+      ss = c
+    else:
+      ss = 1
+
     for (i,zp) in enumerate(zps):
       (anchorIdx, sumIdx) = zp[:2]
       rv.append([anchorIdx, sumIdx, padStart[i]*ss, padEnd[i]*ss])
@@ -1363,7 +1368,7 @@ class ConvProblem(Problem):
 
     (sizes, stridesA, stridesB) = convolution.makeProblem(e['n'], e['c'], e['k'], self.convConfig)
     zeroPadA = convolution.makeZeroPadProblemType(convolution.problemTypeOut["ZeroPadA"],
-        self.convConfig.padStart, self.convConfig.padEnd, self.convConfig)
+        self.convConfig.padStart, self.convConfig.padEnd, e['c'], self.convConfig)
 
     Problem.__init__(self, sizes, stridesA, stridesB=stridesB, zeroPadA=zeroPadA, count=e['count'])
 
