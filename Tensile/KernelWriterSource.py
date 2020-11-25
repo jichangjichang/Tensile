@@ -698,7 +698,7 @@ class KernelWriterSource(KernelWriter):
           strA = "rA[%d%s]" % (idx0 if self.tPA["tileIdx"] == 0 else idx1, ("+TT%s"%self.tileCharA) if m>0 else "")
           strB = "rB[%d%s]" % (idx1 if self.tPB["tileIdx"] != 0 else idx0, ("+TT%s"%self.tileCharB) if m>0 else "")
           if ((kernel["ThreadTile0"] % 2 == 0) and (kernel["ProblemType"]["DataType"].isHalf())):
-            if a % 2 == 0:
+            if idx0 % 2 == 0:
               kStr += "  TYPE_MAC(%s,%s,%s , " % (strA, strB, strC)
             else:
               kStr += "%s,%s,%s); %s" % (strA, strB, strC, self.endLinePP)
