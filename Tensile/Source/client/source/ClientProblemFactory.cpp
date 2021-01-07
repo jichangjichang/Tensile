@@ -38,6 +38,7 @@ namespace Tensile
             , m_batchIndices(args["batch"].as<ContractionProblem::BatchIndices>())
             , m_boundIndices(args["bound"].as<ContractionProblem::BoundIndices>())
             , m_problemSizes(args["problem-size"].as<std::vector<std::vector<size_t>>>())
+            , m_convProblemSizes(args["convolution-problem"].as<std::vector<std::vector<size_t>>>())
             , m_aZeroPads(args["a-zero-pads"].as<std::vector<std::vector<size_t>>>())
             , m_bZeroPads(args["b-zero-pads"].as<std::vector<std::vector<size_t>>>())
             , m_aType(DataType::Float)
@@ -180,6 +181,9 @@ namespace Tensile
                 rv.back().setKernelLanguage(m_kernelLanguage);
                 rv.back().setDeterministicMode(m_deterministicMode);
                 rv.back().setArithmeticUnit(m_arithmeticUnit);
+
+                if(m_convProblemSizes.size())
+                  rv.back().setConvProblemSizes(m_convProblemSizes[i]);
             }
 
             return rv;

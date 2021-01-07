@@ -567,7 +567,7 @@ class Convolution:
     else:
         return regDim.dim.shortChar
 
-  def makeProblem(self, n, c, k, pcc):
+  def makeProblem(self, e, pcc):
     """
     Generate valid problem dims for specified convolution
     pcc is a ConvolutionConfig class with specified values for this problem.
@@ -581,14 +581,11 @@ class Convolution:
     astrides = [-1]*numDims
     bstrides = [-1]*numDims
 
-    pcc.copyFromRef(self.cc)
-    pcc.checkFullySpecified(self.cc)
+    sizes[self.convolutionDims['N'].idx]=e['n']
+    sizes[self.convolutionDims['C'].idx]=e['c']
+    sizes[self.convolutionDims['K'].idx]=e['k']
 
-    sizes[self.convolutionDims['N'].idx]=n
-    sizes[self.convolutionDims['C'].idx]=c
-    sizes[self.convolutionDims['K'].idx]=k
-
-    astrides[self.convolutionDims['N'].idx] = reduce((lambda x, y: x * y), pcc.spatial) * c
+    astrides[self.convolutionDims['N'].idx] = reduce((lambda x, y: x * y), pcc.spatial) * e['c']
     bstrides[self.convolutionDims['N'].idx] = 0 # broadcast b matrix
 
     if len(pcc.spatial) != self.formatNumSpatialDims:
@@ -768,20 +765,30 @@ class Convolution:
           raise RuntimeError ("dimension %d('%s') expected to be summation dimension" % (idx, dim.shortChar))
 
 
-  def identifier(self):
-    id = self.convolutionType
-    id += "_" + self.tensorAFormat
-    id += "_" + self.tensorBFormat
-    id += "_" + self.tensorDFormat
-    id += "_spatialDims:" + str(self.numSpatialDims)
-    id += "_indices:" + '.'.join([x.dim.shortChar for x in self.indexAssignments])
-    if self.cc.spatial:
-      id += "_spatial:" + "x".join([str(x) for x in self.cc.spatial[::-1]])
-    id += "_filter:" + "x".join([str(x) for x in self.cc.fil[::-1]])
-    id += "_stride:" + "x".join([str(x) for x in self.cc.stride[::-1]])
-    id += "_dilation:" + "x".join([str(x) for x in self.cc.dilation[::-1]])
-    id += "_padStart:" + "x".join([str(x) for x in self.cc.padStart[::-1]])
-    id += "_padEnd:" + "x".join([str(x) for x in self.cc.padEnd[::-1]])
+  def identifier(self, problem = None):
+
+    if problem == None:
+      id = self.convolutionType
+      id += "_" + self.tensorAFormat
+      id += "_" + self.tensorBFormat
+      id += "_" + self.tensorDFormat
+      id += "_spatialDims:" + str(self.numSpatialDims)
+      id += "_indices:" + '.'.join([x.dim.shortChar for x in self.indexAssignments])
+      id += "_filter:"   + "x".join([str(x) for x in self.cc.fil[::-1]])
+      id += "_stride:"   + "x".join([str(x) for x in self.cc.stride[::-1]])
+      id += "_dilation:" + "x".join([str(x) for x in self.cc.dilation[::-1]])
+      id += "_padStart:" + "x".join([str(x) for x in self.cc.padStart[::-1]])
+      id += "_padEnd:"   + "x".join([str(x) for x in self.cc.padEnd[::-1]])
+    else:
+      id = ''
+      problemCC = problem.convConfig
+      id += ",".join([str(x) for x in problemCC.spatial])
+      id += "," + ",".join([str(x) for x in problemCC.fil])
+      id += "," + ",".join([str(x) for x in problemCC.stride])
+      id += "," + ",".join([str(x) for x in problemCC.dilation])
+      id += "," + ",".join([str(x) for x in problemCC.padStart])
+      id += "," + ",".join([str(x) for x in problemCC.padEnd])
+
     return id
 
 
@@ -1371,7 +1378,6 @@ class Problem:
 
     self.zeroPadA = zeroPadA
     self.zeroPadB = zeroPadB
-    self.convConfig = None
     self.count = count
 
   def __str__(self):
@@ -1469,7 +1475,10 @@ class ConvProblem(Problem):
                 groupCount = e['g']
               )
 
-    (sizes, stridesA, stridesB) = convolution.makeProblem(e['n'], e['c'], e['k'], self.convConfig)
+    self.convConfig.copyFromRef(convolution.cc)
+    self.convConfig.checkFullySpecified(convolution.cc)
+
+    (sizes, stridesA, stridesB) = convolution.makeProblem(e, self.convConfig)
     zeroPadA = convolution.makeZeroPadProblemType(convolution.problemTypeOut["ZeroPadA"],
         self.convConfig.padStart, self.convConfig.padEnd, self.convConfig)
 

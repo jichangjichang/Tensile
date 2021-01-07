@@ -464,13 +464,18 @@ namespace Tensile
             TensorDescriptor weightTensor     = convProblem.setupForwardWeights(counts, problem);
             TensorDescriptor outputTensor     = convProblem.setupDataOutput(counts, problem);
 
+            size_t padShift = std::accumulate(problem.aZeroPad().begin(),
+                                              problem.aZeroPad().end(),
+                                              0,
+                                              [](size_t sum, const ContractionProblem::ZeroPad& zp){
+                                              return sum + zp.padStart;} );
             if(db1)
             {
                 std::cout << "SolveCPUConvolution:\n";
                 std::cout << "  formatA=" << convProblem.formatA().description() << "\n";
                 std::cout << "  formatB=" << convProblem.formatB().weights().description() << "\n";
                 std::cout << "  activationTensor=" << activationTensor << "\n";
-                std::cout << " " << counts.description() << "\n";
+                std::cout << "counts:" << std::endl << counts.description() << "\n";
             }
 
             // Loops always traverse in same order but addressing in memory can be flexible to support different activation
@@ -501,9 +506,9 @@ namespace Tensile
                                     {
                                         // Save coordinates from the looop and compute memeory index
                                         // Each component stores in appropriate memory order
-                                        std::vector<size_t> aCoord(activationTensor.dimensions(),
+                                        std::vector<int64_t> aCoord(activationTensor.dimensions(),
                                                                    0);
-                                        std::vector<size_t> bCoord(weightTensor.dimensions(), 0);
+                                        std::vector<int64_t> bCoord(weightTensor.dimensions(), 0);
 
                                         aCoord[convProblem.formatA().batchPosition()]   = n;
                                         aCoord[convProblem.formatA().channelPosition()] = cin;
@@ -541,9 +546,15 @@ namespace Tensile
                                                 assert(filterCoord[fi] == 0);
                                         }
 
-                                        auto aIndex = activationTensor.index(aCoord);
-                                        auto aVal   = Transform<typename Inputs::AType>::Input(
-                                            inputs.a[aIndex], false);
+                                        auto aIndex = activationTensor.index(aCoord) - padShift;
+                                        bool inZeroPads = std::accumulate(problem.aZeroPad().begin(),
+                                                                          problem.aZeroPad().end(),
+                                                                          false,
+                                                                          [&](bool ret, const ContractionProblem::ZeroPad& zp)
+                                                                          {return ret || inZeroPad(problem, zp, activationTensor, aCoord, aCoord[zp.boundPos]);});
+
+                                        auto aVal = inZeroPads ? static_cast<typename Inputs::AType>(0.0):
+                                                                 Transform<typename Inputs::AType>::Input(inputs.a[aIndex], false);
 
                                         auto bIndex = weightTensor.index(bCoord);
                                         auto bVal   = Transform<typename Inputs::BType>::Input(
@@ -562,6 +573,7 @@ namespace Tensile
                                                 << " aIndex=" << aIndex << " bIndex=" << bIndex
                                                 << " aVal=" << aVal << " bVal=" << bVal << "\n";
                                         }
+
                                         value += static_cast<Accumulator>(aVal * bVal);
                                     }
                         std::vector<size_t> dCoord(outputTensor.dimensions(), 0);

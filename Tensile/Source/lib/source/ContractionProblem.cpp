@@ -582,19 +582,18 @@ namespace Tensile
 
     void ContractionProblem::addAZeroPad(const ZeroPad& zp)
     {
-        m_aZeroPads.push_back(zp);
         m_boundIndices[toBoundsPos(zp.boundIndex)].aZeroPad = zp;
-
         m_boundIndices[toBoundsPos(zp.boundIndex)].aZeroPad.anchorPos = toAPos(zp.anchorIndex);
         m_boundIndices[toBoundsPos(zp.boundIndex)].aZeroPad.boundPos  = toAPos(zp.boundIndex);
+        m_aZeroPads.push_back(m_boundIndices[toBoundsPos(zp.boundIndex)].aZeroPad);
     }
 
     void ContractionProblem::addBZeroPad(const ZeroPad& zp)
     {
-        m_bZeroPads.push_back(zp);
         m_boundIndices[toBoundsPos(zp.boundIndex)].bZeroPad           = zp;
         m_boundIndices[toBoundsPos(zp.boundIndex)].bZeroPad.anchorPos = toBPos(zp.anchorIndex);
         m_boundIndices[toBoundsPos(zp.boundIndex)].bZeroPad.boundPos  = toBPos(zp.boundIndex);
+        m_bZeroPads.push_back(m_boundIndices[toBoundsPos(zp.boundIndex)].bZeroPad);
     }
 
     void ContractionProblem::checkPersistentKernelEligibility(ContractionSolution const& solution,

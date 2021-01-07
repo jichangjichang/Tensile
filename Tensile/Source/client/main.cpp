@@ -141,7 +141,7 @@ namespace Tensile
 
                 ("dump-tensors",             po::value<bool>()->default_value(false), "Binary dump tensors instead of printing.")
 
-                ("convolution-identifier",   po::value<std::string>(), "Convolution problem identifer:  ConvolutionType_ActFormat_FilterFormat_Filter_Stride_Dilation_Groups.  Example: ConvolutionBackwardWeights_NCHW_filter:3x3_stride:1x1_dilation:1x1_groups:1.  Batch count, spacial dimensions (H,W,D), Cin and Cout filters are determined by the problem dimensions.")
+                ("convolution-identifier",   po::value<std::string>(), "Convolution problem identifer:  ConvolutionType_ActFormat_FilterFormat.  Example: ConvolutionBackwardWeights_NCHW_KCYX_NCHW.")
                 ("convolution-vs-contraction",  po::value<bool>()->default_value(false), "Compare reference convolution against contraction.")
 
                 ("device-idx",               po::value<int>()->default_value(0), "Device index")
@@ -186,6 +186,10 @@ namespace Tensile
                                                                                   "(prev_dim_stride*prev_dim_size)"
                                                                                   "specifying once applies to all problem sizes, "
                                                                                   "otherwise specify once per problem size.")
+
+                ("convolution-problem",      vector_default_empty<std::string>(), "Specify a Convolution problem size. Comma-separated list of sizes:"
+                                                                                  "Spatial(w,h,d),Filter(x,y,z),Stride(v,u,#),"
+                                                                                  "Dilation(j,l,^),Pad start(q,p,$),Pad end(q_,p_,$_)")
 
                 ("a-zero-pads",                vector_default_empty<std::string>(), "Comma-separated tuple(s) of anchor dim,"
                                                                                   "summation dim, leading pad, trailing pad."
@@ -360,6 +364,8 @@ namespace Tensile
             parse_arg_ints(args, "a-zero-pads");
             parse_arg_ints(args, "b-zero-pads");
 
+            if(args["convolution-vs-contraction"].as<bool>())
+              parse_arg_ints(args, "convolution-problem");
             return args;
         }
 

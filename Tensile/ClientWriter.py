@@ -647,6 +647,8 @@ def writeClientConfigIni(problemSizes, problemType, sourceDir, codeObjectFiles, 
         for problem in problemSizes.problems:
             for key,value in problemSizeParams(problemType, problem):
                 param(key,value)
+            if problemType.convolution and globalParameters["ConvolutionVsContraction"]:
+              param('convolution-problem', problemType.convolution.identifier(problem))
 
         param("device-idx",               globalParameters["Device"])
 

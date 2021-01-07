@@ -232,6 +232,22 @@ namespace Tensile
                 fcount[fi] = problemFilterSize;
             }
         }
+
+        if(problem.convProblemSizes().size())
+        {
+            size_t numSpatial = convProblem.numFormatSpatialDims();
+            std::vector<size_t> convProblemSizes = problem.convProblemSizes();
+            std::vector<size_t>::iterator it = convProblemSizes.begin();
+
+            assert(problem.convProblemSizes().size() == 6 * numSpatial); //convolution problem size must be six times of numSpatial
+
+            spatialCount.assign(it, it + numSpatial);
+            filterCount.assign(it += numSpatial,it + numSpatial);
+            strideCount.assign(it += numSpatial,it + numSpatial);
+            dilationCount.assign(it += numSpatial,it + numSpatial);
+            padStartCount.assign(it += numSpatial,it + numSpatial);
+            padEndCount.assign(it += numSpatial,it + numSpatial);
+        }
     }
 
     std::string ConvolutionProblem::LoopCounts::description() const
@@ -240,7 +256,26 @@ namespace Tensile
         rv << "batchCount=" << batchCount << " coutCount=" << coutCount
            << " scalarCount_dhw=" << scount[2] << "x" << scount[1] << "x" << scount[0]
            << " filterCount_zyx=" << fcount[2] << "x" << fcount[1] << "x" << fcount[0]
-           << " cinCount=" << cinCount;
+           << " cinCount=" << cinCount << std::endl;
+
+        rv << "spatialCount ";
+        for (auto i = spatialCount.begin(); i != spatialCount.end(); ++i)
+          rv << *i << ' ';
+        rv << "filterCount ";
+        for (auto i = filterCount.begin(); i != filterCount.end(); ++i)
+          rv << *i << ' ';
+        rv << "strideCount ";
+        for (auto i = strideCount.begin(); i != strideCount.end(); ++i)
+          rv << *i << ' ';
+        rv << "dilationCount ";
+        for (auto i = dilationCount.begin(); i != dilationCount.end(); ++i)
+          rv << *i << ' ';
+        rv << "padStartCount ";
+        for (auto i = padStartCount.begin(); i != padStartCount.end(); ++i)
+          rv << *i << ' ';
+        rv << "padEndCount ";
+        for (auto i = padEndCount.begin(); i != padEndCount.end(); ++i)
+          rv << *i << ' ';
         return rv.str();
     }
 
@@ -390,15 +425,15 @@ namespace Tensile
             for(int fi = 0; fi < ConvolutionProblem::MaxNumSpatialDims; fi++)
                 if(formatA().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
                 {
-                    activationDims.push_back(counts.fcount[fi]);
-                    activationStri.push_back(fi == 0 ? dilation().at(fi)
-                                                     : dilation().at(fi) * spatials().at(fi - 1));
+                    activationDims.push_back(counts.filterCount[fi]);
+                    activationStri.push_back(fi == 0 ? counts.dilationCount[fi]
+                                                     : counts.dilationCount[fi] * counts.spatialCount[fi - 1]);
                 }
             for(int si = 0; si < formatA().spatialPositions().size(); si++)
             {
-                activationDims.push_back(counts.scount[si]);
-                activationStri.push_back(si == 0 ? stride().at(si)
-                                                 : stride().at(si) * spatials().at(si - 1));
+                activationDims.push_back(counts.scount[si] );
+                activationStri.push_back(si == 0 ? counts.strideCount[si]
+                                                 : counts.strideCount[si] * counts.spatialCount[si - 1]);
             }
             activationDims.push_back(problem.a().sizes()[formatA().channelPosition()]);
             activationStri.push_back(-1);
@@ -406,7 +441,7 @@ namespace Tensile
             batchStride = problem.a().sizes()[formatA().channelPosition()];
             for(int si = 0; si < m_numFormatSpatialDims; si++)
             {
-                batchStride *= spatials().at(si);
+                batchStride *= counts.spatialCount[si];
             }
             activationStri.push_back(batchStride);
             break;

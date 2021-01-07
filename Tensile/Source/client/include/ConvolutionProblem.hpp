@@ -173,6 +173,13 @@ namespace Tensile
             size_t              coutCount;
             std::vector<size_t> scount;
             std::vector<size_t> fcount;
+            //convolution
+            std::vector<size_t> spatialCount;//whd
+            std::vector<size_t> filterCount;//xyz
+            std::vector<size_t> strideCount;//vu#
+            std::vector<size_t> dilationCount;//jl^
+            std::vector<size_t> padStartCount;//qp$
+            std::vector<size_t> padEndCount;//q_p_$_
         };
 
         ConvolutionProblem() {}
@@ -233,7 +240,10 @@ namespace Tensile
         {
             return m_operationIdentifier;
         }
-
+        size_t numFormatSpatialDims() const
+        {
+            return m_numFormatSpatialDims;
+        }
     private:
         //! ConvolutionForward, ConvolutionBackwardData, ConvolutionBackwardWeights
         std::string m_operationIdentifier;

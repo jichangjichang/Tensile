@@ -335,6 +335,15 @@ namespace Tensile
             return m_problemStrides;
         }
 
+        std::vector<size_t> const& convProblemSizes() const
+        {
+            return m_convProblemSizes;
+        }
+        void setConvProblemSizes(std::vector<size_t> &convProblemSizes)
+        {
+            m_convProblemSizes.assign(convProblemSizes.begin(),convProblemSizes.end());
+        }
+
         void setAlphaType(DataType type)
         {
             m_alphaType = type;
@@ -589,6 +598,7 @@ namespace Tensile
 
         std::vector<size_t> m_problemSizes;
         std::vector<size_t> m_problemStrides;
+        std::vector<size_t> m_convProblemSizes;
 
         bool   m_transposeC01;
         double m_beta;
