@@ -446,7 +446,7 @@ namespace Tensile
         // Assume packed.
         template <typename Inputs, typename Accumulator>
         void ReferenceSolution<Inputs, Accumulator>::SolveCPUConvolution(
-            ConvolutionProblem const& convProblem,
+            ConvolutionProblem & convProblem,
             ContractionProblem const& problem,
             Inputs const&             inputs)
         {
@@ -599,7 +599,7 @@ namespace Tensile
                     }
         }
 
-        void SolveCPUConvolution(ConvolutionProblem const& convProblem,
+        void SolveCPUConvolution(ConvolutionProblem & convProblem,
                                  ContractionProblem const& problem,
                                  ContractionInputs&        inputs)
         {

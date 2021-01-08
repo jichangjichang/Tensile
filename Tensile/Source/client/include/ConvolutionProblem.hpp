@@ -165,7 +165,7 @@ namespace Tensile
             LoopCounts()
                 : scount(MaxNumSpatialDims, 1)
                 , fcount(MaxNumSpatialDims, 1){};
-            void                setupForData(ConvolutionProblem const& convProblem,
+            void                setupForData(ConvolutionProblem & convProblem,
                                              ContractionProblem const& problem);
             std::string         description() const;
             size_t              batchCount;
@@ -185,6 +185,7 @@ namespace Tensile
         ConvolutionProblem() {}
 
         void             FromIdentifier(std::string identifier);
+        void             setupFormat(std::vector<size_t>& filters);
         TensorDescriptor setupDataActivation(LoopCounts const&         counts,
                                              ContractionProblem const& problem) const;
         TensorDescriptor setupDataOutput(LoopCounts const&         counts,
@@ -192,23 +193,6 @@ namespace Tensile
         TensorDescriptor setupForwardWeights(LoopCounts const&         counts,
                                              ContractionProblem const& problem) const;
         void             validate(const ContractionProblem& problem) const;
-
-        const std::vector<size_t> spatials() const
-        {
-            return m_spatials;
-        };
-        const std::vector<size_t> filter() const
-        {
-            return m_filters;
-        };
-        const std::vector<size_t> stride() const
-        {
-            return m_strides;
-        };
-        const std::vector<size_t> dilation() const
-        {
-            return m_dilations;
-        };
 
         const ActivationFormat& formatA() const
         {
@@ -228,12 +212,6 @@ namespace Tensile
         {
             return m_numSpatialDims;
         }
-        //! number of filter summation dimensions.  (filter=1 does not require
-        //! dedicated sum dim)
-        size_t numFilterDims() const
-        {
-            return m_numFilterDims;
-        }
 
         std::string        description() const;
         std::string const& operationIdentifier() const
@@ -247,18 +225,12 @@ namespace Tensile
     private:
         //! ConvolutionForward, ConvolutionBackwardData, ConvolutionBackwardWeights
         std::string m_operationIdentifier;
-
-        //! 0,1,2 order is W,H,D(act) or X,Y,Z(weights)
-        std::vector<size_t> m_spatials;
-        std::vector<size_t> m_filters;
-        std::vector<size_t> m_strides;
-        std::vector<size_t> m_dilations;
-        std::vector<size_t> m_padStart;
-        std::vector<size_t> m_padEnd;
+        std::string m_AIdentifier;
+        std::string m_BIdentifier;
+        std::string m_DIdentifier;
 
         size_t m_groups = 1;
 
-        size_t m_numFilterDims        = 0;
         size_t m_numSpatialDims       = 0;
         size_t m_numFormatSpatialDims = 0;
 

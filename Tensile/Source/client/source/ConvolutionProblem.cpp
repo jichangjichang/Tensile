@@ -33,7 +33,7 @@ namespace Tensile
 {
     const size_t ConvolutionProblem::InvalidPos = -1;
     ConvolutionProblem::ActivationFormat::ActivationFormat()
-        : m_filterPositions(MaxNumSpatialDims, 0)
+        : m_filterPositions(MaxNumSpatialDims, InvalidPos)
     {
     }
     void ConvolutionProblem::ActivationFormat::FromIdentifier(std::string identifier,
@@ -57,6 +57,7 @@ namespace Tensile
                     else
                         m_filterPositions[fi] = InvalidPos;
                 }
+            m_spatialPositions.clear();
             for(auto si = 0; si < numSpatialDims; si++)
                 m_spatialPositions.push_back(position++);
 
@@ -134,7 +135,7 @@ namespace Tensile
     }
 
     ConvolutionProblem::WeightFormat::WeightFormat()
-        : m_filterPositions(MaxNumSpatialDims, 0)
+        : m_filterPositions(MaxNumSpatialDims, InvalidPos)
     {
     }
 
@@ -204,9 +205,28 @@ namespace Tensile
     }
 
     // Setup for forward or backward data
-    void ConvolutionProblem::LoopCounts::setupForData(ConvolutionProblem const& convProblem,
+    void ConvolutionProblem::LoopCounts::setupForData(ConvolutionProblem & convProblem,
                                                       ContractionProblem const& problem)
     {
+
+        if(problem.convProblemSizes().size())
+        {
+            size_t numSpatial = convProblem.numFormatSpatialDims();
+            std::vector<size_t> convProblemSizes = problem.convProblemSizes();
+            std::vector<size_t>::iterator it = convProblemSizes.begin();
+
+            fcount.assign(it + numSpatial,it + 2*numSpatial);
+            assert(problem.convProblemSizes().size() == 6 * numSpatial); //convolution problem size must be six times of numSpatial
+
+            spatialCount.assign(it, it + numSpatial);
+            filterCount.assign(it += numSpatial,it + numSpatial);
+            strideCount.assign(it += numSpatial,it + numSpatial);
+            dilationCount.assign(it += numSpatial,it + numSpatial);
+            padStartCount.assign(it += numSpatial,it + numSpatial);
+
+        }
+        convProblem.setupFormat(filterCount);
+
         batchCount = problem.a().sizes()[convProblem.formatA().batchPosition()];
         cinCount   = problem.a().sizes()[convProblem.formatA().channelPosition()];
         coutCount  = problem.b().sizes()[convProblem.formatB().weights().coutPosition()];
@@ -215,38 +235,6 @@ namespace Tensile
             auto       spatialPositionA   = convProblem.formatA().spatialPositions()[si];
             auto const problemSpatialSize = problem.a().sizes()[spatialPositionA];
             scount[si]                    = problemSpatialSize;
-        }
-
-        // Setup filter counts, translate -1 to the filter dim from problem size
-        // fcount[0] is X
-        for(int fi = 0; fi < ConvolutionProblem::MaxNumSpatialDims; fi++)
-        {
-            auto const filterPositionA = convProblem.formatA().filterPositions()[fi];
-            if(filterPositionA != ConvolutionProblem::InvalidPos)
-            {
-                auto const convFilterSize
-                    = convProblem.filter()[fi]; // filter from convolution-identifier
-                auto const problemFilterSize = problem.a().sizes()[filterPositionA];
-                if(convFilterSize != -1)
-                    assert(convFilterSize == problemFilterSize);
-                fcount[fi] = problemFilterSize;
-            }
-        }
-
-        if(problem.convProblemSizes().size())
-        {
-            size_t numSpatial = convProblem.numFormatSpatialDims();
-            std::vector<size_t> convProblemSizes = problem.convProblemSizes();
-            std::vector<size_t>::iterator it = convProblemSizes.begin();
-
-            assert(problem.convProblemSizes().size() == 6 * numSpatial); //convolution problem size must be six times of numSpatial
-
-            spatialCount.assign(it, it + numSpatial);
-            filterCount.assign(it += numSpatial,it + numSpatial);
-            strideCount.assign(it += numSpatial,it + numSpatial);
-            dilationCount.assign(it += numSpatial,it + numSpatial);
-            padStartCount.assign(it += numSpatial,it + numSpatial);
-            padEndCount.assign(it += numSpatial,it + numSpatial);
         }
     }
 
@@ -279,6 +267,29 @@ namespace Tensile
         return rv.str();
     }
 
+    void ConvolutionProblem::setupFormat(std::vector<size_t>& filters)
+    {
+        if(m_operationIdentifier == "ConvolutionForward"
+           || m_operationIdentifier == "ConvolutionBackwardData")
+        {
+            m_formatA.FromIdentifier(m_AIdentifier, m_numFormatSpatialDims, m_numSpatialDims, &filters);
+            m_formatB.weightsW().FromIdentifier(m_BIdentifier,
+                                                m_operationIdentifier == "ConvolutionBackwardData",
+                                                m_numFormatSpatialDims,
+                                                &filters);
+            m_formatD.activationW().FromIdentifier(
+                m_DIdentifier, m_numFormatSpatialDims, m_numSpatialDims, nullptr);
+        }
+        else if(m_operationIdentifier == "ConvolutionBackwardWeights")
+        {
+        }
+        else
+        {
+            throw std::runtime_error(std::string("Invalid operation identifier:")
+                                     + m_operationIdentifier);
+        }
+    }
+
     void ConvolutionProblem::FromIdentifier(std::string identifier)
     {
         // example identifier:
@@ -293,6 +304,9 @@ namespace Tensile
                 + identifier);
 
         m_operationIdentifier       = parts[0];
+        m_AIdentifier       = parts[1];
+        m_BIdentifier       = parts[2];
+        m_DIdentifier       = parts[3];
         size_t formatNumSpatialDims = parts[1].size() - 2;
         m_numFormatSpatialDims      = formatNumSpatialDims;
 
@@ -303,71 +317,10 @@ namespace Tensile
             boost::split(flags, *part, boost::algorithm::is_any_of(":"));
             assert(flags.size() == 2); // must be key:value pair
 
-            m_spatials.resize(MaxNumSpatialDims, -1);
-            m_filters.resize(MaxNumSpatialDims, 1);
-            m_strides.resize(MaxNumSpatialDims, 1);
-            m_dilations.resize(MaxNumSpatialDims, 1);
-            m_padStart.resize(MaxNumSpatialDims, 0);
-            m_padEnd.resize(MaxNumSpatialDims, 0);
-
             if(flags[0] == "spatialDims")
                 m_numSpatialDims = boost::lexical_cast<size_t>(flags[1]);
             else if(flags[0] == "indices")
             {
-            }
-            else if(flags[0] == "spatial")
-            {
-                boost::split(xvals, flags[1], boost::algorithm::is_any_of("x"));
-                int i = formatNumSpatialDims;
-                for(auto x : xvals)
-                {
-                    m_spatials.at(--i) = boost::lexical_cast<size_t>(x);
-                }
-            }
-            else if(flags[0] == "filter")
-            {
-                boost::split(xvals, flags[1], boost::algorithm::is_any_of("x"));
-                int i = formatNumSpatialDims;
-                for(auto x : xvals)
-                {
-                    m_filters.at(--i) = boost::lexical_cast<size_t>(x);
-                }
-            }
-            else if(flags[0] == "stride")
-            {
-                boost::split(xvals, flags[1], boost::algorithm::is_any_of("x"));
-                int i = formatNumSpatialDims;
-                for(auto x : xvals)
-                {
-                    m_strides.at(--i) = boost::lexical_cast<size_t>(x);
-                }
-            }
-            else if(flags[0] == "dilation")
-            {
-                boost::split(xvals, flags[1], boost::algorithm::is_any_of("x"));
-                int i = formatNumSpatialDims;
-                for(auto x : xvals)
-                {
-                    m_dilations.at(--i) = boost::lexical_cast<size_t>(x);
-                }
-            }
-            else if(flags[0] == "padStart")
-            {
-                boost::split(xvals, flags[1], boost::algorithm::is_any_of("x"));
-                int i = formatNumSpatialDims;
-                for(auto x : xvals)
-                {
-                    m_padStart.at(--i) = boost::lexical_cast<size_t>(x);
-                }
-            }
-            else if(flags[0] == "padEnd")
-            {
-                boost::split(xvals, flags[1], boost::algorithm::is_any_of("x"));
-                int i = formatNumSpatialDims;
-                for(auto x : xvals)
-                {
-                    m_padEnd.at(--i) = boost::lexical_cast<size_t>(x);
-                }
             }
             else if(flags[0] == "groups")
             {
@@ -380,34 +333,6 @@ namespace Tensile
 
             std::cout << flags[0] << ":::" << flags[1] << "\n";
         };
-
-        // Compute number of expected filter summation dims (for non-unit filters)
-        m_numFilterDims = 0; // TODO-.backward-weights
-        for(auto f : m_filters)
-        {
-            if(f != 1)
-                m_numFilterDims++;
-        }
-
-        if(m_operationIdentifier == "ConvolutionForward"
-           || m_operationIdentifier == "ConvolutionBackwardData")
-        {
-            m_formatA.FromIdentifier(parts[1], formatNumSpatialDims, m_numSpatialDims, &m_filters);
-            m_formatB.weightsW().FromIdentifier(parts[2],
-                                                m_operationIdentifier == "ConvolutionBackwardData",
-                                                formatNumSpatialDims,
-                                                &m_filters);
-            m_formatD.activationW().FromIdentifier(
-                parts[3], formatNumSpatialDims, m_numSpatialDims, nullptr);
-        }
-        else if(m_operationIdentifier == "ConvolutionBackwardWeights")
-        {
-        }
-        else
-        {
-            throw std::runtime_error(std::string("Invalid operation identifier:")
-                                     + m_operationIdentifier);
-        }
     }
 
     TensorDescriptor
@@ -643,12 +568,6 @@ namespace Tensile
         std::ostringstream rv;
 
         rv << operationIdentifier();
-
-        rv << "_filter:" << delimitedVector(m_filters, "x");
-        rv << "_stride:" << delimitedVector(m_strides, "x");
-        rv << "_dilation:" << delimitedVector(m_dilations, "x");
-        rv << "_padStart:" << delimitedVector(m_padStart, "x");
-        rv << "_padEnd:" << delimitedVector(m_padEnd, "x");
 
         return rv.str();
     }

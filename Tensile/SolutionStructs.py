@@ -774,11 +774,6 @@ class Convolution:
       id += "_" + self.tensorDFormat
       id += "_spatialDims:" + str(self.numSpatialDims)
       id += "_indices:" + '.'.join([x.dim.shortChar for x in self.indexAssignments])
-      id += "_filter:"   + "x".join([str(x) for x in self.cc.fil[::-1]])
-      id += "_stride:"   + "x".join([str(x) for x in self.cc.stride[::-1]])
-      id += "_dilation:" + "x".join([str(x) for x in self.cc.dilation[::-1]])
-      id += "_padStart:" + "x".join([str(x) for x in self.cc.padStart[::-1]])
-      id += "_padEnd:"   + "x".join([str(x) for x in self.cc.padEnd[::-1]])
     else:
       id = ''
       problemCC = problem.convConfig
