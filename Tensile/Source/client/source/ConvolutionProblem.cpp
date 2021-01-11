@@ -343,6 +343,7 @@ namespace Tensile
         std::vector<size_t>  activationDims;
         std::vector<int64_t> activationStri;
         int64_t              batchStride;
+        int64_t              realSpatialSize = 1;
 
         switch(formatA().format())
         {
@@ -360,14 +361,12 @@ namespace Tensile
                 activationStri.push_back(si == 0 ? counts.strideCount[si]
                                                  : counts.strideCount[si] * counts.spatialCount[si - 1]);
             }
-            activationDims.push_back(problem.a().sizes()[formatA().channelPosition()]);
-            activationStri.push_back(-1);
-            activationDims.push_back(problem.a().sizes()[formatA().batchPosition()]);
-            batchStride = problem.a().sizes()[formatA().channelPosition()];
             for(int si = 0; si < m_numFormatSpatialDims; si++)
-            {
-                batchStride *= counts.spatialCount[si];
-            }
+                realSpatialSize *= counts.spatialCount[si];
+            activationDims.push_back(problem.a().sizes()[formatA().channelPosition()]);
+            activationStri.push_back(realSpatialSize);
+            activationDims.push_back(problem.a().sizes()[formatA().batchPosition()]);
+            batchStride = realSpatialSize * problem.a().sizes()[formatA().channelPosition()];
             activationStri.push_back(batchStride);
             break;
         case ConvolutionProblem::TensorFormat::NHWC:
