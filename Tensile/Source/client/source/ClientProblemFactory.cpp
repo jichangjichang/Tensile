@@ -38,7 +38,6 @@ namespace Tensile
             , m_batchIndices(args["batch"].as<ContractionProblem::BatchIndices>())
             , m_boundIndices(args["bound"].as<ContractionProblem::BoundIndices>())
             , m_problemSizes(args["problem-size"].as<std::vector<std::vector<size_t>>>())
-            , m_convProblemSizes(args["convolution-problem"].as<std::vector<std::vector<size_t>>>())
             , m_aZeroPads(args["a-zero-pads"].as<std::vector<std::vector<size_t>>>())
             , m_bZeroPads(args["b-zero-pads"].as<std::vector<std::vector<size_t>>>())
             , m_aType(DataType::Float)
@@ -91,6 +90,9 @@ namespace Tensile
                 m_betaType = args["beta-type"].as<DataType>();
 
             m_beta = DataInitialization::getValue<double>(args["init-beta"].as<InitMode>());
+
+            if(args["convolution-vs-contraction"].as<bool>())
+                m_convProblemSizes = args["convolution-problem"].as<std::vector<std::vector<size_t>>>();
 
             m_problems = createProblems();
         }
