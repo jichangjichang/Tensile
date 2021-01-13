@@ -465,6 +465,15 @@ class YamlBuilder:
 
         doc = cls.Header(debug=False)
 
+        #Enable ConvolutionVsContraction for all NCHW forward tests
+        if conv.convolutionType == 'ConvolutionForward':
+          isNCHW = True
+          for (key,val) in conv.config.items():
+            if key == "TensorAFormat" and ('CN' in val or 'WC' in val):
+              isNCHW = False
+          if isNCHW:
+            doc["GlobalParameters"]["ConvolutionVsContraction"] = 1
+
         if generateConvFormat:
             tensileProblemType = {
                 "OperationType": conv.convolutionType,
