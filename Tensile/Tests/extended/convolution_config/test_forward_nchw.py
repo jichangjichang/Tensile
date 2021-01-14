@@ -238,6 +238,7 @@ def test_nchw_dilation2x2(tensile_state, run_convolution_level):
     z={} # problemType definition
     conv = Convolution(z, 'ConvolutionForward',
               config={'TensorAFormat': 'NCHW',
+                      'Filter': '2x2',
                       'Dilation': '2x2',
                       })
     log.debug(conv.printUsage(z))
