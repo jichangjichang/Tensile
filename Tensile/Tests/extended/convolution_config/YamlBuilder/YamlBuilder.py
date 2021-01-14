@@ -469,7 +469,7 @@ class YamlBuilder:
         if conv.convolutionType == 'ConvolutionForward':
           isNCHW = True
           for (key,val) in conv.config.items():
-            if key == "TensorAFormat" and ('CN' in val or 'WC' in val):
+            if key == "TensorAFormat" and ('NCHW' not in val):
               isNCHW = False
           if isNCHW:
             doc["GlobalParameters"]["ConvolutionVsContraction"] = 1
