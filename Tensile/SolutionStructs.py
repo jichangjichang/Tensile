@@ -402,7 +402,7 @@ class Convolution:
     assert(type(self.packedFilterDims) == int)
     assert(type(self.packedSpatialDims) == int)
     assert(type(self.unrollOnChannel) == int)
-    if not all(i==1 for i in self.cc.dilation[1:]):
+    if not all(i==1 for i in self.cc.dilation[1:]) and not all (i==1 for i in self.cc.fil) :
       self.packedFilterDims = 0
     if not (\
        all(i==1 for i in self.cc.stride[1:]) and \
