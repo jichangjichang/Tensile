@@ -33,7 +33,6 @@ namespace Tensile
 {
     const size_t ConvolutionProblem::InvalidPos = -1;
     ConvolutionProblem::ActivationFormat::ActivationFormat()
-        : m_filterPositions(MaxNumSpatialDims, InvalidPos)
     {
     }
     void ConvolutionProblem::ActivationFormat::FromIdentifier(std::string identifier,
@@ -43,21 +42,23 @@ namespace Tensile
     {
         // summation dimensions immediately follow the spatial dim(s)
         m_formatIdentifier = identifier;
+        m_filterPositions.clear();
+        m_spatialPositions.clear();
         if(identifier == "NCHW")
         {
             assert(formatNumSpatialDims == 2);
             m_format = TensorFormat::NCHW;
 
             size_t position = 0;
+
             if(filters)
                 for(int fi = 0; fi < filters->size(); fi++)
                 {
                     if((*filters)[fi] != 1)
-                        m_filterPositions[fi] = position++;
+                        m_filterPositions.push_back(position++);
                     else
-                        m_filterPositions[fi] = InvalidPos;
+                        m_filterPositions.push_back(InvalidPos);
                 }
-            m_spatialPositions.clear();
             for(auto si = 0; si < numSpatialDims; si++)
                 m_spatialPositions.push_back(position++);
 
@@ -76,9 +77,9 @@ namespace Tensile
                 for(int fi = 0; fi < filters->size(); fi++)
                 {
                     if((*filters)[fi] != 1)
-                        m_filterPositions[fi] = position++;
+                        m_filterPositions.push_back(position++);
                     else
-                        m_filterPositions[fi] = InvalidPos;
+                        m_filterPositions.push_back(InvalidPos);
                 }
 
             // assume spatial dimensions are collapsed here:
@@ -97,9 +98,9 @@ namespace Tensile
                 for(int fi = 0; fi < filters->size(); fi++)
                 {
                     if((*filters)[fi] != 1)
-                        m_filterPositions[fi] = position++;
+                        m_filterPositions.push_back(position++);
                     else
-                        m_filterPositions[fi] = InvalidPos;
+                        m_filterPositions.push_back(InvalidPos);
                 }
             // assume spatial dimensions are collapsed here:
             std::cout << "FIXME\n";
@@ -120,7 +121,7 @@ namespace Tensile
         std::ostringstream rv;
         rv << m_formatIdentifier << "_"
            << " batchPosition=" << m_batchPosition << " channelPosition=" << m_channelPosition;
-        rv << " spatialPositions[0,1,2]=";
+        rv << " spatialPositions[]=";
         for(auto i = 0; i < m_spatialPositions.size(); i++)
         {
             if(i != 0)
@@ -128,14 +129,18 @@ namespace Tensile
             rv << static_cast<int>(m_spatialPositions[i]);
         }
 
-        rv << " filterPosition[0,1,2]=" << static_cast<int64_t>(m_filterPositions[0]) << ","
-           << static_cast<int64_t>(m_filterPositions[1]) << ","
-           << static_cast<int64_t>(m_filterPositions[2]);
+        rv << " filterPositions[]=";
+        for(auto i = 0; i < m_filterPositions.size(); i++)
+        {
+            if(i != 0)
+                rv << ",";
+            rv << static_cast<int>(m_filterPositions[i]);
+        }
+
         return rv.str();
     }
 
     ConvolutionProblem::WeightFormat::WeightFormat()
-        : m_filterPositions(MaxNumSpatialDims, InvalidPos)
     {
     }
 
@@ -153,6 +158,7 @@ namespace Tensile
             throw std::runtime_error(std::string("Invalid weight format in convolution identifier:")
                                      + identifier);
 
+        m_filterPositions.clear();
         if((identifier == "KCYX" and !transposeCK) || (identifier == "CKYX" and transposeCK))
         {
 
@@ -165,9 +171,9 @@ namespace Tensile
                 for(int fi = 0; fi < filters->size(); fi++)
                 {
                     if((*filters)[fi] != 1)
-                        m_filterPositions[fi] = position++;
+                        m_filterPositions.push_back(position++);
                     else
-                        m_filterPositions[fi] = InvalidPos;
+                        m_filterPositions.push_back(InvalidPos);
                 }
             m_cinPosition  = position++;
             m_coutPosition = position;
@@ -175,16 +181,16 @@ namespace Tensile
         else if((identifier == "CKYX" and !transposeCK) || (identifier == "KCYX" and transposeCK))
         {
             assert(formatNumSpatialDims == 2);
-            size_t filterPosition = 0; // TODO -> change to position
+            size_t position = 0;
             if(filters)
                 for(int fi = 0; fi < filters->size(); fi++)
                 {
                     if((*filters)[fi] != 1)
-                        m_filterPositions[fi] = filterPosition++;
+                        m_filterPositions.push_back(position++);
                     else
-                        m_filterPositions[fi] = InvalidPos;
+                        m_filterPositions.push_back(InvalidPos);
                 }
-            m_coutPosition = filterPosition;
+            m_coutPosition = position;
             m_cinPosition  = m_coutPosition + 1;
         }
         else
@@ -198,9 +204,13 @@ namespace Tensile
         std::ostringstream rv;
         rv << m_formatIdentifier << "_"
            << " coutPosition=" << m_coutPosition << " cinPosition=" << m_cinPosition
-           << " filterPositions=" << static_cast<int64_t>(m_filterPositions[0]) << ","
-           << static_cast<int64_t>(m_filterPositions[1]) << ","
-           << static_cast<int64_t>(m_filterPositions[2]);
+           << " filterPositions[]=";
+           for(auto i = 0; i < m_filterPositions.size(); i++)
+           {
+               if(i != 0)
+                   rv << ",";
+               rv << static_cast<int>(m_filterPositions[i]);
+           }
         return rv.str();
     }
 
@@ -342,7 +352,7 @@ namespace Tensile
         switch(formatA().format())
         {
         case ConvolutionProblem::TensorFormat::NCHW:
-            for(int fi = 0; fi < ConvolutionProblem::MaxNumSpatialDims; fi++)
+            for(int fi = 0; fi < counts.filterCount.size(); fi++)
                 if(formatA().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
                 {
                     activationDims.push_back(counts.filterCount[fi]);
@@ -366,7 +376,7 @@ namespace Tensile
         case ConvolutionProblem::TensorFormat::NHWC:
             assert(0); // need strides
             activationDims.push_back(problem.a().sizes()[formatA().channelPosition()]);
-            for(int fi = 0; fi < ConvolutionProblem::MaxNumSpatialDims; fi++)
+            for(int fi = 0; fi < counts.filterCount.size(); fi++)
                 if(formatA().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
                     activationDims.push_back(counts.filterCount[fi]);
             for(int si = 0; si < formatA().spatialPositions().size(); si++)
@@ -374,7 +384,7 @@ namespace Tensile
             activationDims.push_back(problem.a().sizes()[formatA().batchPosition()]);
         case ConvolutionProblem::TensorFormat::CNHW:
             assert(0); // need strides
-            for(int fi = 0; fi < ConvolutionProblem::MaxNumSpatialDims; fi++)
+            for(int fi = 0; fi < counts.filterCount.size(); fi++)
                 if(formatA().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
                     activationDims.push_back(counts.filterCount[fi]);
             for(int si = 0; si < formatA().spatialPositions().size(); si++)
@@ -433,14 +443,14 @@ namespace Tensile
         switch(formatB().weights().format())
         {
         case ConvolutionProblem::TensorFormat::KCYX:
-            for(int fi = 0; fi < ConvolutionProblem::MaxNumSpatialDims; fi++)
+            for(int fi = 0; fi < counts.filterCount.size(); fi++)
                 if(formatB().weights().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
                     filterDims.push_back(counts.filterCount[fi]);
             filterDims.push_back(problem.b().sizes()[formatB().weights().cinPosition()]);
             filterDims.push_back(problem.b().sizes()[formatB().weights().coutPosition()]);
             break;
         case ConvolutionProblem::TensorFormat::CKYX:
-            for(int fi = 0; fi < ConvolutionProblem::MaxNumSpatialDims; fi++)
+            for(int fi = 0; fi < counts.filterCount.size(); fi++)
                 if(formatB().weights().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
                     filterDims.push_back(counts.filterCount[fi]);
             filterDims.push_back(problem.b().sizes()[formatB().weights().coutPosition()]);
@@ -507,7 +517,7 @@ namespace Tensile
                                }));
         if(m_operationIdentifier == "ConvolutionForward")
         {
-            for(int i = 0; i < ConvolutionProblem::MaxNumSpatialDims; i++)
+            for(int i = 0; i < formatA().filterPositions().size(); i++)
             {
                 auto const filterPositionA = formatA().filterPositions()[i];
                 if(filterPositionA != ConvolutionProblem::InvalidPos)
@@ -518,7 +528,9 @@ namespace Tensile
                                [filterPositionA](const ContractionProblem::BoundIndex& bi) {
                                    return bi.a == filterPositionA;
                                }));
-
+            }
+            for(int i = 0; i < formatB().weights().filterPositions().size(); i++)
+            {
                 auto const filterPositionB = formatB().weights().filterPositions()[i];
                 if(filterPositionB != ConvolutionProblem::InvalidPos)
                     assert(problem.boundIndices().end()

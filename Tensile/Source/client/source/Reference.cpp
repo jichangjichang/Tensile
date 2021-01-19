@@ -522,31 +522,23 @@ namespace Tensile
                                         = spatialCoord[i];
 
                                 // add filters to address calc, if they have non-unit strides:
-                                for(int fi = counts.filterCount.size() - 1;
-                                    fi >= 0;
-                                    fi--)
+                                for(int fi = 0; fi < counts.filterCount.size(); fi++)
                                 {
                                     auto fp = convProblem.formatA().filterPositions()[fi];
                                     if(fp != ConvolutionProblem::InvalidPos)
                                         aCoord[fp] = filterCoord[fi];
-                                    else
-                                        assert(filterCoord[fi] == 0);
                                 }
 
                                 bCoord[convProblem.formatB().weights().coutPosition()]
                                     = cout;
                                 bCoord[convProblem.formatB().weights().cinPosition()] = cin;
-                                for(int fi = counts.filterCount.size() - 1;
-                                    fi >= 0;
-                                    fi--)
+                                for(int fi = 0; fi < counts.filterCount.size(); fi++)
                                 {
                                     auto fp = convProblem.formatB()
                                                   .weights()
                                                   .filterPositions()[fi];
                                     if(fp != ConvolutionProblem::InvalidPos)
                                         bCoord[fp] = filterCoord[fi];
-                                    else
-                                        assert(filterCoord[fi] == 0);
                                 }
 
                                 auto aIndex = activationTensor.index(aCoord) - padShift;
