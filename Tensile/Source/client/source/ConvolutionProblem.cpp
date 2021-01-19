@@ -208,23 +208,18 @@ namespace Tensile
     void ConvolutionProblem::LoopCounts::setupForData(ConvolutionProblem & convProblem,
                                                       ContractionProblem const& problem)
     {
+        size_t numSpatial = convProblem.numFormatSpatialDims();
+        std::vector<size_t> convProblemSizes = problem.convProblemSizes();
+        std::vector<size_t>::iterator it = convProblemSizes.begin();
 
-        if(problem.convProblemSizes().size())
-        {
-            size_t numSpatial = convProblem.numFormatSpatialDims();
-            std::vector<size_t> convProblemSizes = problem.convProblemSizes();
-            std::vector<size_t>::iterator it = convProblemSizes.begin();
+        assert(convProblemSizes.size() == 6 * numSpatial); //convolution problem size must be six times of numSpatial
 
-            fcount.assign(it + numSpatial,it + 2*numSpatial);
-            assert(problem.convProblemSizes().size() == 6 * numSpatial); //convolution problem size must be six times of numSpatial
+        spatialCount.assign(it, it + numSpatial);
+        filterCount.assign(it += numSpatial,it + numSpatial);
+        strideCount.assign(it += numSpatial,it + numSpatial);
+        dilationCount.assign(it += numSpatial,it + numSpatial);
+        padStartCount.assign(it += numSpatial,it + numSpatial);
 
-            spatialCount.assign(it, it + numSpatial);
-            filterCount.assign(it += numSpatial,it + numSpatial);
-            strideCount.assign(it += numSpatial,it + numSpatial);
-            dilationCount.assign(it += numSpatial,it + numSpatial);
-            padStartCount.assign(it += numSpatial,it + numSpatial);
-
-        }
         convProblem.setupFormat(filterCount);
 
         batchCount = problem.a().sizes()[convProblem.formatA().batchPosition()];
@@ -243,7 +238,6 @@ namespace Tensile
         std::ostringstream rv;
         rv << "batchCount=" << batchCount << " coutCount=" << coutCount
            << " scalarCount_dhw=" << scount[2] << "x" << scount[1] << "x" << scount[0]
-           << " filterCount_zyx=" << fcount[2] << "x" << fcount[1] << "x" << fcount[0]
            << " cinCount=" << cinCount << std::endl;
 
         rv << "spatialCount ";
@@ -374,7 +368,7 @@ namespace Tensile
             activationDims.push_back(problem.a().sizes()[formatA().channelPosition()]);
             for(int fi = 0; fi < ConvolutionProblem::MaxNumSpatialDims; fi++)
                 if(formatA().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
-                    activationDims.push_back(counts.fcount[fi]);
+                    activationDims.push_back(counts.filterCount[fi]);
             for(int si = 0; si < formatA().spatialPositions().size(); si++)
                 activationDims.push_back(counts.scount[si]);
             activationDims.push_back(problem.a().sizes()[formatA().batchPosition()]);
@@ -382,7 +376,7 @@ namespace Tensile
             assert(0); // need strides
             for(int fi = 0; fi < ConvolutionProblem::MaxNumSpatialDims; fi++)
                 if(formatA().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
-                    activationDims.push_back(counts.fcount[fi]);
+                    activationDims.push_back(counts.filterCount[fi]);
             for(int si = 0; si < formatA().spatialPositions().size(); si++)
                 activationDims.push_back(counts.scount[si]);
             activationDims.push_back(problem.a().sizes()[formatA().batchPosition()]);
@@ -441,14 +435,14 @@ namespace Tensile
         case ConvolutionProblem::TensorFormat::KCYX:
             for(int fi = 0; fi < ConvolutionProblem::MaxNumSpatialDims; fi++)
                 if(formatB().weights().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
-                    filterDims.push_back(counts.fcount[fi]);
+                    filterDims.push_back(counts.filterCount[fi]);
             filterDims.push_back(problem.b().sizes()[formatB().weights().cinPosition()]);
             filterDims.push_back(problem.b().sizes()[formatB().weights().coutPosition()]);
             break;
         case ConvolutionProblem::TensorFormat::CKYX:
             for(int fi = 0; fi < ConvolutionProblem::MaxNumSpatialDims; fi++)
                 if(formatB().weights().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
-                    filterDims.push_back(counts.fcount[fi]);
+                    filterDims.push_back(counts.filterCount[fi]);
             filterDims.push_back(problem.b().sizes()[formatB().weights().coutPosition()]);
             filterDims.push_back(problem.b().sizes()[formatB().weights().cinPosition()]);
             break;

@@ -163,8 +163,7 @@ namespace Tensile
         struct TENSILE_API LoopCounts
         {
             LoopCounts()
-                : scount(MaxNumSpatialDims, 1)
-                , fcount(MaxNumSpatialDims, 1){};
+                : scount(MaxNumSpatialDims, 1){};
             void                setupForData(ConvolutionProblem & convProblem,
                                              ContractionProblem const& problem);
             std::string         description() const;
@@ -172,7 +171,6 @@ namespace Tensile
             size_t              cinCount;
             size_t              coutCount;
             std::vector<size_t> scount;
-            std::vector<size_t> fcount;
             //convolution
             std::vector<size_t> spatialCount;//whd
             std::vector<size_t> filterCount;//xyz
