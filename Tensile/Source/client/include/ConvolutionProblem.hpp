@@ -1,7 +1,7 @@
 /**
  * MIT License
  *
- * Copyright 2019-2020 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright 2019-2021 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -164,9 +164,9 @@ namespace Tensile
         {
             LoopCounts()
                 : scount(MaxNumSpatialDims, 1){};
-            void                setupForData(ConvolutionProblem const& convProblem,
-                                             ContractionProblem const& problem);
-            void setupFormat(ConvolutionProblem const& convProblem);
+            void                    setupForData(ConvolutionProblem const& convProblem,
+                                                 ContractionProblem const& problem);
+            void                    setupFormat(ConvolutionProblem const& convProblem);
             const ActivationFormat& formatA() const
             {
                 return m_formatA;
@@ -185,12 +185,12 @@ namespace Tensile
             size_t              coutCount;
             std::vector<size_t> scount;
             //convolution
-            std::vector<size_t> spatialCount;//whd
-            std::vector<size_t> filterCount;//xyz
-            std::vector<size_t> strideCount;//vu#
-            std::vector<size_t> dilationCount;//jl^
-            std::vector<size_t> padStartCount;//qp$
-            std::vector<size_t> padEndCount;//q_p_$_
+            std::vector<size_t> spatialCount; //whd
+            std::vector<size_t> filterCount; //xyz
+            std::vector<size_t> strideCount; //vu#
+            std::vector<size_t> dilationCount; //jl^
+            std::vector<size_t> padStartCount; //qp$
+            std::vector<size_t> padEndCount; //q_p_$_
 
             ActivationFormat m_formatA;
             ComboFormat      m_formatB;
@@ -207,7 +207,7 @@ namespace Tensile
                                          ContractionProblem const& problem) const;
         TensorDescriptor setupForwardWeights(LoopCounts const&         counts,
                                              ContractionProblem const& problem) const;
-        void             validate(const ContractionProblem& problem,
+        void             validate(const ContractionProblem&             problem,
                                   const ConvolutionProblem::LoopCounts& counts) const;
 
         //! Number of spatial dims after packing.
@@ -237,6 +237,7 @@ namespace Tensile
         {
             return m_numFormatSpatialDims;
         }
+
     private:
         //! ConvolutionForward, ConvolutionBackwardData, ConvolutionBackwardWeights
         std::string m_operationIdentifier;

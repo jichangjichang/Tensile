@@ -1,7 +1,7 @@
 /**
  * MIT License
  *
- * Copyright 2019-2020 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright 2019-2021 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,9 +32,7 @@
 namespace Tensile
 {
     const size_t ConvolutionProblem::InvalidPos = -1;
-    ConvolutionProblem::ActivationFormat::ActivationFormat()
-    {
-    }
+    ConvolutionProblem::ActivationFormat::ActivationFormat() {}
     void ConvolutionProblem::ActivationFormat::FromIdentifier(std::string identifier,
                                                               size_t      formatNumSpatialDims,
                                                               size_t      numSpatialDims,
@@ -140,9 +138,7 @@ namespace Tensile
         return rv.str();
     }
 
-    ConvolutionProblem::WeightFormat::WeightFormat()
-    {
-    }
+    ConvolutionProblem::WeightFormat::WeightFormat() {}
 
     void ConvolutionProblem::WeightFormat::FromIdentifier(std::string          identifier,
                                                           bool                 transposeCK,
@@ -205,12 +201,12 @@ namespace Tensile
         rv << m_formatIdentifier << "_"
            << " coutPosition=" << m_coutPosition << " cinPosition=" << m_cinPosition
            << " filterPositions[]=";
-           for(auto i = 0; i < m_filterPositions.size(); i++)
-           {
-               if(i != 0)
-                   rv << ",";
-               rv << static_cast<int>(m_filterPositions[i]);
-           }
+        for(auto i = 0; i < m_filterPositions.size(); i++)
+        {
+            if(i != 0)
+                rv << ",";
+            rv << static_cast<int>(m_filterPositions[i]);
+        }
         return rv.str();
     }
     void ConvolutionProblem::LoopCounts::setupFormat(ConvolutionProblem const& convProblem)
@@ -227,8 +223,10 @@ namespace Tensile
                                                 operationIdentifier == "ConvolutionBackwardData",
                                                 convProblem.numFormatSpatialDims(),
                                                 &filterCount);
-            m_formatD.activationW().FromIdentifier(
-                convProblem.DIdentifier(), convProblem.numFormatSpatialDims(), convProblem.numSpatialDims(), nullptr);
+            m_formatD.activationW().FromIdentifier(convProblem.DIdentifier(),
+                                                   convProblem.numFormatSpatialDims(),
+                                                   convProblem.numSpatialDims(),
+                                                   nullptr);
         }
         else if(operationIdentifier == "ConvolutionBackwardWeights")
         {
@@ -244,18 +242,19 @@ namespace Tensile
     void ConvolutionProblem::LoopCounts::setupForData(ConvolutionProblem const& convProblem,
                                                       ContractionProblem const& problem)
     {
-        size_t numSpatial = convProblem.numFormatSpatialDims();
-        std::vector<size_t> convProblemSizes = problem.convProblemSizes();
-        std::vector<size_t>::iterator it = convProblemSizes.begin();
+        size_t                        numSpatial       = convProblem.numFormatSpatialDims();
+        std::vector<size_t>           convProblemSizes = problem.convProblemSizes();
+        std::vector<size_t>::iterator it               = convProblemSizes.begin();
 
-        assert(convProblemSizes.size() == 6 * numSpatial); //convolution problem size must be six times of numSpatial
+        assert(convProblemSizes.size()
+               == 6 * numSpatial); //convolution problem size must be six times of numSpatial
 
         spatialCount.assign(it, it + numSpatial);
-        filterCount.assign(it += numSpatial,it + numSpatial);
-        strideCount.assign(it += numSpatial,it + numSpatial);
-        dilationCount.assign(it += numSpatial,it + numSpatial);
-        padStartCount.assign(it += numSpatial,it + numSpatial);
-        padEndCount.assign(it += numSpatial,it + numSpatial);
+        filterCount.assign(it += numSpatial, it + numSpatial);
+        strideCount.assign(it += numSpatial, it + numSpatial);
+        dilationCount.assign(it += numSpatial, it + numSpatial);
+        padStartCount.assign(it += numSpatial, it + numSpatial);
+        padEndCount.assign(it += numSpatial, it + numSpatial);
 
         setupFormat(convProblem);
 
@@ -280,23 +279,23 @@ namespace Tensile
            << " cinCount=" << cinCount << std::endl;
 
         rv << "  spatialCount ";
-        for (auto i = spatialCount.begin(); i != spatialCount.end(); ++i)
-          rv << *i << ',';
+        for(auto i = spatialCount.begin(); i != spatialCount.end(); ++i)
+            rv << *i << ',';
         rv << "filterCount ";
-        for (auto i = filterCount.begin(); i != filterCount.end(); ++i)
-          rv << *i << ',';
+        for(auto i = filterCount.begin(); i != filterCount.end(); ++i)
+            rv << *i << ',';
         rv << "strideCount ";
-        for (auto i = strideCount.begin(); i != strideCount.end(); ++i)
-          rv << *i << ',';
+        for(auto i = strideCount.begin(); i != strideCount.end(); ++i)
+            rv << *i << ',';
         rv << "dilationCount ";
-        for (auto i = dilationCount.begin(); i != dilationCount.end(); ++i)
-          rv << *i << ',';
+        for(auto i = dilationCount.begin(); i != dilationCount.end(); ++i)
+            rv << *i << ',';
         rv << "padStartCount ";
-        for (auto i = padStartCount.begin(); i != padStartCount.end(); ++i)
-          rv << *i << ',';
+        for(auto i = padStartCount.begin(); i != padStartCount.end(); ++i)
+            rv << *i << ',';
         rv << "padEndCount ";
-        for (auto i = padEndCount.begin(); i != padEndCount.end(); ++i)
-          rv << *i << ',';
+        for(auto i = padEndCount.begin(); i != padEndCount.end(); ++i)
+            rv << *i << ',';
         return rv.str();
     }
 
@@ -314,9 +313,9 @@ namespace Tensile
                 + identifier);
 
         m_operationIdentifier       = parts[0];
-        m_AIdentifier       = parts[1];
-        m_BIdentifier       = parts[2];
-        m_DIdentifier       = parts[3];
+        m_AIdentifier               = parts[1];
+        m_BIdentifier               = parts[2];
+        m_DIdentifier               = parts[3];
         size_t formatNumSpatialDims = parts[1].size() - 2;
         m_numFormatSpatialDims      = formatNumSpatialDims;
 
@@ -364,13 +363,15 @@ namespace Tensile
                 {
                     activationDims.push_back(counts.filterCount[fi]);
                     activationStri.push_back(fi == 0 ? counts.dilationCount[fi]
-                                                     : counts.dilationCount[fi] * counts.spatialCount[fi - 1]);
+                                                     : counts.dilationCount[fi]
+                                                           * counts.spatialCount[fi - 1]);
                 }
             for(int si = 0; si < formatA.spatialPositions().size(); si++)
             {
-                activationDims.push_back(counts.scount[si] );
+                activationDims.push_back(counts.scount[si]);
                 activationStri.push_back(si == 0 ? counts.strideCount[si]
-                                                 : counts.strideCount[si] * counts.spatialCount[si - 1]);
+                                                 : counts.strideCount[si]
+                                                       * counts.spatialCount[si - 1]);
             }
             for(int si = 0; si < m_numFormatSpatialDims; si++)
                 realSpatialSize *= counts.spatialCount[si];
@@ -415,8 +416,8 @@ namespace Tensile
                                             ContractionProblem const&             problem) const
     {
         std::vector<size_t> outputDims;
-        auto formatA = counts.formatA();
-        auto formatD = counts.formatD();
+        auto                formatA = counts.formatA();
+        auto                formatD = counts.formatD();
         switch(formatD.activation().format())
         {
         case ConvolutionProblem::TensorFormat::NCHW:
@@ -449,7 +450,7 @@ namespace Tensile
                                                 ContractionProblem const&             problem) const
     {
         std::vector<size_t> filterDims;
-        auto formatB = counts.formatB();
+        auto                formatB = counts.formatB();
         switch(formatB.weights().format())
         {
         case ConvolutionProblem::TensorFormat::KCYX:
@@ -473,7 +474,8 @@ namespace Tensile
         return rv;
     }
 
-    void ConvolutionProblem::validate(const ContractionProblem& problem, const ConvolutionProblem::LoopCounts& counts) const
+    void ConvolutionProblem::validate(const ContractionProblem&             problem,
+                                      const ConvolutionProblem::LoopCounts& counts) const
     {
         if(1)
         {

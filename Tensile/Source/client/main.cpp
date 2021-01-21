@@ -2,7 +2,7 @@
  *
  * MIT License
  *
- * Copyright 2019-2020 Advanced Micro Devices, Inc.
+ * Copyright 2019-2021 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -365,7 +365,7 @@ namespace Tensile
             parse_arg_ints(args, "b-zero-pads");
 
             if(args["convolution-vs-contraction"].as<bool>())
-              parse_arg_ints(args, "convolution-problem");
+                parse_arg_ints(args, "convolution-problem");
             return args;
         }
 

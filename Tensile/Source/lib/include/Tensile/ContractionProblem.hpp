@@ -1,7 +1,7 @@
 /**
  * MIT License
  *
- * Copyright 2019-2020 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright 2019-2021 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -339,9 +339,9 @@ namespace Tensile
         {
             return m_convProblemSizes;
         }
-        void setConvProblemSizes(std::vector<size_t> &convProblemSizes)
+        void setConvProblemSizes(std::vector<size_t>& convProblemSizes)
         {
-            m_convProblemSizes.assign(convProblemSizes.begin(),convProblemSizes.end());
+            m_convProblemSizes.assign(convProblemSizes.begin(), convProblemSizes.end());
         }
 
         void setAlphaType(DataType type)

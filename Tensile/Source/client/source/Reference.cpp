@@ -1,7 +1,7 @@
 /**
  * MIT License
  *
- * Copyright 2019-2020 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright 2019-2021 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -470,11 +470,13 @@ namespace Tensile
             auto formatB = counts.formatB();
             auto formatD = counts.formatD();
 
-            size_t padShift = std::accumulate(problem.aZeroPad().begin(),
-                                              problem.aZeroPad().end(),
-                                              0,
-                                              [](size_t sum, const ContractionProblem::ZeroPad& zp){
-                                              return sum + zp.padStart;} );
+            size_t padShift
+                = std::accumulate(problem.aZeroPad().begin(),
+                                  problem.aZeroPad().end(),
+                                  0,
+                                  [](size_t sum, const ContractionProblem::ZeroPad& zp) {
+                                      return sum + zp.padStart;
+                                  });
             if(db1)
             {
                 std::cout << "SolveCPUConvolution:\n";
@@ -499,12 +501,14 @@ namespace Tensile
                                       counts.scount.end());
 
                         Accumulator value(0);
-                        size_t filterCoordCount = CoordCount(counts.filterCount.begin(), counts.filterCount.end());
+                        size_t      filterCoordCount
+                            = CoordCount(counts.filterCount.begin(), counts.filterCount.end());
                         for(size_t cin = 0; cin < counts.cinCount; cin++)
-                            for(size_t filterIndex = 0; filterIndex < filterCoordCount; filterIndex++)
+                            for(size_t filterIndex = 0; filterIndex < filterCoordCount;
+                                filterIndex++)
                             {
 
-                                std::vector<size_t> filterCoord(counts.filterCount.size() , 0);
+                                std::vector<size_t> filterCoord(counts.filterCount.size(), 0);
                                 CoordNumbered(filterIndex,
                                               filterCoord.begin(),
                                               filterCoord.end(),
@@ -513,17 +517,13 @@ namespace Tensile
 
                                 // Save coordinates from the looop and compute memeory index
                                 // Each component stores in appropriate memory order
-                                std::vector<int64_t> aCoord(activationTensor.dimensions(),
-                                                           0);
+                                std::vector<int64_t> aCoord(activationTensor.dimensions(), 0);
                                 std::vector<int64_t> bCoord(weightTensor.dimensions(), 0);
 
                                 aCoord[formatA.batchPosition()]   = n;
                                 aCoord[formatA.channelPosition()] = cin;
-                                for(auto i = 0;
-                                    i < formatA.spatialPositions().size();
-                                    i++)
-                                    aCoord[formatA.spatialPositions()[i]]
-                                        = spatialCoord[i];
+                                for(auto i = 0; i < formatA.spatialPositions().size(); i++)
+                                    aCoord[formatA.spatialPositions()[i]] = spatialCoord[i];
 
                                 // add filters to address calc, if they have non-unit strides:
                                 for(int fi = 0; fi < counts.filterCount.size(); fi++)
@@ -533,27 +533,32 @@ namespace Tensile
                                         aCoord[fp] = filterCoord[fi];
                                 }
 
-                                bCoord[formatB.weights().coutPosition()]
-                                    = cout;
-                                bCoord[formatB.weights().cinPosition()] = cin;
+                                bCoord[formatB.weights().coutPosition()] = cout;
+                                bCoord[formatB.weights().cinPosition()]  = cin;
                                 for(int fi = 0; fi < counts.filterCount.size(); fi++)
                                 {
-                                    auto fp = formatB
-                                                  .weights()
-                                                  .filterPositions()[fi];
+                                    auto fp = formatB.weights().filterPositions()[fi];
                                     if(fp != ConvolutionProblem::InvalidPos)
                                         bCoord[fp] = filterCoord[fi];
                                 }
 
-                                auto aIndex = activationTensor.index(aCoord) - padShift;
-                                bool inZeroPads = std::accumulate(problem.aZeroPad().begin(),
-                                                                  problem.aZeroPad().end(),
-                                                                  false,
-                                                                  [&](bool ret, const ContractionProblem::ZeroPad& zp)
-                                                                  {return ret || inZeroPad(problem, zp, activationTensor, aCoord, aCoord[zp.boundPos]);});
+                                auto aIndex     = activationTensor.index(aCoord) - padShift;
+                                bool inZeroPads = std::accumulate(
+                                    problem.aZeroPad().begin(),
+                                    problem.aZeroPad().end(),
+                                    false,
+                                    [&](bool ret, const ContractionProblem::ZeroPad& zp) {
+                                        return ret
+                                               || inZeroPad(problem,
+                                                            zp,
+                                                            activationTensor,
+                                                            aCoord,
+                                                            aCoord[zp.boundPos]);
+                                    });
 
-                                auto aVal = inZeroPads ? static_cast<typename Inputs::AType>(0.0):
-                                                         Transform<typename Inputs::AType>::Input(inputs.a[aIndex], false);
+                                auto aVal = inZeroPads ? static_cast<typename Inputs::AType>(0.0)
+                                                       : Transform<typename Inputs::AType>::Input(
+                                                           inputs.a[aIndex], false);
 
                                 auto bIndex = weightTensor.index(bCoord);
                                 auto bVal   = Transform<typename Inputs::BType>::Input(
@@ -561,16 +566,15 @@ namespace Tensile
 
                                 if(db2)
                                 {
-                                    std::cout
-                                        << "  n,cin,spatialCoord,cout=" << n << "," << cin
-                                        << ","
-                                        << "," << cout << ","
-                                        << " spatialCoord[2,1,0]=" << spatialCoord[2] << ","
-                                        << spatialCoord[1] << "," << spatialCoord[0]
-                                        << " filterCoord[2,1,0]=" << filterCoord[2] << ","
-                                        << filterCoord[1] << "," << filterCoord[0]
-                                        << " aIndex=" << aIndex << " bIndex=" << bIndex
-                                        << " aVal=" << aVal << " bVal=" << bVal << "\n";
+                                    std::cout << "  n,cin,spatialCoord,cout=" << n << "," << cin
+                                              << ","
+                                              << "," << cout << ","
+                                              << " spatialCoord[2,1,0]=" << spatialCoord[2] << ","
+                                              << spatialCoord[1] << "," << spatialCoord[0]
+                                              << " filterCoord[2,1,0]=" << filterCoord[2] << ","
+                                              << filterCoord[1] << "," << filterCoord[0]
+                                              << " aIndex=" << aIndex << " bIndex=" << bIndex
+                                              << " aVal=" << aVal << " bVal=" << bVal << "\n";
                                 }
 
                                 value += static_cast<Accumulator>(aVal * bVal);
@@ -578,11 +582,8 @@ namespace Tensile
                         std::vector<size_t> dCoord(outputTensor.dimensions(), 0);
                         dCoord[formatD.activation().batchPosition()]   = n;
                         dCoord[formatD.activation().channelPosition()] = cout;
-                        for(auto i = 0;
-                            i < formatD.activation().spatialPositions().size();
-                            i++)
-                            dCoord[formatD.activation().spatialPositions()[i]]
-                                = spatialCoord[i];
+                        for(auto i = 0; i < formatD.activation().spatialPositions().size(); i++)
+                            dCoord[formatD.activation().spatialPositions()[i]] = spatialCoord[i];
 
                         auto dIndex = outputTensor.index(dCoord);
                         if(db1)
