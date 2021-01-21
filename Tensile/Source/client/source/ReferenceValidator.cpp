@@ -97,8 +97,6 @@ namespace Tensile
                 if(m_convolutionVsContraction)
                 {
 
-                    m_convolutionProblem.validate(problem);
-
                     SolveCPUConvolution(
                         m_convolutionProblem, problem, *(m_dataInit->cpuConvInputs()));
                     // std::cout << "ValidateConv--Start\n";

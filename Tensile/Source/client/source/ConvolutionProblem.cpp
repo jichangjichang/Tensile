@@ -213,9 +213,35 @@ namespace Tensile
            }
         return rv.str();
     }
+    void ConvolutionProblem::LoopCounts::setupFormat(ConvolutionProblem const& convProblem)
+    {
+        std::string operationIdentifier = convProblem.operationIdentifier();
+        if(operationIdentifier == "ConvolutionForward"
+           || operationIdentifier == "ConvolutionBackwardData")
+        {
+            m_formatA.FromIdentifier(convProblem.AIdentifier(),
+                                     convProblem.numFormatSpatialDims(),
+                                     convProblem.numSpatialDims(),
+                                     &filterCount);
+            m_formatB.weightsW().FromIdentifier(convProblem.BIdentifier(),
+                                                operationIdentifier == "ConvolutionBackwardData",
+                                                convProblem.numFormatSpatialDims(),
+                                                &filterCount);
+            m_formatD.activationW().FromIdentifier(
+                convProblem.DIdentifier(), convProblem.numFormatSpatialDims(), convProblem.numSpatialDims(), nullptr);
+        }
+        else if(operationIdentifier == "ConvolutionBackwardWeights")
+        {
+        }
+        else
+        {
+            throw std::runtime_error(std::string("Invalid operation identifier:")
+                                     + operationIdentifier);
+        }
+    }
 
     // Setup for forward or backward data
-    void ConvolutionProblem::LoopCounts::setupForData(ConvolutionProblem & convProblem,
+    void ConvolutionProblem::LoopCounts::setupForData(ConvolutionProblem const& convProblem,
                                                       ContractionProblem const& problem)
     {
         size_t numSpatial = convProblem.numFormatSpatialDims();
@@ -229,15 +255,16 @@ namespace Tensile
         strideCount.assign(it += numSpatial,it + numSpatial);
         dilationCount.assign(it += numSpatial,it + numSpatial);
         padStartCount.assign(it += numSpatial,it + numSpatial);
+        padEndCount.assign(it += numSpatial,it + numSpatial);
 
-        convProblem.setupFormat(filterCount);
+        setupFormat(convProblem);
 
-        batchCount = problem.a().sizes()[convProblem.formatA().batchPosition()];
-        cinCount   = problem.a().sizes()[convProblem.formatA().channelPosition()];
-        coutCount  = problem.b().sizes()[convProblem.formatB().weights().coutPosition()];
-        for(int si = 0; si < convProblem.formatA().spatialPositions().size(); si++)
+        batchCount = problem.a().sizes()[m_formatA.batchPosition()];
+        cinCount   = problem.a().sizes()[m_formatA.channelPosition()];
+        coutCount  = problem.b().sizes()[m_formatB.weights().coutPosition()];
+        for(int si = 0; si < m_formatA.spatialPositions().size(); si++)
         {
-            auto       spatialPositionA   = convProblem.formatA().spatialPositions()[si];
+            auto       spatialPositionA   = m_formatA.spatialPositions()[si];
             auto const problemSpatialSize = problem.a().sizes()[spatialPositionA];
             scount[si]                    = problemSpatialSize;
         }
@@ -246,52 +273,31 @@ namespace Tensile
     std::string ConvolutionProblem::LoopCounts::description() const
     {
         std::ostringstream rv;
-        rv << "batchCount=" << batchCount << " coutCount=" << coutCount
+        rv << "  formatA = " << m_formatA.description() << std::endl;
+        rv << "  formatB = " << m_formatB.weights().description() << std::endl;
+        rv << "  batchCount=" << batchCount << " coutCount=" << coutCount
            << " scalarCount_dhw=" << scount[2] << "x" << scount[1] << "x" << scount[0]
            << " cinCount=" << cinCount << std::endl;
 
-        rv << "spatialCount ";
+        rv << "  spatialCount ";
         for (auto i = spatialCount.begin(); i != spatialCount.end(); ++i)
-          rv << *i << ' ';
+          rv << *i << ',';
         rv << "filterCount ";
         for (auto i = filterCount.begin(); i != filterCount.end(); ++i)
-          rv << *i << ' ';
+          rv << *i << ',';
         rv << "strideCount ";
         for (auto i = strideCount.begin(); i != strideCount.end(); ++i)
-          rv << *i << ' ';
+          rv << *i << ',';
         rv << "dilationCount ";
         for (auto i = dilationCount.begin(); i != dilationCount.end(); ++i)
-          rv << *i << ' ';
+          rv << *i << ',';
         rv << "padStartCount ";
         for (auto i = padStartCount.begin(); i != padStartCount.end(); ++i)
-          rv << *i << ' ';
+          rv << *i << ',';
         rv << "padEndCount ";
         for (auto i = padEndCount.begin(); i != padEndCount.end(); ++i)
-          rv << *i << ' ';
+          rv << *i << ',';
         return rv.str();
-    }
-
-    void ConvolutionProblem::setupFormat(std::vector<size_t>& filters)
-    {
-        if(m_operationIdentifier == "ConvolutionForward"
-           || m_operationIdentifier == "ConvolutionBackwardData")
-        {
-            m_formatA.FromIdentifier(m_AIdentifier, m_numFormatSpatialDims, m_numSpatialDims, &filters);
-            m_formatB.weightsW().FromIdentifier(m_BIdentifier,
-                                                m_operationIdentifier == "ConvolutionBackwardData",
-                                                m_numFormatSpatialDims,
-                                                &filters);
-            m_formatD.activationW().FromIdentifier(
-                m_DIdentifier, m_numFormatSpatialDims, m_numSpatialDims, nullptr);
-        }
-        else if(m_operationIdentifier == "ConvolutionBackwardWeights")
-        {
-        }
-        else
-        {
-            throw std::runtime_error(std::string("Invalid operation identifier:")
-                                     + m_operationIdentifier);
-        }
     }
 
     void ConvolutionProblem::FromIdentifier(std::string identifier)
@@ -349,17 +355,18 @@ namespace Tensile
         int64_t              batchStride;
         int64_t              realSpatialSize = 1;
 
-        switch(formatA().format())
+        auto formatA = counts.formatA();
+        switch(formatA.format())
         {
         case ConvolutionProblem::TensorFormat::NCHW:
             for(int fi = 0; fi < counts.filterCount.size(); fi++)
-                if(formatA().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
+                if(formatA.filterPositions()[fi] != ConvolutionProblem::InvalidPos)
                 {
                     activationDims.push_back(counts.filterCount[fi]);
                     activationStri.push_back(fi == 0 ? counts.dilationCount[fi]
                                                      : counts.dilationCount[fi] * counts.spatialCount[fi - 1]);
                 }
-            for(int si = 0; si < formatA().spatialPositions().size(); si++)
+            for(int si = 0; si < formatA.spatialPositions().size(); si++)
             {
                 activationDims.push_back(counts.scount[si] );
                 activationStri.push_back(si == 0 ? counts.strideCount[si]
@@ -367,30 +374,30 @@ namespace Tensile
             }
             for(int si = 0; si < m_numFormatSpatialDims; si++)
                 realSpatialSize *= counts.spatialCount[si];
-            activationDims.push_back(problem.a().sizes()[formatA().channelPosition()]);
+            activationDims.push_back(problem.a().sizes()[formatA.channelPosition()]);
             activationStri.push_back(realSpatialSize);
-            activationDims.push_back(problem.a().sizes()[formatA().batchPosition()]);
-            batchStride = realSpatialSize * problem.a().sizes()[formatA().channelPosition()];
+            activationDims.push_back(problem.a().sizes()[formatA.batchPosition()]);
+            batchStride = realSpatialSize * problem.a().sizes()[formatA.channelPosition()];
             activationStri.push_back(batchStride);
             break;
         case ConvolutionProblem::TensorFormat::NHWC:
             assert(0); // need strides
-            activationDims.push_back(problem.a().sizes()[formatA().channelPosition()]);
+            activationDims.push_back(problem.a().sizes()[formatA.channelPosition()]);
             for(int fi = 0; fi < counts.filterCount.size(); fi++)
-                if(formatA().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
+                if(formatA.filterPositions()[fi] != ConvolutionProblem::InvalidPos)
                     activationDims.push_back(counts.filterCount[fi]);
-            for(int si = 0; si < formatA().spatialPositions().size(); si++)
+            for(int si = 0; si < formatA.spatialPositions().size(); si++)
                 activationDims.push_back(counts.scount[si]);
-            activationDims.push_back(problem.a().sizes()[formatA().batchPosition()]);
+            activationDims.push_back(problem.a().sizes()[formatA.batchPosition()]);
         case ConvolutionProblem::TensorFormat::CNHW:
             assert(0); // need strides
             for(int fi = 0; fi < counts.filterCount.size(); fi++)
-                if(formatA().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
+                if(formatA.filterPositions()[fi] != ConvolutionProblem::InvalidPos)
                     activationDims.push_back(counts.filterCount[fi]);
-            for(int si = 0; si < formatA().spatialPositions().size(); si++)
+            for(int si = 0; si < formatA.spatialPositions().size(); si++)
                 activationDims.push_back(counts.scount[si]);
-            activationDims.push_back(problem.a().sizes()[formatA().batchPosition()]);
-            activationDims.push_back(problem.a().sizes()[formatA().channelPosition()]);
+            activationDims.push_back(problem.a().sizes()[formatA.batchPosition()]);
+            activationDims.push_back(problem.a().sizes()[formatA.channelPosition()]);
             break;
         default:
             throw std::runtime_error("unknown formatA");
@@ -408,25 +415,27 @@ namespace Tensile
                                             ContractionProblem const&             problem) const
     {
         std::vector<size_t> outputDims;
-        switch(formatD().activation().format())
+        auto formatA = counts.formatA();
+        auto formatD = counts.formatD();
+        switch(formatD.activation().format())
         {
         case ConvolutionProblem::TensorFormat::NCHW:
-            for(int si = 0; si < formatA().spatialPositions().size(); si++)
+            for(int si = 0; si < formatA.spatialPositions().size(); si++)
                 outputDims.push_back(counts.scount[si]);
-            outputDims.push_back(problem.d().sizes()[formatD().activation().channelPosition()]);
-            outputDims.push_back(problem.d().sizes()[formatD().activation().batchPosition()]);
+            outputDims.push_back(problem.d().sizes()[formatD.activation().channelPosition()]);
+            outputDims.push_back(problem.d().sizes()[formatD.activation().batchPosition()]);
             break;
         case ConvolutionProblem::TensorFormat::NHWC:
-            outputDims.push_back(problem.d().sizes()[formatD().activation().channelPosition()]);
-            for(int si = 0; si < formatA().spatialPositions().size(); si++)
+            outputDims.push_back(problem.d().sizes()[formatD.activation().channelPosition()]);
+            for(int si = 0; si < formatA.spatialPositions().size(); si++)
                 outputDims.push_back(counts.scount[si]);
-            outputDims.push_back(problem.d().sizes()[formatD().activation().batchPosition()]);
+            outputDims.push_back(problem.d().sizes()[formatD.activation().batchPosition()]);
             break;
         case ConvolutionProblem::TensorFormat::CNHW:
-            for(int si = 0; si < formatA().spatialPositions().size(); si++)
+            for(int si = 0; si < formatA.spatialPositions().size(); si++)
                 outputDims.push_back(counts.scount[si]);
-            outputDims.push_back(problem.d().sizes()[formatD().activation().batchPosition()]);
-            outputDims.push_back(problem.d().sizes()[formatD().activation().channelPosition()]);
+            outputDims.push_back(problem.d().sizes()[formatD.activation().batchPosition()]);
+            outputDims.push_back(problem.d().sizes()[formatD.activation().channelPosition()]);
             break;
         default:
             throw std::runtime_error("unknown formatD");
@@ -440,21 +449,22 @@ namespace Tensile
                                                 ContractionProblem const&             problem) const
     {
         std::vector<size_t> filterDims;
-        switch(formatB().weights().format())
+        auto formatB = counts.formatB();
+        switch(formatB.weights().format())
         {
         case ConvolutionProblem::TensorFormat::KCYX:
             for(int fi = 0; fi < counts.filterCount.size(); fi++)
-                if(formatB().weights().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
+                if(formatB.weights().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
                     filterDims.push_back(counts.filterCount[fi]);
-            filterDims.push_back(problem.b().sizes()[formatB().weights().cinPosition()]);
-            filterDims.push_back(problem.b().sizes()[formatB().weights().coutPosition()]);
+            filterDims.push_back(problem.b().sizes()[formatB.weights().cinPosition()]);
+            filterDims.push_back(problem.b().sizes()[formatB.weights().coutPosition()]);
             break;
         case ConvolutionProblem::TensorFormat::CKYX:
             for(int fi = 0; fi < counts.filterCount.size(); fi++)
-                if(formatB().weights().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
+                if(formatB.weights().filterPositions()[fi] != ConvolutionProblem::InvalidPos)
                     filterDims.push_back(counts.filterCount[fi]);
-            filterDims.push_back(problem.b().sizes()[formatB().weights().coutPosition()]);
-            filterDims.push_back(problem.b().sizes()[formatB().weights().cinPosition()]);
+            filterDims.push_back(problem.b().sizes()[formatB.weights().coutPosition()]);
+            filterDims.push_back(problem.b().sizes()[formatB.weights().cinPosition()]);
             break;
         default:
             throw std::runtime_error("unknown formatB");
@@ -463,7 +473,7 @@ namespace Tensile
         return rv;
     }
 
-    void ConvolutionProblem::validate(const ContractionProblem& problem) const
+    void ConvolutionProblem::validate(const ContractionProblem& problem, const ConvolutionProblem::LoopCounts& counts) const
     {
         if(1)
         {
@@ -487,13 +497,7 @@ namespace Tensile
 
             std::cout << "\n";
 
-            if(m_operationIdentifier == "ConvolutionForward")
-            {
-                std::cout << "  convProblem.formatA        :" << formatA().description() << "\n";
-                std::cout << "  convProblem.formatB.weights:" << formatB().weights().description()
-                          << "\n";
-            }
-            else
+            if(m_operationIdentifier != "ConvolutionForward")
             {
                 throw std::runtime_error(std::string("Unsupported operation identifier for check")
                                          + m_operationIdentifier);
@@ -502,24 +506,28 @@ namespace Tensile
 
         // Ensure positions are where we expect them to be in the convolution tensor
         // description:
+        auto formatA = counts.formatA();
+        auto formatB = counts.formatB();
+        auto formatD = counts.formatD();
+
         assert(problem.batchIndices().end()
                != std::find_if(problem.batchIndices().begin(),
                                problem.batchIndices().end(),
                                [this](const ContractionProblem::BatchIndex& bi) {
-                                   return bi.a == this->formatA().batchPosition();
+                                   return bi.a == formatA.batchPosition();
                                }));
 
         assert(problem.boundIndices().end()
                != std::find_if(problem.boundIndices().begin(),
                                problem.boundIndices().end(),
                                [this](const ContractionProblem::BoundIndex& bi) {
-                                   return bi.a == this->formatA().channelPosition();
+                                   return bi.a == formatA.channelPosition();
                                }));
         if(m_operationIdentifier == "ConvolutionForward")
         {
-            for(int i = 0; i < formatA().filterPositions().size(); i++)
+            for(int i = 0; i < formatA.filterPositions().size(); i++)
             {
-                auto const filterPositionA = formatA().filterPositions()[i];
+                auto const filterPositionA = formatA.filterPositions()[i];
                 if(filterPositionA != ConvolutionProblem::InvalidPos)
                     assert(problem.boundIndices().end()
                            != std::find_if(
@@ -529,9 +537,9 @@ namespace Tensile
                                    return bi.a == filterPositionA;
                                }));
             }
-            for(int i = 0; i < formatB().weights().filterPositions().size(); i++)
+            for(int i = 0; i < formatB.weights().filterPositions().size(); i++)
             {
-                auto const filterPositionB = formatB().weights().filterPositions()[i];
+                auto const filterPositionB = formatB.weights().filterPositions()[i];
                 if(filterPositionB != ConvolutionProblem::InvalidPos)
                     assert(problem.boundIndices().end()
                            != std::find_if(
@@ -541,7 +549,7 @@ namespace Tensile
                                    return bi.b == filterPositionB;
                                }));
             }
-            for(auto s : formatA().spatialPositions())
+            for(auto s : formatA.spatialPositions())
                 assert(problem.freeIndicesA().end()
                        != std::find_if(problem.freeIndicesA().begin(),
                                        problem.freeIndicesA().end(),

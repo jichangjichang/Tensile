@@ -108,7 +108,7 @@ namespace Tensile
             static void SolveCPU(ContractionProblem const& contraction,
                                  Inputs const&             inputs,
                                  size_t                    validationStride = 1);
-            static void SolveCPUConvolution(ConvolutionProblem & convProblem,
+            static void SolveCPUConvolution(ConvolutionProblem const& convProblem,
                                             ContractionProblem const& problem,
                                             Inputs const&             inputs);
         };
@@ -116,7 +116,7 @@ namespace Tensile
         void SolveCPU(ContractionProblem const& contraction,
                       ContractionInputs const&  inputs,
                       size_t                    validationStride = 1);
-        void SolveCPUConvolution(ConvolutionProblem & convProblem,
+        void SolveCPUConvolution(ConvolutionProblem const& convProblem,
                                  ContractionProblem const& problem,
                                  ContractionInputs&        inputs);
     } // namespace Client

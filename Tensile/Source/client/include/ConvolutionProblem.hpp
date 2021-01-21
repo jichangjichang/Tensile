@@ -164,8 +164,21 @@ namespace Tensile
         {
             LoopCounts()
                 : scount(MaxNumSpatialDims, 1){};
-            void                setupForData(ConvolutionProblem & convProblem,
+            void                setupForData(ConvolutionProblem const& convProblem,
                                              ContractionProblem const& problem);
+            void setupFormat(ConvolutionProblem const& convProblem);
+            const ActivationFormat& formatA() const
+            {
+                return m_formatA;
+            };
+            const ComboFormat& formatB() const
+            {
+                return m_formatB;
+            };
+            const ComboFormat& formatD() const
+            {
+                return m_formatD;
+            };
             std::string         description() const;
             size_t              batchCount;
             size_t              cinCount;
@@ -178,6 +191,10 @@ namespace Tensile
             std::vector<size_t> dilationCount;//jl^
             std::vector<size_t> padStartCount;//qp$
             std::vector<size_t> padEndCount;//q_p_$_
+
+            ActivationFormat m_formatA;
+            ComboFormat      m_formatB;
+            ComboFormat      m_formatD; // output tensor
         };
 
         ConvolutionProblem() {}
@@ -190,20 +207,8 @@ namespace Tensile
                                          ContractionProblem const& problem) const;
         TensorDescriptor setupForwardWeights(LoopCounts const&         counts,
                                              ContractionProblem const& problem) const;
-        void             validate(const ContractionProblem& problem) const;
-
-        const ActivationFormat& formatA() const
-        {
-            return m_formatA;
-        };
-        const ComboFormat& formatB() const
-        {
-            return m_formatB;
-        };
-        const ComboFormat& formatD() const
-        {
-            return m_formatD;
-        };
+        void             validate(const ContractionProblem& problem,
+                                  const ConvolutionProblem::LoopCounts& counts) const;
 
         //! Number of spatial dims after packing.
         size_t numSpatialDims() const
@@ -215,6 +220,18 @@ namespace Tensile
         std::string const& operationIdentifier() const
         {
             return m_operationIdentifier;
+        }
+        std::string const& AIdentifier() const
+        {
+            return m_AIdentifier;
+        }
+        std::string const& BIdentifier() const
+        {
+            return m_BIdentifier;
+        }
+        std::string const& DIdentifier() const
+        {
+            return m_DIdentifier;
         }
         size_t numFormatSpatialDims() const
         {
@@ -231,10 +248,6 @@ namespace Tensile
 
         size_t m_numSpatialDims       = 0;
         size_t m_numFormatSpatialDims = 0;
-
-        ActivationFormat m_formatA;
-        ComboFormat      m_formatB;
-        ComboFormat      m_formatD; // output tensor
     };
 
     TENSILE_API std::ostream& operator<<(std::ostream&             stream,
