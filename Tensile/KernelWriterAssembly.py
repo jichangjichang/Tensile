@@ -2235,9 +2235,9 @@ class KernelWriterAssembly(KernelWriter):
           for iui in range(0, innerUnroll):
             cStr = "v[%s+%u+%u*%u]" % ("vgprValuC", idx0, idx1, kernel["ThreadTile0"])
             aStr = "v[%s+%u]" \
-                % ("vgprValuA_X%u_I%u"%(m,iui), (idx0 if self.tPA["tileIdx"] == 0 else idx1))
+                % ("vgprValuA_X%u_I%u"%(m,iui), (idx0 if self.tPB["tile01Idx"] else idx1))
             bStr = "v[%s+%u]" \
-                % ("vgprValuB_X%u_I%u"%(m,iui), (idx1 if self.tPB["tileIdx"] != 0 else idx0))
+                % ("vgprValuB_X%u_I%u"%(m,iui), (idx1 if self.tPB["tile01Idx"] else idx0))
             #if a==0 and b==0:
             #  kStr += dump(aStr)
             kStr += "v_mac_f32 %s, %s, %s%s" % (cStr, aStr, bStr, self.endLine)
@@ -4924,7 +4924,7 @@ class KernelWriterAssembly(KernelWriter):
 
     # get constant parameter
     tc               = tP["tensorChar"]
-    tile01           = 1 if tP["tileIdx"] else 0
+    tile01           = tP["tile01Idx"]
     waveWidth        = globalParameters["WavefrontWidth"]
     inputPerThread   = max(self.lrvwA,self.lrvwB)
     LdsPad           = kernel["LdsPad%s" % tc] if kernel["LdsBlockSizePerPad%s" % tc] == 0 else 0
@@ -5085,7 +5085,7 @@ class KernelWriterAssembly(KernelWriter):
 
     # constant
     tc          = tP["tensorChar"]
-    tile01      = 1 if tP["tileIdx"] else 0
+    tile01      = tP["tile01Idx"]
     LdsPad      = kernel["LdsPad%s" % tc] if kernel["LdsBlockSizePerPad%s" % tc] == 0 else 0
     divisor     = kernel["SubGroup0"] * kernel["SubGroup1"]
     mtAddPad    = kernel["MacroTile%u" % tile01] + LdsPad
@@ -6155,14 +6155,14 @@ class KernelWriterAssembly(KernelWriter):
           accIdx   = idx1 * kernel["MIWaveTile"][0] + idx0
           accStart = accIdx * accs_per_wave
           accEnd   = accStart + accs_per_wave - 1
-          idxA = idx0 if self.tPA["tileIdx"] == 0 else idx1
-          idxB = idx1 if self.tPA["tileIdx"] == 0 else idx0
+          idxA = idx0 if self.tPB["tile01Idx"] else idx1
+          idxB = idx1 if self.tPB["tile01Idx"] else idx0
           a_new = idxA*vgprPerInput*self.numReadsIterCoalescedA
           b_new = idxB*vgprPerInput*self.numReadsIterCoalescedB
           aStr     = vgpr("ValuA_X%u_I%u+%u+%u+%u" % (vgprBufferA_new, iuiA_new, a_new, vgprBufferA_new_offset, iuiA_new_offset), vgprPerInput)
           bStr     = vgpr("ValuB_X%u_I%u+%u+%u+%u" % (vgprBufferB_new, iuiB_new, b_new, vgprBufferB_new_offset, iuiB_new_offset), vgprPerInput)
-          Str0 = aStr if self.tPA["tileIdx"] == 0 else bStr
-          Str1 = bStr if self.tPA["tileIdx"] == 0 else aStr
+          Str0 = aStr if self.tPB["tile01Idx"] else bStr
+          Str1 = bStr if self.tPB["tile01Idx"] else aStr
           if kernel["ProblemType"]["DataType"].isSingleComplex():
             # override because complex mul is emulated by 4 mfma insts
             # TODO: adopt component system
@@ -8222,7 +8222,7 @@ class KernelWriterAssembly(KernelWriter):
     self.localReadDoCnt += 1
 
     tc                = tP["tensorChar"]
-    tile01            = 1 if tP["tileIdx"] else 0
+    tile01            = tP["tile01Idx"]
     imod              = Code.Module("LocalReadDo%s_I%s"%(tc,iui))
     pack              = Code.Module("pack%s_I%s"%(tc,iui))
     instruction       = tP["localReadInstruction"]
@@ -8313,7 +8313,7 @@ class KernelWriterAssembly(KernelWriter):
       self.localReadDoCntA += 1
     else:
       self.localReadDoCntB += 1
-    tile01           = 1 if tP["tileIdx"] else 0
+    tile01           = tP["tile01Idx"]
     instruction      = tP["localReadInstruction"]
 
     numOffsets       = instruction.numOffsets

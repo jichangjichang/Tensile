@@ -2844,8 +2844,8 @@ class KernelWriter(metaclass=abc.ABCMeta):
 
     tensorParametersA["PackBatchDims"] = kernel["PackBatchDims"] if kernel["PackBatchDims"] & 0x1 else 0
     tensorParametersB["PackBatchDims"] = kernel["PackBatchDims"] if kernel["PackBatchDims"] & 0x2 else 0
-    tensorParametersA["PackedIndices"] = kernel["PackedC0IndicesX"] if self.tPA["tileIdx"] == 0 else kernel["PackedC1IndicesX"]
-    tensorParametersB["PackedIndices"] = kernel["PackedC1IndicesX"] if self.tPB["tileIdx"] != 0 else kernel["PackedC0IndicesX"]
+    tensorParametersA["PackedIndices"] = kernel["PackedC%uIndicesX"%self.tPA["tile01Idx"]]# if self.tPA["tileIdx"] == 0 else kernel["PackedC1IndicesX"]
+    tensorParametersB["PackedIndices"] = kernel["PackedC%uIndicesX"%self.tPB["tile01Idx"]]# if self.tPB["tileIdx"] != 0 else kernel["PackedC0IndicesX"]
 
   @staticmethod
   def zpForSumIdx(sumIdx, zeroPad):
@@ -2939,6 +2939,7 @@ class KernelWriter(metaclass=abc.ABCMeta):
       tP["tensorIdx"] = 0                                   # tensor index A=0, B=1
       tP["tileChar"] = self.tileCharA                       # tile char I0 or J1
       tP["tileIdx"] = kernel["ProblemType"]["Index01A"]     # is the tile dimension of A the 0th or 1th index, i.e. Aki, tileIdx=0
+      tP["tile01Idx"] = 1 if tP["tileIdx"] else 0
       tP["lsc"] = "LSCA"                                    # load size coalesced A, number of elements that get loaded along coalesced dimension with each load
       tP["lsp"] = "LSPA"                                    # load size perpendicular A, number of elements that get loaded along non-coalesced dimension with each load
       tP["lvc"] = "LVCA"                                    # "load size" in terms of number of short-vectors and not elements
@@ -2948,11 +2949,11 @@ class KernelWriter(metaclass=abc.ABCMeta):
       #tP["ruv"] = self.readUnrollDimVectorA
       #tP["nlvc"] = self.numReadVectorComponentsA
       #tP["nwvc"] = self.numWriteVectorComponentsA
-      tP["wg"] = "WorkGroup%u" % (1 if tP["tileIdx"] else 0)# these are storing the actual strong to lookup the number from kernel dictionary
+      tP["wg"] = "WorkGroup%u" % (tP["tile01Idx"])# these are storing the actual strong to lookup the number from kernel dictionary
       tP["prevWg"] = "PrevWorkGroup0"                       # used for prefetch-across-persistent #NHWC TO-do
-      tP["sg"] = "SubGroup%u" % (1 if tP["tileIdx"] else 0)
-      tP["tt"] = "ThreadTile%u" % (1 if tP["tileIdx"] else 0)
-      tP["mt"] = "MacroTile%u" % (1 if tP["tileIdx"] else 0)
+      tP["sg"] = "SubGroup%u" % (tP["tile01Idx"])
+      tP["tt"] = "ThreadTile%u" % (tP["tile01Idx"])
+      tP["mt"] = "MacroTile%u" % (tP["tile01Idx"])
       tP["grcg"] = self.globalReadCoalesceGroupA            # global reads are coalesced along threads
       tP["grcv"] = kernel["GlobalReadCoalesceVectorA"]      # global reads are vector reads, and lds writes will be components if transposing
       tP["tlu"] = kernel["ProblemType"]["TLUA"]             # thread stride is less than unroll stride, i.e., not transposing matrix
@@ -2994,6 +2995,7 @@ class KernelWriter(metaclass=abc.ABCMeta):
       tP["tensorIdx"] = 1
       tP["tileChar"] = self.tileCharB
       tP["tileIdx"] = kernel["ProblemType"]["Index01B"]
+      tP["tile01Idx"] = 1 if tP["tileIdx"] else 0
       tP["lsc"] = "LSCB"
       tP["lsp"] = "LSPB"
       tP["lvc"] = "LVCB"
@@ -3003,11 +3005,11 @@ class KernelWriter(metaclass=abc.ABCMeta):
       #tP["ruv"] = self.readUnrollDimVectorB
       #tP["nlvc"] = self.numReadVectorComponentsB
       #tP["nwvc"] = self.numWriteVectorComponentsB
-      tP["wg"] = "WorkGroup%u" % (1 if tP["tileIdx"] else 0)
+      tP["wg"] = "WorkGroup%u" % (tP["tile01Idx"])
       tP["prevWg"] = "PrevWorkGroup1"                       #NHWC To-Do
-      tP["sg"] = "SubGroup%u" % (1 if tP["tileIdx"] else 0)
-      tP["tt"] = "ThreadTile%u" % (1 if tP["tileIdx"] else 0)
-      tP["mt"] = "MacroTile%u" % (1 if tP["tileIdx"] else 0)
+      tP["sg"] = "SubGroup%u" % (tP["tile01Idx"])
+      tP["tt"] = "ThreadTile%u" % (tP["tile01Idx"])
+      tP["mt"] = "MacroTile%u" % (tP["tile01Idx"])
       tP["grcg"] = self.globalReadCoalesceGroupB
       tP["grcv"] = kernel["GlobalReadCoalesceVectorB"]
       tP["tlu"] = kernel["ProblemType"]["TLUB"]
