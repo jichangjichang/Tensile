@@ -1474,11 +1474,8 @@ class KernelWriter(metaclass=abc.ABCMeta):
       kl.append(self.comment3("Local Read Addresses"))
 
       # tile assignments
-      kl.append(self.comment("local read addresses: tile assignments a"))
-      kl.append(self.lraTileAssignmentA(kernel, tensorParametersA))
-      kl.append(self.comment("local read addresses: tile assignments b"))
-      kl.append(self.lraTileAssignmentB(kernel, tensorParametersB))
-
+      kl.append(self.comment("local read addresses: tile assignments a/b"))
+      kl.append(self.lraTileAssignment(kernel, tensorParametersA, tensorParametersB))
 
       # final offsets
       kl.append(self.comment("local read addresses: final offsets a"))
@@ -2847,8 +2844,8 @@ class KernelWriter(metaclass=abc.ABCMeta):
 
     tensorParametersA["PackBatchDims"] = kernel["PackBatchDims"] if kernel["PackBatchDims"] & 0x1 else 0
     tensorParametersB["PackBatchDims"] = kernel["PackBatchDims"] if kernel["PackBatchDims"] & 0x2 else 0
-    tensorParametersA["PackedIndices"] = kernel["PackedC0IndicesX"]
-    tensorParametersB["PackedIndices"] = kernel["PackedC1IndicesX"]
+    tensorParametersA["PackedIndices"] = kernel["PackedC0IndicesX"] if self.tPA["tileIdx"] == 0 else kernel["PackedC1IndicesX"]
+    tensorParametersB["PackedIndices"] = kernel["PackedC1IndicesX"] if self.tPB["tileIdx"] != 0 else kernel["PackedC0IndicesX"]
 
   @staticmethod
   def zpForSumIdx(sumIdx, zeroPad):
@@ -2951,11 +2948,11 @@ class KernelWriter(metaclass=abc.ABCMeta):
       #tP["ruv"] = self.readUnrollDimVectorA
       #tP["nlvc"] = self.numReadVectorComponentsA
       #tP["nwvc"] = self.numWriteVectorComponentsA
-      tP["wg"] = "WorkGroup0"                               # these are storing the actual strong to lookup the number from kernel dictionary
-      tP["prevWg"] = "PrevWorkGroup0"                       # used for prefetch-across-persistent
-      tP["sg"] = "SubGroup0"
-      tP["tt"] = "ThreadTile0"
-      tP["mt"] = "MacroTile0"
+      tP["wg"] = "WorkGroup%u" % (1 if tP["tileIdx"] else 0)# these are storing the actual strong to lookup the number from kernel dictionary
+      tP["prevWg"] = "PrevWorkGroup0"                       # used for prefetch-across-persistent #NHWC TO-do
+      tP["sg"] = "SubGroup%u" % (1 if tP["tileIdx"] else 0)
+      tP["tt"] = "ThreadTile%u" % (1 if tP["tileIdx"] else 0)
+      tP["mt"] = "MacroTile%u" % (1 if tP["tileIdx"] else 0)
       tP["grcg"] = self.globalReadCoalesceGroupA            # global reads are coalesced along threads
       tP["grcv"] = kernel["GlobalReadCoalesceVectorA"]      # global reads are vector reads, and lds writes will be components if transposing
       tP["tlu"] = kernel["ProblemType"]["TLUA"]             # thread stride is less than unroll stride, i.e., not transposing matrix
@@ -3006,11 +3003,11 @@ class KernelWriter(metaclass=abc.ABCMeta):
       #tP["ruv"] = self.readUnrollDimVectorB
       #tP["nlvc"] = self.numReadVectorComponentsB
       #tP["nwvc"] = self.numWriteVectorComponentsB
-      tP["wg"] = "WorkGroup1"
-      tP["prevWg"] = "PrevWorkGroup1"
-      tP["sg"] = "SubGroup1"
-      tP["tt"] = "ThreadTile1"
-      tP["mt"] = "MacroTile1"
+      tP["wg"] = "WorkGroup%u" % (1 if tP["tileIdx"] else 0)
+      tP["prevWg"] = "PrevWorkGroup1"                       #NHWC To-Do
+      tP["sg"] = "SubGroup%u" % (1 if tP["tileIdx"] else 0)
+      tP["tt"] = "ThreadTile%u" % (1 if tP["tileIdx"] else 0)
+      tP["mt"] = "MacroTile%u" % (1 if tP["tileIdx"] else 0)
       tP["grcg"] = self.globalReadCoalesceGroupB
       tP["grcv"] = kernel["GlobalReadCoalesceVectorB"]
       tP["tlu"] = kernel["ProblemType"]["TLUB"]
@@ -3155,17 +3152,10 @@ class KernelWriter(metaclass=abc.ABCMeta):
     return ""
 
   ##############################################################################
-  # Local Read Addresses: Tile Assignment A
+  # Local Read Addresses: Tile Assignment A/B
   ##############################################################################
   @abc.abstractmethod
-  def lraTileAssignmentA(self, kernel, tA):
-    return ""
-
-  ##############################################################################
-  # Local Read Addresses: Tile Assignment B
-  ##############################################################################
-  @abc.abstractmethod
-  def lraTileAssignmentB(self, kernel, tB):
+  def lraTileAssignment(self, kernel, tPA, tPB):
     return ""
 
   ##############################################################################
