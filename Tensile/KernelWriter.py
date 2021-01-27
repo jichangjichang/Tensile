@@ -617,8 +617,8 @@ class KernelWriter(metaclass=abc.ABCMeta):
           # calculate the data index of this mfma used for A and B
           # if i // kernel["MIWaveTile"][0]==0, mfma will use new A (need to take iu into account)
           # if i % kernel["MIWaveTile"][0]==0, mfma will use new B
-          packAIdx += instPerPack if i//(kernel["MIWaveTile"][0]+kernel["MIWaveTile"][0]*kernel["MIWaveTile"][1]*(i//(kernel["MIWaveTile"][0]*kernel["MIWaveTile"][1]))) == 0 else 0
-          packBIdx += instPerPack if i % kernel["MIWaveTile"][0] == 0 else 0
+          packAIdx += instPerPack if i//(kernel["MIWaveTileA"]+kernel["MIWaveTileA"]*kernel["MIWaveTileB"]*(i//(kernel["MIWaveTileA"]*kernel["MIWaveTileB"]))) == 0 else 0
+          packBIdx += instPerPack if i % kernel["MIWaveTileB"] == 0 else 0
           # blockWidth < 1, means 0.5 or 0.25 (BF,H,Int8)
           packAIdx = packAIdx if self.tPA["localReadInstruction"].blockWidth < 1 else 0
           packBIdx = packBIdx if self.tPB["localReadInstruction"].blockWidth < 1 else 0
@@ -880,8 +880,8 @@ class KernelWriter(metaclass=abc.ABCMeta):
           # calculate the data index of this mfma used for A and B
           # if i // kernel["MIWaveTile"][0]==0, mfma will use new A (need to take iu into account)
           # if i % kernel["MIWaveTile"][0]==0, mfma will use new B
-          packAIdx += instPerPack if i//(kernel["MIWaveTile"][0]+kernel["MIWaveTile"][0]*kernel["MIWaveTile"][1]*(i//(kernel["MIWaveTile"][0]*kernel["MIWaveTile"][1]))) == 0 else 0
-          packBIdx += instPerPack if i % kernel["MIWaveTile"][0] == 0 else 0
+          packAIdx += instPerPack if i//(kernel["MIWaveTileA"]+kernel["MIWaveTileA"]*kernel["MIWaveTileB"]*(i//(kernel["MIWaveTileA"]*kernel["MIWaveTileB"]))) == 0 else 0
+          packBIdx += instPerPack if i % kernel["MIWaveTileB"] == 0 else 0
           # blockWidth < 1, means 0.5 or 0.25 (BF,H,Int8)
           packAIdx = packAIdx if self.tPA["localReadInstruction"].blockWidth < 1 else 0
           packBIdx = packBIdx if self.tPB["localReadInstruction"].blockWidth < 1 else 0

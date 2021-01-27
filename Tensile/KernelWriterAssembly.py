@@ -5725,14 +5725,26 @@ class KernelWriterAssembly(KernelWriter):
 
       if loopIdx == self.unrollIdx:
         if kernel["PrefetchGlobalRead"] == 2:
-          kStr += inst("s_cmp_eq_u32", \
-              loopCounter, \
-              hex(endCounter-1), \
-              "LoopCounter%s < EndCounter"%(loopChar) )
+          if not self.unrollIncIsDepthU:
+            kStr += inst("s_cmp_eq_u32", \
+                loopCounter, \
+                hex(endCounter-1), \
+                "LoopCounter%s < EndCounter"%(loopChar) )
+          else:
+            kStr += inst("s_cmp_ge_u32", \
+                loopCounter, \
+                sgpr("UnrollLoopLastIter"), \
+                "LoopCounter%s > EndCounter"%(loopChar) )
           toPGR1 = self.getLabelNum("toPGR1")
           kStr += inst("s_cbranch_scc1 label_%04u"%toPGR1, "PGR=2 but only 1 loop, toPGR1")
 
         if self.unrollIncIsDepthU:
+          if kernel["PrefetchGlobalRead"] == 2:
+            tmpSgpr = self.getTmpSgpr(1).idx()
+            kStr += inst("s_add_u32", sgpr(tmpSgpr),\
+                loopCounter, \
+                 "DepthU", "")
+            loopCounter = sgpr(tmpSgpr)
           kStr += inst("s_cmp_ge_u32", \
               loopCounter, \
               sgpr("UnrollLoopLastIter"), \
@@ -5833,10 +5845,20 @@ class KernelWriterAssembly(KernelWriter):
       if self.unrollIncIsDepthU and loopIdx==self.unrollIdx:
         assert (not kernel["SuppressNoLoadLoop"]) # not accounting for end-of-loop iteration change here in deprecated mode
 
-        kStr += inst("s_cmp_ge_u32", \
-            loopCounter, \
-            sgpr("UnrollLoopLastIter"), \
-          "counter%s==0"%(loopChar) )
+        if kernel["PrefetchGlobalRead"] == 2:
+          tmpSgpr = self.getTmpSgpr(1).idx()
+          kStr += inst("s_add_u32", sgpr(tmpSgpr),\
+              loopCounter, \
+               "DepthU", "")
+          kStr += inst("s_cmp_ge_u32", \
+              sgpr(tmpSgpr), \
+              sgpr("UnrollLoopLastIter"), \
+              "LoopCounter%s + DU < EndCounter. Go to PGR1"%(loopChar) )
+        else:
+          kStr += inst("s_cmp_ge_u32", \
+              loopCounter, \
+              sgpr("UnrollLoopLastIter"), \
+            "counter%s==0"%(loopChar) )
       else:
         kStr += inst("s_sub_u32", \
             loopCounter, loopCounter, \
@@ -5914,7 +5936,7 @@ class KernelWriterAssembly(KernelWriter):
             for tP in [self.tPA, self.tPB]:
               tc     = tP["tensorChar"]
               LdsPad = kernel["LdsPad%s" % tc] if kernel["LdsBlockSizePerPad%s"%tc] == 0 else 0
-              inc    = kernel["LocalSplitU"]*(kernel["MacroTile%u"%tc]+LdsPad)*tP["bpe"]
+              inc    = kernel["LocalSplitU"]*(kernel["MacroTile%s"%tc]+LdsPad)*tP["bpe"]
 
               # aligned with localReadInc
               if kernel["EnableMatrixInstruction"]:
